@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fortyguard-agentic-exploration"
+version = "0.1.0"
+description = "Provider-neutral agent core and FortyGuard tool adapters for the hackathon exploration run."
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+live = ["requests>=2.31.0"]
+test = ["pytest>=8.0"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-q"
