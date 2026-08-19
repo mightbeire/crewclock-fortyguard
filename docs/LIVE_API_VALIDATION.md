@@ -4,7 +4,7 @@ Date: August 19, 2026. Account: Hackathon plan. The API key was read from the ig
 
 ## Usage guardrail
 
-The non-billable usage check reported 2,000,000 total credits, 2,000,000 remaining, and 0 used before analysis testing. Five distinct successful analysis requests were then made and cached. The final usage reading was 29,960 used and 1,970,040 remaining. The scripts under `scripts/` reuse the successful cache files and do not repeat identical paid requests.
+The non-billable usage check reported 2,000,000 total credits, 2,000,000 remaining, and 0 used before analysis testing. The first validation pass used 29,960 credits. A second, deliberately bounded discovery pass used 174,540 additional credits: eight geography pairs plus seven targeted heat/env analyses. The current usage reading is 204,500 used and 1,795,500 remaining. The scripts under `scripts/` reuse successful cache files and do not repeat identical paid requests.
 
 | Test | Request shape | Result | Measured credit delta | Cache |
 |---|---|---|---:|---|
@@ -51,6 +51,12 @@ The heatmap maximum and environmental temperature anchor were consistent for the
 
 `/v1/satellite` completed successfully and returned segmentation content, dimensions, legend, mode, processing time, request ID, and segment data. Satellite segmentation is therefore verified for this Hackathon account. Street-view segmentation and heat-intelligence report access were not tested and remain `NONE` for capability planning.
 
+## Second-wave geography and analysis validation
+
+The eight-site matrix and follow-ups are recorded in `docs/DEMO_GEOGRAPHY_RESEARCH.md`. Each geography pair was one 100 m full-day `tcm` heatmap and one satellite segmentation call. The most useful paired responses were Las Vegas (high heat plus building/road/tree labels), Phoenix (high heat plus useful temporal analysis), and Los Angeles (rail label plus consistent 15:00 UTC peak/7-hour persistence). Zero-cell heatmap responses in Houston, DFW, New York, and Portland are retained as coverage/uncertainty evidence.
+
+The live environmental follow-ups also exposed a schema warning: Atlanta `heat_index_celsius` values reached 77.9, while apparent temperature stayed within 26.6–41.3°C and relative humidity reached 97.6%. This field is not trusted as Celsius until clarified. Satellite `image_year=2026` was returned for a 2025 request date; provenance keeps the two dates separate.
+
 ## Finalist validation boundary
 
-`scripts/run_live_spikes.py` reran all three finalist control loops from the cached live environmental profile. Each produced a trace and stopped at human approval. The resulting proxy improvements are real computations over cached-live values, but the windows, route/task data, and hard constraints are synthetic. Therefore the live run validates the reusable agent loop and temporal signal, not field effectiveness, safety certification, spatial site ranking, or production deployment.
+`scripts/run_live_spikes.py` reran all three first-wave finalist control loops from cached-live environmental profiles. `scripts/run_challenger_spikes.py` then ran Surface-conditioned Road Repair Queue and RailHeat Patrol Sequencer against cached-live geography/analysis/satellite results. Every spike produced a trace and stopped at human approval. The resulting proxy improvements are real computations over cached-live values, but work orders, rail inventory, route/task data, and hard constraints are schema-faithful examples rather than field outcomes. Therefore the live run validates reusable agent behavior and evidence alignment, not safety certification or production deployment.

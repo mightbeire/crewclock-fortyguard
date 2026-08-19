@@ -43,6 +43,8 @@ Updated state / graceful stop
 - Trace and error redaction for API keys, tokens, and credential-like fields.
 - Explicit approval resolution records approved/rejected state and timestamp without executing an external action.
 - Separate baseline evaluator reports no-assistance, static-threshold, naive-first-choice, and agent-verified proxy results.
+- Conditional stress scenarios demonstrate both evidence-sufficient stopping and evidence-insufficient fallback investigation before approval.
+- Provider exceptions terminate with a bounded, redacted uncertainty reason; they do not leak credentials or crash the run.
 
 ## Verification semantics
 

@@ -52,3 +52,36 @@ def test_approval_can_be_resolved_without_executing_action() -> None:
     runner.resolve_approval(state, 0, True)
     assert state.approvals[0].status == "approved"
     assert state.termination_reason == "approved_recommendation"
+
+
+def test_handler_failure_becomes_observation_and_provider_can_finish() -> None:
+    def fail(_: dict) -> ToolResult:
+        raise RuntimeError("temporary upstream failure")
+
+    registry = ToolRegistry()
+    registry.register(ToolSpec("inspect", "Inspect", {"type": "object"}, fail))
+    provider = MockProvider([ProviderDecision.call_tool("inspect", {}), ProviderDecision.finish("insufficient_evidence")])
+    runner = AgentRunner(registry, provider, budget=Budget(max_iterations=3, max_tool_calls=2, max_api_credits=2), policy=SafetyPolicy(allowed_tools={"inspect"}))
+    state, trace = runner.run(AgentState(Goal("inspect", "operator")))
+    assert state.termination_reason == "insufficient_evidence"
+    assert state.observations[0].kind == "error"
+    assert state.observations[0].content["error"] == "tool_execution_error:RuntimeError"
+    assert any(event.event == "tool_call_finished" and event.payload["ok"] is False for event in trace.events)
+
+
+def test_provider_failure_stops_with_redacted_trace() -> None:
+    class FailingProvider:
+        def next_decision(self, state: AgentState) -> ProviderDecision:
+            raise RuntimeError("fg_live_" + "super_secret")
+
+        def observe(self, result: ToolResult, state: AgentState) -> None:
+            return None
+
+    registry = ToolRegistry()
+    registry.register(ToolSpec("inspect", "Inspect", {"type": "object"}, ok_tool))
+    runner = AgentRunner(registry, FailingProvider(), budget=Budget(max_iterations=1, max_tool_calls=1, max_api_credits=1), policy=SafetyPolicy(allowed_tools={"inspect"}))
+    state, trace = runner.run(AgentState(Goal("inspect", "operator")))
+    assert state.termination_reason == "provider_error:RuntimeError"
+    provider_error = next(event for event in trace.events if event.event == "provider_error")
+    assert "fg_live_" + "super_secret" not in provider_error.payload["error"]
+    assert "REDACTED" in provider_error.payload["error"]

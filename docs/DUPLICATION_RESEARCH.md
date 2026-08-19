@@ -35,3 +35,13 @@ Do not claim novelty because no identical public product was found. The defensib
 The handbook reinforces this boundary: its Industrial & Enterprise examples include data-center siting, heat-sensitive cargo/worker protection in transit, and parametric heat-risk scoring; its Agentic examples include goal-driven endpoint selection, monitoring, and auditable research. Those examples increase duplication risk for generic siting, routing, alerts, or reports. The surviving concepts stay narrower by centering a repeatable operational decision and a verification loop.
 
 The live 96-tile test also prevents overclaiming novelty through spatial precision: the selected AOI/date produced nearly uniform daily heat values and one exceedance hour per tile. Spatial differentiation must be demonstrated for a real approved geography before it is used as a finalist claim.
+
+## Second-wave public attack
+
+- [Perry Weather](https://perryweather.com/features/heat-stress-and-wbgt-monitoring/work-rest-cycles/) already offers location-specific heat/work-rest scheduling, so generic workforce heat scheduling is not novel.
+- [IBM Maximo](https://www.ibm.com/products/maximo/field-service-management) and field-service products already offer spatial prioritization, work orders, dispatch, and AI scheduling, so Thermal Sequence must retain its conditional FortyGuard investigation and verification wedge.
+- [Copeland](https://www.copeland.com/en-us/products-solutions/controls-solutions/in-transit-solutions) and [TrueCold](https://www.truecold.io/industries/logistics) already combine cold-chain telemetry, location, alerts, and intervention, so cold-chain dwell is rejected.
+- Rail extreme-heat patrol rules are established in [Amtrak procedures](https://www.amtrak.com/content/dam/projects/dotcom/english/public/documents/corporate/engineering-practices/engineering-standards/procedures-installation-adjustment-maintenance-inspection-cwr-49-cfr-213-118.pdf) and [FRA ATIP](https://railroads.fra.dot.gov/railroad-safety/partnerships-programs/automated-track-inspection-program-atip), but the narrower auditable patrol-queue agent remains less obvious than a generic alert.
+- 311/pothole systems already exist in [Los Angeles](https://data.lacity.org/City-Infrastructure-Service-Requests/MyLA311-Service-Request-Data-2024/b7dx-7gc3) and [Portland](https://www.portlandmaps.com/arcgis/rest/services/Public/PBOT_Maintenance/MapServer/layers); the defensible novelty is joining public work-order triage to live heat timing and satellite context, not claiming to invent repair queues.
+
+Public duplication research therefore passes, but it lowers the ceiling for generic heat safety, generic dispatch, generic warehouse, and generic monitoring concepts.

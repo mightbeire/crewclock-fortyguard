@@ -17,6 +17,12 @@
 - [x] Cache successful live responses and rerun the three finalist spikes against cached-live environmental data.
 - [x] Attempt to falsify spatial finalist claims with a multi-tile live test; downgrade confidence where the evidence was weak.
 - [x] Strengthen tool validation, redacted traceability, approval resolution, bounded handler errors, and baseline comparison evaluation.
+- [x] Research 12 additional operational workflows and generate 12 distinct second-wave concepts.
+- [x] Attack duplication with public products, hackathons, academic prototypes, and workflow evidence.
+- [x] Test eight strategic U.S. geographies plus targeted temporal follow-ups using cached live heatmap/env/satellite data.
+- [x] Research public/free input schemas for road work orders, rail, utilities, airports, telecom, solar, parks, transit, warehouse, and fleet workflows.
+- [x] Build thin cached-live challenger spikes for Surface-conditioned Road Repair Queue and RailHeat Patrol Sequencer.
+- [x] Stress-test evidence-sufficient stopping, fallback investigation, provider failure handling, and human approval.
 
 ## Human decision required later, not now
 

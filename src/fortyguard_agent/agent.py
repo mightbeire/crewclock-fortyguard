@@ -18,6 +18,8 @@ class ToolSpec:
     requires_approval: bool = False
 
     def validate_arguments(self, arguments: dict[str, Any]) -> None:
+        if not isinstance(arguments, dict):
+            raise GuardrailError(f"tool_arguments_must_be_object:{self.name}")
         required = self.input_schema.get("required", [])
         missing = [name for name in required if name not in arguments]
         if missing:
@@ -74,7 +76,13 @@ class AgentRunner:
             try:
                 self.budget.before_iteration()
                 state.iteration = self.budget.iterations
-                decision = self.provider.next_decision(state)
+                try:
+                    decision = self.provider.next_decision(state)
+                except Exception as exc:
+                    state.terminated = True
+                    state.termination_reason = f"provider_error:{type(exc).__name__}"
+                    trace.record("provider_error", error=_redact(str(exc)[:240]))
+                    break
                 trace.record("provider_decision", kind=decision.kind, tool_name=decision.tool_name, message=decision.message)
                 if decision.kind == "finish":
                     state.terminated = True
@@ -95,14 +103,14 @@ class AgentRunner:
                     raise GuardrailError("malformed_provider_decision")
                 name = decision.tool_name
                 self.policy.check_tool(name, called_tools)
-                cost = self.budget.reserve_tool(name)
                 spec = self.registry.get(name)
                 spec.validate_arguments(decision.arguments)
+                cost = self.budget.reserve_tool(name)
                 trace.record("tool_call_started", tool_name=name, arguments=_redact(decision.arguments), reserved_credits=cost)
                 try:
                     result = spec.handler(decision.arguments)
                 except Exception as exc:
-                    result = ToolResult({}, Provenance(source="mock", endpoint=f"tool:{name}"), error=f"tool_execution_error:{type(exc).__name__}")
+                    result = ToolResult({}, Provenance(source="heuristic", endpoint=f"tool:{name}", assumptions=("handler failure was converted to a bounded observation",)), error=f"tool_execution_error:{type(exc).__name__}")
                 called_tools.append(name)
                 state.observations.append(Observation(kind="tool_result" if result.ok else "error", content=result.to_dict()))
                 self.provider.observe(result, state)

@@ -1,5 +1,7 @@
 # Finalist evaluation
 
+This first-wave ranking is preserved for continuity. It is superseded by the broader research and bakeoff in `docs/FINALIST_BAKEOFF_V2.md`; the MVP remains unselected.
+
 Scores use the handbook's weights: Impact/Relevance 40%, Technical Execution 35%, Innovation 15%, Communication 10%. Scores are judgment calls based on the evidence collected, not outcomes claimed from a production deployment. Live evidence has lowered confidence in spatial differentiation and in all operational metrics because the work windows and constraints remain synthetic.
 
 ## Weighted scores

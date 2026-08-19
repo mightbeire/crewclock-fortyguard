@@ -26,6 +26,22 @@ The live environmental profile supports a real hourly temporal workflow. A 96-ti
 
 ## 2026-08-19 — Live analysis calls are cached and idempotent
 
+## 2026-08-19 — Satellite is an evidence gate, not a visualization
+
+The satellite endpoint returns physical-context percentages that can make an operational decision possible, but quality varies: some sites returned interpretable building/road/tree/rail labels and some returned `others=100%`. Agents must use segmentation to support or reject an interpretation, never to invent a material classification.
+
+## 2026-08-19 — Geography selection is evidence-driven
+
+Las Vegas is the strongest current paired heat/surface candidate; Phoenix is strongest for high-heat temporal scheduling; Los Angeles is strongest for a rail-context experiment. Houston, DFW, New York, and Portland were retained as negative coverage/context evidence because the selected heatmap requests returned zero cells.
+
+## 2026-08-19 — New leader is tentative and can still be killed
+
+The Surface-conditioned Road Repair Queue currently outranks Thermal Sequence Planner because it has a public work-order input path, interpretable live Las Vegas surface labels, and a stronger cached-live proxy spike. Its critical assumption is a real city work-order join to FortyGuard coverage; if that fails, Thermal Sequence can recover the lead.
+
+## 2026-08-19 — Do not trust unvalidated environmental units
+
+The live Atlanta `heat_index_celsius` array contains values up to 77.9 alongside plausible apparent-temperature and humidity values. Until the API clarifies the field, the agent will use apparent temperature/wet bulb and surface the heat-index anomaly as uncertainty.
+
 Authentication was verified with the usage endpoint. Cached responses are sufficient for schema and metric work; repeating identical analysis requests would waste credits and create no new evidence.
 
 ## 2026-08-19 — Mock-first agent core

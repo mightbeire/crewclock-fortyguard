@@ -117,3 +117,7 @@ Evidence: [WRI Cool Cities Lab](https://coolcities.wri.org/help), [Smart Surface
 ## Research synthesis
 
 The best agent wedges are not generic alerts. They are bounded, repeatable decisions with a candidate set, constraints, an action proposal, and a measurable before/after proxy. The three most buildable wedges are road/construction windows, field-service sequences, and warehouse dock shifts.
+
+## Second-wave conclusion
+
+The research expanded into rail patrols, municipal road work orders, utility vegetation packages, airport ramp tasks, telecom preventive maintenance, solar O&M, waste routes, fleet yards, cold-chain dwell, commercial roofs, industrial yards, and property underwriting. Public evidence makes road work orders and rail inventories the most realistic input-side foundations. The strongest new decision wedges are a surface-conditioned road repair queue and a heat-triggered rail patrol sequencer; both require an agent to inspect evidence quality, choose follow-up calls, preserve constraints, and produce an approval-ready action.

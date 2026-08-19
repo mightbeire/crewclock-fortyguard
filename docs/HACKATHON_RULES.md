@@ -41,11 +41,12 @@ Sources: [Authentication](https://docs-api.fortyguard.com/docs/authentication), 
 
 - `.env` exists and is ignored by the repository ignore policy. Its contents were not printed or committed.
 - Live usage check passed on August 19, 2026.
-- Live account response reported plan type `Hackathon`, 2,000,000 total/remaining credits, and 0 used at verification time. After five distinct analysis tests, measured usage was 29,960 with 1,970,040 remaining.
+- Live account response reported plan type `Hackathon`, 2,000,000 total/remaining credits, and 0 used at verification time. After the first and second bounded discovery passes, measured usage is 204,500 with 1,795,500 remaining.
 - `/v1/heatmap` completed live and returned `map_data`/`stats_data`; a granularity-100 test produced approximately 100 m tiles. Full-day `tcm` returned per-tile daily minimum/average/maximum values, not hourly feature values.
 - `/v1/env_params` completed live and returned a 24-point hourly profile plus environmental and solar fields.
 - `/v1/satellite` completed live, so satellite segmentation access is verified for this account. Street-view and heat-intelligence access remain untested and must not be assumed.
 - Successful live responses are sanitized and cached under `.agent_cache/live_validation/`; the validation scripts are idempotent and avoid repeating an identical paid request.
+- Second-wave geography and follow-up responses are sanitized and cached under `.agent_cache/live_geographies/` and `.agent_cache/live_followups/`.
 - The vendored quickstart includes Python client code, notebooks, and cached JSON responses for heatmaps, environmental parameters, satellite, and street-view examples.
 
 ## Remaining assumptions and limitations
