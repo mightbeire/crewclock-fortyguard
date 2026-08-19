@@ -32,3 +32,23 @@ def test_repeated_tool_calls_are_blocked() -> None:
     runner = AgentRunner(registry, provider, budget=Budget(max_iterations=4, max_tool_calls=4, max_api_credits=4), policy=SafetyPolicy(allowed_tools={"inspect"}))
     state, _ = runner.run(AgentState(Goal("inspect", "operator")))
     assert state.termination_reason == "repeated_tool_call_blocked:inspect"
+
+
+def test_missing_required_arguments_stop_without_crashing() -> None:
+    registry = ToolRegistry()
+    registry.register(ToolSpec("inspect", "Inspect", {"type": "object", "required": ["site"]}, ok_tool))
+    provider = MockProvider([ProviderDecision.call_tool("inspect", {})])
+    runner = AgentRunner(registry, provider, budget=Budget(max_iterations=2, max_tool_calls=2, max_api_credits=2), policy=SafetyPolicy(allowed_tools={"inspect"}))
+    state, _ = runner.run(AgentState(Goal("inspect", "operator")))
+    assert state.termination_reason == "missing_tool_arguments:inspect:site"
+
+
+def test_approval_can_be_resolved_without_executing_action() -> None:
+    registry = ToolRegistry()
+    registry.register(ToolSpec("inspect", "Inspect", {"type": "object"}, ok_tool))
+    provider = MockProvider([ProviderDecision.propose(ActionProposal("schedule_change", "Move job", {}, 0.9))])
+    runner = AgentRunner(registry, provider, budget=Budget(max_iterations=2, max_tool_calls=1, max_api_credits=1), policy=SafetyPolicy(allowed_tools={"inspect"}))
+    state, _ = runner.run(AgentState(Goal("choose", "operator")))
+    runner.resolve_approval(state, 0, True)
+    assert state.approvals[0].status == "approved"
+    assert state.termination_reason == "approved_recommendation"

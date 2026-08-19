@@ -2,6 +2,10 @@
 
 These are exploration candidates generated after the problem and duplication research. None is the selected MVP.
 
+## Candidate evaluation contract
+
+Each candidate is screened against the handbook-required four-part proof: named user/problem, why an agent is necessary, why FortyGuard is central, and a measurable before/after outcome. A candidate that cannot answer all four remains a research idea rather than a finalist.
+
 ## 1. Thermal Sequence Planner
 
 ### NAME

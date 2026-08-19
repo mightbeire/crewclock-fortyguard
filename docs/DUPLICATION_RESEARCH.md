@@ -31,3 +31,7 @@
 ## Duplication strategy
 
 Do not claim novelty because no identical public product was found. The defensible wedge is: an agent that selects among operational alternatives, calls FortyGuard only when needed, proposes a human-approved change, and verifies a transparent metric. A static map, alert, or ranked list alone is insufficient.
+
+The handbook reinforces this boundary: its Industrial & Enterprise examples include data-center siting, heat-sensitive cargo/worker protection in transit, and parametric heat-risk scoring; its Agentic examples include goal-driven endpoint selection, monitoring, and auditable research. Those examples increase duplication risk for generic siting, routing, alerts, or reports. The surviving concepts stay narrower by centering a repeatable operational decision and a verification loop.
+
+The live 96-tile test also prevents overclaiming novelty through spatial precision: the selected AOI/date produced nearly uniform daily heat values and one exceedance hour per tile. Spatial differentiation must be demonstrated for a real approved geography before it is used as a finalist claim.

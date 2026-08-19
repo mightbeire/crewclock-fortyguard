@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from .guardrails import Budget, GuardrailError, SafetyPolicy
-from .models import AgentState, AgentTrace, ApprovalRequest, Observation, ToolResult
+from .models import AgentState, AgentTrace, ApprovalRequest, Observation, Provenance, ToolResult, utc_now
 from .providers import LLMProvider
 
 
@@ -16,6 +16,25 @@ class ToolSpec:
     input_schema: dict[str, Any]
     handler: Callable[[dict[str, Any]], ToolResult]
     requires_approval: bool = False
+
+    def validate_arguments(self, arguments: dict[str, Any]) -> None:
+        required = self.input_schema.get("required", [])
+        missing = [name for name in required if name not in arguments]
+        if missing:
+            raise GuardrailError(f"missing_tool_arguments:{self.name}:{','.join(missing)}")
+
+
+def _redact(value: Any, key: str = "") -> Any:
+    if any(token in key.lower() for token in ("api_key", "token", "secret", "password", "credential")):
+        return "REDACTED"
+    if isinstance(value, dict):
+        return {str(k): _redact(v, str(k)) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_redact(v, key) for v in value]
+    if isinstance(value, str):
+        import re
+        return re.sub(r"(?i)(fg_live_|sk-)[A-Za-z0-9_-]+", r"\1REDACTED", value)
+    return value
 
 
 class ToolRegistry:
@@ -78,12 +97,16 @@ class AgentRunner:
                 self.policy.check_tool(name, called_tools)
                 cost = self.budget.reserve_tool(name)
                 spec = self.registry.get(name)
-                trace.record("tool_call_started", tool_name=name, arguments=decision.arguments, reserved_credits=cost)
-                result = spec.handler(decision.arguments)
+                spec.validate_arguments(decision.arguments)
+                trace.record("tool_call_started", tool_name=name, arguments=_redact(decision.arguments), reserved_credits=cost)
+                try:
+                    result = spec.handler(decision.arguments)
+                except Exception as exc:
+                    result = ToolResult({}, Provenance(source="mock", endpoint=f"tool:{name}"), error=f"tool_execution_error:{type(exc).__name__}")
                 called_tools.append(name)
                 state.observations.append(Observation(kind="tool_result" if result.ok else "error", content=result.to_dict()))
                 self.provider.observe(result, state)
-                trace.record("tool_call_finished", tool_name=name, ok=result.ok, provenance=result.provenance.source, error=result.error)
+                trace.record("tool_call_finished", tool_name=name, ok=result.ok, provenance=result.provenance.source, error=_redact(result.error or ""))
             except GuardrailError as exc:
                 state.terminated = True
                 state.termination_reason = str(exc)
@@ -91,3 +114,16 @@ class AgentRunner:
                 trace.record("guardrail_stop", reason=str(exc))
         trace.record("goal_finished", reason=state.termination_reason, iterations=state.iteration, tool_calls=self.budget.tool_calls, reserved_credits=self.budget.api_credits_reserved)
         return state, trace
+
+    @staticmethod
+    def resolve_approval(state: AgentState, index: int, approved: bool) -> AgentState:
+        """Resolve a pending recommendation without executing external actions."""
+        if index < 0 or index >= len(state.approvals):
+            raise IndexError("approval_index_out_of_range")
+        request = state.approvals[index]
+        if request.status != "pending":
+            raise ValueError("approval_already_resolved")
+        request.status = "approved" if approved else "rejected"
+        request.decided_at = utc_now()
+        state.termination_reason = "approved_recommendation" if approved else "rejected_recommendation"
+        return state

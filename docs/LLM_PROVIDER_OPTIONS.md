@@ -2,6 +2,8 @@
 
 The exploration core works without a hosted model. A provider is an optional planner, not a dependency for tests or the demo spike.
 
+The handbook's Agentic Track requires autonomous planning, endpoint calls, and decisions with minimal human steering, but it does not require a paid hosted model. The current acceptance path therefore remains the deterministic provider-neutral loop; no external LLM account, payment method, or provider credential has been created.
+
 | Provider | Tool calling / structure | Latency/context | Free or low-cost path | Integration | Assessment |
 |---|---|---|---|---|---|
 | OpenAI Responses API | Official Responses API supports custom function tools and structured outputs; strict schemas are available for supported models. | Current platform docs expose large-context Responses models; exact model/price should be checked at implementation time. | No free tier assumed; do not create an account or add payment during exploration. | Medium; official Python/JS SDKs. | Strongest production-shaped adapter, but not a zero-cost assumption. |

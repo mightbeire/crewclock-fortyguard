@@ -2,6 +2,8 @@
 
 ## Survivors
 
+All six survivors fit the handbook’s Agentic and/or Industrial & Enterprise framing, remain U.S.-scoped, and are still discovery candidates. No survivor is the final MVP.
+
 1. Pavement Window Agent — strongest industrial wedge; combines worker scheduling and asset-quality review without pretending to automate engineering.
 2. Thermal Sequence Planner — clear agent loop, high recurrence, excellent 20-second before/after.
 3. DockShift Orchestrator — specific enterprise workflow and low public duplication.

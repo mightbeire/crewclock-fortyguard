@@ -21,6 +21,20 @@ class ScenarioResult:
     passed: bool
 
 
+def evaluate_window_baselines(profile: list[float], windows: list[dict[str, int]], threshold_c: float = 32.0) -> dict[str, Any]:
+    """Compare simple decision policies with the transparent agent metric."""
+    toolkit = FortyGuardToolkit()
+    rows = []
+    for window in windows:
+        metric = toolkit.calculate_exposure_metric({"hourly_c": profile, "work_windows": [window], "threshold_c": threshold_c}).data
+        values = profile[window["start_hour"]:window["end_hour"]]
+        rows.append({"window": window, "thermal_load_proxy_degree_hours": metric["thermal_load_proxy_degree_hours"], "hours_above_threshold": sum(value > threshold_c for value in values), "peak_c": max(values)})
+    naive = rows[0]
+    static_threshold = min(rows, key=lambda row: (row["hours_above_threshold"], row["peak_c"], row["window"]["start_hour"]))
+    agent = min(rows, key=lambda row: (row["thermal_load_proxy_degree_hours"], row["hours_above_threshold"], row["window"]["start_hour"]))
+    return {"no_assistance": naive, "static_threshold_rule": static_threshold, "naive_first_choice": naive, "agent_verified_proxy": agent, "candidates": rows}
+
+
 def build_spike_registry(toolkit: FortyGuardToolkit, profile_by_site: dict[str, list[float]]) -> ToolRegistry:
     registry = ToolRegistry()
     registry.register(ToolSpec("get_heatmap", "Retrieve a FortyGuard heat profile or fixture.", {"type": "object"}, lambda args: toolkit.get_heatmap(args)))

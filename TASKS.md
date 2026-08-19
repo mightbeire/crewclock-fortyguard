@@ -11,15 +11,22 @@
 - [x] Implement FortyGuard adapter seam and derived metric tools.
 - [x] Implement deterministic evaluation harness and three thin spikes.
 - [x] Add continuity documents and local security checks.
+- [x] Extract and audit the official participant handbook; reconcile rules, tracks, judging, and submission requirements.
+- [x] Verify live `/v1/heatmap` and `/v1/env_params`, record schemas, spatial/temporal behavior, and measured credit deltas.
+- [x] Verify Premium capability safely; satellite segmentation is enabled, while untested Premium endpoints remain out of scope.
+- [x] Cache successful live responses and rerun the three finalist spikes against cached-live environmental data.
+- [x] Attempt to falsify spatial finalist claims with a multi-tile live test; downgrade confidence where the evidence was weak.
+- [x] Strengthen tool validation, redacted traceability, approval resolution, bounded handler errors, and baseline comparison evaluation.
 
-## Human decision required
+## Human decision required later, not now
 
 - [ ] Select one of the three finalists as the MVP.
-- [ ] Confirm whether the hackathon account has Basic or Premium endpoint access beyond the usage response.
+- [ ] Select one of the three finalists as the MVP after discovery is complete.
 - [ ] Confirm final demo geography and whether any external operational data may be used.
 
 ## Optional follow-up
 
-- [ ] Add one live heatmap request only after humans approve the final geography/date and credit budget.
+- [ ] If needed, test street-view or heat-intelligence Premium access only after a specific product hypothesis justifies the credits.
 - [ ] Implement the hosted-provider response translator after a provider is chosen.
 - [ ] Add UI only after the product workflow is selected.
+- [ ] Prepare the handbook-required live demo, judge-accessible repo/README, max-three-minute video, and max-500-word summary only after MVP selection.

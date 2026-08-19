@@ -16,6 +16,11 @@
 
 ## Important schema and data notes
 
+- The handbook is authoritative for event scope: U.S.-only analysis, dates from `2021-01-01` through present, and forecasts up to 12 hours ahead. It also describes an approximate platform/LTM resolution of 2 m, but the API request contract exposes 60/80/100 m grid granularity. The live granularity-100 result measured approximately 100 m tiles; do not represent the API as 2 m output.
+- Live `/v1/heatmap` `tcm` output contains `map_data.features[].properties` fields `tile_id`, `average_temperature`, `max_temperature`, and `min_temperature`, plus `stats_data` distributions. A full-day request is a daily summary per tile, not an hourly sequence. Live `exceedance` output used `properties.value` and `stats_data.units = "hour"`.
+- Live `/v1/env_params` returned `metadata`, `locations`, and 24 hourly timestamps. Each location included coordinates/elevation, temperature, parameters, and solar irradiance; the tested request asked for three analyses but the account returned a broader parameter set. Do not rely on field filtering until confirmed for the target plan/request.
+- The live Premium probe completed satellite segmentation. Street-view and heat-intelligence access were not tested and are not product dependencies.
+- Empirical credit deltas for the cached validation run were: heatmap `tcm` 4,220; env params 2,900; satellite segmentation 14,400; exceedance 4,220; multi-tile heatmap `tcm` 4,220. See `docs/LIVE_API_VALIDATION.md` for request shapes and limits.
 - Current official docs describe `tcm` as Celsius and analysis heatmaps as hourly units. The older vendored quickstart says some tcm output is Fahrenheit in prose; cached JSON values look like Celsius. The toolkit does not convert values silently and preserves provenance.
 - `env_params` requires a temperature anchor. The local notebook notes that heat index can become a humidity-sensitivity curve at a fixed anchor, not a diurnal air-temperature forecast. For ranking sites, use heatmap layers; use env params for context.
 - Spatial intelligence is tile-based, so parcel/asset joins need overlap-aware or documented nearest-tile logic. Do not claim parcel-level precision below the selected granularity.
@@ -37,3 +42,5 @@ The agent must distinguish API measurements from derived metrics and heuristic r
 ## Sources
 
 [Heatmap API](https://docs-api.fortyguard.com/docs/create-heatmap), [Environmental Parameters API](https://docs-api.fortyguard.com/docs/environmental-parameters), [Status API](https://docs-api.fortyguard.com/docs/check-status), [Satellite Segmentation](https://docs-api.fortyguard.com/docs/satellite-view-segmentation), [Street View Segmentation](https://docs-api.fortyguard.com/docs/street-view-segmentation), [Heat Intelligence](https://docs-api.fortyguard.com/docs/heat-intelligence), [Quickstart](https://docs-api.fortyguard.com/docs/quickstart).
+
+Live evidence and sanitized cache: `docs/LIVE_API_VALIDATION.md` and `.agent_cache/live_validation/`.

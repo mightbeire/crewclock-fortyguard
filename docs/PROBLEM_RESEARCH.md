@@ -2,6 +2,8 @@
 
 The strongest opportunities are recurring operational decisions where a heat layer changes what happens next. Health guidance is treated as a constraint and source of workflow evidence, not as a claim that the prototype can diagnose or guarantee safety.
 
+Every surviving concept must be expressible as: “We are building this for _____ to solve _____. It requires an agent because _____. It requires FortyGuard because _____. We can prove it helped by measuring _____.” The handbook’s Agentic and Industrial & Enterprise tracks favor an auditable plan/call/decide workflow with a measurable result, not a decorative chatbot or static heat map.
+
 ## 1. Field-service and utility maintenance sequencing
 
 - Industry: field service, utilities, facilities.
