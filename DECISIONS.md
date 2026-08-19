@@ -51,3 +51,19 @@ The agent loop is provider-neutral and deterministic by default. A hosted LLM ma
 ## 2026-08-19 — Do not select the MVP
 
 The exploration run ranks three finalists but intentionally stops before product selection, as required by the brief.
+
+## 2026-08-19 — Deep due diligence changes the claims
+
+The current finalist claims are not equally supported. Surface-conditioned Road Repair Queue remains the evidence leader only when narrowed from generic heat-based backlog ranking to a heat-safe pavement work-window verifier. Thermal Sequence Planner is held because incumbent FSM products already solve constrained scheduling and the repository lacks real technician/job inputs. RailHeat Patrol Sequencer is killed as stated because FRA/Amtrak evidence requires rail temperature, neutral temperature, CWR plan, track condition and qualified authority; FortyGuard ambient heat plus satellite context cannot establish a safe patrol decision.
+
+## 2026-08-19 — Safety metric boundary
+
+OSHA/NIOSH guidance is authoritative for worker heat: WBGT, workload, clothing/PPE and acclimatization matter. FortyGuard apparent temperature, heat-index fields and the project’s thermal-load proxy are not safety determinations. Future demos must label them as environmental screening or operational proxies unless a qualified pilot supplies the required measurements.
+
+## 2026-08-19 — Use deterministic optimization for mathematics
+
+Queue ranking, VRPTW sequencing and rail access constraints belong in rules/SQL/optimization systems. The agent’s defensible role is evidence selection, heterogeneous-input interpretation, uncertainty handling, explanation, verification and approval routing. “Uses tools” alone is not sufficient evidence of agentic necessity.
+
+## 2026-08-19 — No new FortyGuard calls in deep research
+
+The deep product-research pass used cached-live responses, existing fixtures, public sources and project results only. Measured account state remains 204,500 used and 1,795,500 remaining; no new paid endpoint was called.

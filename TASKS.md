@@ -23,12 +23,19 @@
 - [x] Research public/free input schemas for road work orders, rail, utilities, airports, telecom, solar, parks, transit, warehouse, and fleet workflows.
 - [x] Build thin cached-live challenger spikes for Surface-conditioned Road Repair Queue and RailHeat Patrol Sequencer.
 - [x] Stress-test evidence-sufficient stopping, fallback investigation, provider failure handling, and human approval.
+- [x] Perform deep due diligence on all three finalists using primary operational, safety, regulatory, competitor and public-data sources.
+- [x] Reconstruct real workflows and distinguish verified heat relationships from unsupported proxies.
+- [x] Attack FortyGuard dependence and agentic necessity against NOAA/NWS, OSHA/NIOSH, incumbent FSM/EAM/rail platforms and deterministic solvers.
+- [x] Create `docs/FINALIST_DUE_DILIGENCE.md`, `docs/RESEARCH_SOURCES.md`, `docs/JUDGE_RED_TEAM.md`, `docs/COMPETITOR_ANALYSIS.md`, and `docs/WORKFLOW_RESEARCH.md`.
+- [x] Find fatal evidence: road queue ranking overclaim, thermal incumbent/data weakness, and rail ambient-heat/RNT mismatch.
+- [x] Keep the MVP unselected; record evidence-derived mutations instead of generating an unbounded new idea list.
 
 ## Human decision required later, not now
 
 - [ ] Select one of the three finalists as the MVP.
 - [ ] Select one of the three finalists as the MVP after discovery is complete.
 - [ ] Confirm final demo geography and whether any external operational data may be used.
+- [ ] Human review of the due-diligence verdicts and whether the road work-window mutation is worth an MVP.
 
 ## Optional follow-up
 
