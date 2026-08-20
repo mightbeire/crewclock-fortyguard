@@ -95,3 +95,14 @@ NYC resurfacing, NBI, WZDx, Chicago permits and public bridge contracts may supp
 ## 2026-08-20 — Zero live FortyGuard calls in the opportunity hunt
 
 The second research pass used only cached-live responses, fixtures, primary sources and public data. Measured account state remains 204,500 used and 1,795,500 remaining.
+# 2026-08-20 — Winner-archetype and reusable-stage pass
+
+- Reviewed 40 public winners/finalists and coded recurring demo/product characteristics instead of treating project descriptions as strategy.
+- Adopted a winner blueprint centered on one recognizable user, one operational canvas, sponsor-specific evidence in the causal path, a visible agent loop, human authority and a recomputed result.
+- Generated 25 fresh concepts. Seventeen were killed for clarity, dependency, agent necessity, claim, data or demo failures.
+- Advanced ShiftShield, CourseCorrect and Recess Relay as unresolved finalists. ShiftShield is the current evidence leader by weighted score, not the selected MVP.
+- Rejected health/safety outcome language. Demo metrics are planning-exposure proxies and must remain labelled derived.
+- Built the reusable UI as a separate Vite/React layer. It imports a static sanitized scenario and contains no live FortyGuard request path.
+- Chose cached Phoenix/Los Angeles/Las Vegas values because they provide verified temperatures and satellite context while keeping rehearsal deterministic and credit-safe.
+- Preserved human approval as a recommendation gate; the demo never executes an external operational action.
+- `FINAL_MVP_SELECTED = NO`.

@@ -2,6 +2,13 @@
 
 ## Done
 
+- [x] Reverse-engineer 40 recent winning/finalist hackathon projects and derive ten evidence-coded winner principles.
+- [x] Create the verified FortyGuard capability-to-decision opportunity map.
+- [x] Generate 25 new concepts; document 17 automatic kills and score eight survivors against the official rubric.
+- [x] Write 20-second stage openings and hostile judge tests; retain three winner-caliber finalists without selecting an MVP.
+- [x] Build a reusable stage-ready React/Vite shell with map, activity rail, before/after, hero metric, approval and evidence/provenance UI.
+- [x] Add deterministic cached-data demo mode and a metric recomputation smoke test with zero live FortyGuard requests.
+
 - [x] Audit interrupted workspace and preserve useful vendor work.
 - [x] Confirm `.env` is ignored and never expose its contents.
 - [x] Verify live FortyGuard authentication via non-billable usage request.
@@ -43,11 +50,12 @@
 - [ ] Confirm final demo geography and whether any external operational data may be used.
 - [ ] Human review of the due-diligence verdicts and whether the road work-window mutation is worth an MVP.
 - [ ] Human review of bridge steel coating versus HFST after the retrospective decision-delta and buyer/work-package gates are tested.
+- [ ] Human selection among ShiftShield, CourseCorrect and Recess Relay after reviewing evidence boundaries and preferred audience.
 
 ## Optional follow-up
 
 - [ ] If needed, test street-view or heat-intelligence Premium access only after a specific product hypothesis justifies the credits.
 - [ ] Implement the hosted-provider response translator after a provider is chosen.
-- [ ] Add UI only after the product workflow is selected.
+- [x] Add a reusable, product-neutral demo UI shell; defer product-specific implementation until selection.
 - [ ] Prepare the handbook-required live demo, judge-accessible repo/README, max-three-minute video, and max-500-word summary only after MVP selection.
 - [ ] Obtain real field substrate readings and a real look-ahead/work-package schema before claiming either execution-window candidate is validated.

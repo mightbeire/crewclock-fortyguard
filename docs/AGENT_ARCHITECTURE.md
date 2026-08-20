@@ -50,6 +50,16 @@ Updated state / graceful stop
 
 The core loop does not declare success merely because a proposal was generated. A candidate product must run a verification tool or deterministic evaluator that recomputes the stated metric under the same constraints. The current spike uses a transparent degree-hour proxy and labels it heuristic/derived.
 
+## Reusable presentation layer
+
+The demo shell is intentionally decoupled from product selection and the live API adapter:
+
+- `src/demo/scenario.ts` contains sanitized cached-live measurements, explicitly synthetic operational constraints, high-level tool/action labels and a recomputable result.
+- `src/App.tsx` renders the map, agent activity sequence, before/after comparison, human approval and evidence drawer.
+- The browser cannot invoke FortyGuard. A future selected product may connect the existing Python agent trace through a narrow serialized contract, but deterministic rehearsal remains the default.
+- Activity labels disclose tool/action states only. They do not expose private model reasoning.
+- Approval changes presentation state only; no external mutation occurs.
+
 ## Future provider adapter contract
 
 An online provider should receive the goal, constraint summary, observation summaries, and tool schemas; it should return a structured tool call or proposal. It must not receive or emit credentials. The adapter must translate malformed or refusal responses into a bounded `finish`/error decision and must keep tool execution in this repository.

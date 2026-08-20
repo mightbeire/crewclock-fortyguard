@@ -2,6 +2,24 @@
 
 Date researched: 2026-08-19 to 2026-08-20
 
+## Winner-archetype sources added 2026-08-20
+
+| ID | Source | Use |
+|---|---|---|
+| W01 | https://health-in-climate-ai-hackathon.devpost.com/project-gallery | Care Cast, HeatIQ and Verdent winner badges/descriptions |
+| W02 | https://tech-4-social-good.devpost.com/updates/38926-and-the-winners-are | Climate Consequence Atlas and Policy Lab organizer analysis |
+| W03 | https://aws-agent-hackathon.devpost.com/updates/38140-congratulations-to-the-winners-of-the-aws-ai-agent-global-hackathon | EcoLafaek, AegisAgent, Province and category winners |
+| W04 | https://developer.nvidia.com/blog/hackathon-winners-bring-agentic-ai-to-life-with-the-nvidia-nemo-agent-toolkit/ | Route Optimization Agent and OpenCodeReview architecture/demo evidence |
+| W05 | https://blogs.nvidia.com/blog/glados-robot-hackster/ | GLaDOS, EdgeStyle and lost-item robot winners |
+| W06 | https://googlecloudmultiagents.devpost.com/updates/35783-and-the-winners-are | Google ADK grand/regional winners |
+| W07 | https://gitlab.devpost.com/updates/41783-meet-the-winners | GitLab agent winners and judging emphasis on action |
+| W08 | https://www.nasa.gov/learning-resources/stem-engagement-at-nasa/nasa-international-space-apps-challenge-announces-2024-global-winners/ | NASA 2024 winners, problems and methods |
+| W09 | https://www.nasa.gov/learning-resources/stem-engagement-at-nasa/nasa-announces-2025-international-space-apps-challenge-global-winners/ | NASA 2025 winners, problems and methods |
+| W10 | https://nycclimatehack-sep2025.devpost.com/project-gallery | NYC adaptation/resilience winners |
+| W11 | https://aixclimate.devpost.com/project-gallery | Climate AI winner patterns |
+| W12 | https://climate-crisis.devpost.com/project-gallery | Climate visualization/forecast winner patterns |
+
+
 This register records sources used in the finalist due-diligence pass. “Primary” means a regulator, government agency, public dataset owner, standards/manual source, official product documentation, or original research. “Secondary” means a credible trade, academic-indexed, or project source used to identify duplication or context. Marketing claims are labelled as such and are not treated as field-outcome evidence.
 
 ## Primary sources

@@ -9,6 +9,11 @@ This repository is an evidence-building workspace, not a selected product. The f
 
 ## Current state
 
+- Completed a 40-project winner-archetype study across AI, climate, sponsor, civic, health and NASA competitions; the resulting ten principles are in `docs/WINNER_ARCHETYPE_RESEARCH.md`.
+- Mapped verified FortyGuard capabilities to operational decisions, generated 25 new concepts, killed 17 under the hard rules, stage-tested eight and retained three unresolved finalists: ShiftShield, CourseCorrect and Recess Relay.
+- Added a reusable React/Vite demo shell with a thermal map, deterministic six-step agent sequence, before/after transformation, hero metric, approval interaction, evidence drawer and high-level trace.
+- Demo mode uses sanitized cached-live values only, labels the operational workflow and 44% exposure proxy as scenario-derived, and has no FortyGuard API client or live-call path.
+
 - Preserved the vendored `temperature-api-quickstart` and its cached sample responses.
 - Audited the supplied participant handbook ZIP; it is now authoritative for scope, tracks, judging, conduct, and submission requirements.
 - Verified the local FortyGuard key against the usage endpoint without printing it: active Hackathon account, 2,000,000 credits, 0 used at verification time. Controlled live analysis tests now measure 204,500 used and 1,795,500 remaining after caching successful responses.
@@ -19,6 +24,7 @@ This repository is an evidence-building workspace, not a selected product. The f
 - Added provider-neutral agent infrastructure under `src/fortyguard_agent/`.
 - Added deterministic fixture-backed and cached-live evaluation spikes for three finalists. The live operational windows remain synthetic.
 - No hosted LLM account was created. No final MVP, demo geography, or finalist has been selected.
+- The current evidence leader is ShiftShield, but `FINAL_MVP_SELECTED = NO` remains binding.
 
 ## Current due-diligence boundary
 
@@ -36,4 +42,5 @@ This repository is an evidence-building workspace, not a selected product. The f
 2. Read `docs/FINALIST_DUE_DILIGENCE.md`.
 3. Read `docs/EXECUTION_WINDOW_OPPORTUNITY_MATRIX.md` and `docs/TOP_TWO_EXECUTION_WINDOW_DOSSIERS.md`.
 4. Run `python scripts/run_exploration.py` and `pytest`.
-5. Keep `FINAL_MVP_SELECTED = NO` until the humans choose; first demand retrospective proof that FortyGuard changes decisions versus NWS plus direct meters.
+5. Read `docs/WINNER_BLUEPRINT.md` and `docs/WINNER_CALIBER_FINALISTS.md`, then run `npm run dev` to rehearse the reusable shell.
+6. Keep `FINAL_MVP_SELECTED = NO` until the humans choose; demand real operational inputs and decision-delta validation before making field claims.
