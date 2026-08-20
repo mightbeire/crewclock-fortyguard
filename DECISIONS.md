@@ -124,7 +124,7 @@ The second research pass used only cached-live responses, fixtures, primary sour
 - CrewClock is a pre-shift operations planner, not a heat-safety or compliance system. FortyGuard is not WBGT. Onsite measurement, employer policy, workload, PPE, acclimatization, symptoms and authorized judgment remain controlling.
 - The federal OSHA heat-specific rule is still proposed as of the decision date. The product imports employer rules and must never present the proposal as binding federal law.
 - The agent selects evidence, orchestrates, explains, verifies and escalates. Deterministic code performs schedule and metric mathematics. The Construction Superintendent approves; the MVP performs no external action.
-- The locked hero metric is **movable outdoor crew-hours shifted out of the highest modeled heat window while modeled hard constraints remain satisfied**. The fixture recomputes `22 before → 6 proposed = 16 shifted`.
+- The locked hero metric is **scheduled high-heat crew-hours: crew size multiplied by scheduled overlap with the employer-configured high-heat trigger for movable outdoor tasks**. The fixture recomputes `22 before → 6 proposed = 16 shifted`.
 - The 14 tasks, three crews, qualifications, dependencies, deadlines, fixed commitments, workface geometry and employer rule pack are explicitly synthetic. Phoenix FortyGuard evidence is cached-live; ADOT/OSHA/NIOSH inputs are public context.
 - Ordinary forecast plus a spreadsheet is the hostile baseline. CrewClock survives only as an evidence-selection, multi-constraint scheduling, verification and approval workflow. A final real multi-zone test must show whether FortyGuard changes the operational decision.
 - The reusable finalist shell is converted into CrewClock mission control with schedule, thermal profile, workface map, agent activity, before/after, approval, hero metric and evidence boundary.
@@ -139,4 +139,11 @@ The second research pass used only cached-live responses, fixtures, primary sour
 - Conditional investigation is explicit: seven movable outdoor tasks across two workfaces are investigated, two movable shaded tasks are skipped, and five fixed commitments are retained without unnecessary thermal queries.
 - Missing/stale evidence, tool failure, ambiguous policy, infeasible source input, and no-improvement outcomes fail closed and issue no proposal.
 - The one-screen desktop layout is the canonical demo surface. Query-string failure fixtures exist only for deterministic QA and do not add presenter controls.
-- Zero live FortyGuard calls were made. The reserve remains `1,795,500` credits.
+- The bounded 2026-08-21 probe made two live heatmap calls and consumed 8,440 credits from the 1,795,500 run balance; no env_params or premium call was made.
+
+## Foundation lock amendment — 2026-08-21
+
+- Current official quickstart `main` is `f6de12d`; heatmap forecast horizon is guarded at +12h, TCM/analysis units are asserted, and transient status 404 is treated as eventual consistency.
+- `env_params` is never used as a range-based shift forecast. The controlled future Phoenix probe made two heatmap calls (8,440 credits) and returned zero cells both times; no env_params call was submitted. `FUTURE_SINGLE_HOUR_ENV_PARAMS = AMBIGUOUS`.
+- Product language is “upcoming shift”, and the hero metric is `scheduled high-heat crew-hours`. Heatmap is the primary spatial signal; polygon workfaces are area-weighted over the shared AOI.
+- Mandatory policy breaks are real scheduling constraints. The agent may choose evidence windows and tools; deterministic code owns overlap, feasibility, verification, metrics, budgets and approval recheck.

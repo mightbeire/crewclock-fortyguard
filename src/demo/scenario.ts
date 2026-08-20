@@ -133,16 +133,18 @@ export const TASKS: Task[] = [
 ]
 
 export const THERMAL_EVIDENCE = {
-  source: 'FortyGuard /v1/env_params and /v1/heatmap',
+  source: 'FortyGuard /v1/heatmap (primary) · /v1/env_params (selective context)',
   status: 'cached-live',
   location: 'Phoenix planning AOI · 33.434° N, 112.018° W',
   observationDate: '2025-07-15',
-  timezone: 'GMT−7',
+  timezone: 'America/Phoenix · UTC−07:00',
   grid: '100 m requested analysis grid',
+  primarySignal: 'TCM tile temperatures + time_of_measure + persistence',
+  environmentalContextRole: 'Selective context only; not a diurnal exposure forecast or spatial ranking engine.',
   maxTemperatureC: 40.1505,
   averageTemperatureC: 37.0796,
   apparentTemperatureC: [32.0,31.0,30.3,30.0,29.5,28.9,30.6,31.4,33.3,35.1,37.0,39.6,41.3,42.5,40.7,39.3,34.8,37.3,38.6,38.0,36.9,36.1,35.3,32.7],
-  highWindow: { start: '11:00', end: '15:00', basis: 'five-hour modeled apparent-temperature peak window' },
+  highWindow: { start: '11:00', end: '15:00', basis: 'employer-configured project trigger window; not inferred from an env_params range artifact' },
   timeOfMeasureCells: 99,
   timeOfMeasureRangeHours: [4, 16],
   cachePaths: [
@@ -166,13 +168,13 @@ export const EMPLOYER_POLICY = {
 } as const
 
 export const AGENT_STEPS: AgentStep[] = [
-  { label: 'Read tomorrow’s work plan', detail: '14 tasks · 3 crews · 2 field zones', tool: 'lookahead.inspect' },
+  { label: 'Read the upcoming shift plan', detail: '14 tasks · 3 crews · 2 field zones', tool: 'inspect_shift_plan' },
   { label: 'Select work needing investigation', detail: '7 flexible outdoor tasks; 5 fixed commitments retained', tool: 'work.classify' },
-  { label: 'Load thermal evidence', detail: 'Cached Phoenix hourly profile + 100 m analysis cells', tool: 'fortyguard.cached_evidence' },
+  { label: 'Load selective thermal evidence', detail: 'Cached Phoenix heatmap cells · shared AOI · 100 m grid', tool: 'get_workface_heatmap' },
   { label: 'Generate feasible alternatives', detail: 'Deterministic scheduler tests crew-safe sequences', tool: 'schedule.optimize' },
   { label: 'Verify plan and policy constraints', detail: 'Qualifications, logic, deadlines, fixed work, controls', tool: 'constraints.verify' },
   { label: 'Prepare superintendent decision', detail: 'Evidence, exceptions, metric, and rollback ready', tool: 'recommendation.prepare' },
-  { label: 'Recompute approved result', detail: '22 → 6 modeled peak-window crew-hours', tool: 'result.verify' },
+  { label: 'Recompute approved result', detail: 'Scheduled high-heat crew-hours · constraints rechecked', tool: 'verify_schedule' },
 ]
 
 const toMinutes = (time: string) => {
@@ -208,8 +210,8 @@ export const HERO_METRIC = {
   before: peakWindowCrewHours('original'),
   after: peakWindowCrewHours('proposed'),
   moved: peakWindowCrewHours('original') - peakWindowCrewHours('proposed'),
-  type: 'derived planning proxy',
-  label: 'movable outdoor crew-hours in the highest modeled heat window',
+  type: 'derived schedule metric',
+  label: 'scheduled high-heat crew-hours',
 } as const
 
 const taskEnd = (task: Task, plan: 'original' | 'proposed') =>

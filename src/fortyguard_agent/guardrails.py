@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
+import math
 from typing import Any
 
 
@@ -12,7 +14,7 @@ class GuardrailError(RuntimeError):
 class Budget:
     max_iterations: int = 8
     max_tool_calls: int = 12
-    max_api_credits: int = 20
+    max_api_credits: int = 25_000
     estimated_costs: dict[str, int] = field(default_factory=dict)
     iterations: int = 0
     tool_calls: int = 0
@@ -48,3 +50,77 @@ class SafetyPolicy:
 
     def needs_approval(self, action_type: str) -> bool:
         return action_type in self.approval_required_actions
+
+
+@dataclass
+class FortyGuardRequestGuard:
+    """Local, deterministic guard before a request can reach FortyGuard."""
+
+    remaining_credits: int = 1_795_500
+    max_run_credits: int = 25_000
+    run_credits_used: int = 0
+    max_heatmap_area_mi2: float = 10.0
+    forecast_horizon_hours: int = 12
+    allowed_endpoints: set[str] = field(default_factory=lambda: {"/v1/heatmap", "/v1/env_params", "/v1/status/{activity_id}"})
+
+    def estimate(self, endpoint: str, payload: dict[str, Any]) -> int:
+        if endpoint == "/v1/heatmap":
+            # Measured successful Phoenix single-hour request in the current account.
+            return 4_220
+        if endpoint == "/v1/env_params":
+            return 2_900
+        return 0
+
+    @staticmethod
+    def _aoi_area_mi2(payload: dict[str, Any]) -> float:
+        aoi = payload.get("polygon_aoi") or {}
+        features = aoi.get("features") or []
+        if not features:
+            return 0.0
+        coords = ((features[0].get("geometry") or {}).get("coordinates") or [[]])[0]
+        if len(coords) < 4:
+            raise GuardrailError("invalid_polygon_aoi")
+        lat = sum(float(pair[1]) for pair in coords) / len(coords)
+        # Equirectangular approximation is sufficient for a pre-submit limit check.
+        scale_x, scale_y = 69.172 * math.cos(math.radians(lat)), 69.0
+        planar = [(float(pair[0]) * scale_x, float(pair[1]) * scale_y) for pair in coords]
+        area = abs(sum(planar[i][0] * planar[(i + 1) % len(planar)][1] - planar[(i + 1) % len(planar)][0] * planar[i][1] for i in range(len(planar))) / 2)
+        return area
+
+    @staticmethod
+    def _us_point(payload: dict[str, Any]) -> bool:
+        if "latitude" in payload and "longitude" in payload:
+            lat, lon = float(payload["latitude"]), float(payload["longitude"])
+            return 24.0 <= lat <= 50.0 and -125.0 <= lon <= -66.0
+        aoi = payload.get("polygon_aoi") or {}
+        coords = (((aoi.get("features") or [{}])[0].get("geometry") or {}).get("coordinates") or [[]])[0]
+        return bool(coords) and all(24.0 <= float(pair[1]) <= 50.0 and -125.0 <= float(pair[0]) <= -66.0 for pair in coords)
+
+    def validate(self, endpoint: str, payload: dict[str, Any], *, request_at: datetime | None = None, now: datetime | None = None) -> int:
+        if endpoint not in self.allowed_endpoints:
+            raise GuardrailError(f"endpoint_not_allowlisted:{endpoint}")
+        if not self._us_point(payload):
+            raise GuardrailError("fortyguard_us_coverage_required")
+        if endpoint == "/v1/heatmap":
+            area = self._aoi_area_mi2(payload)
+            if area > self.max_heatmap_area_mi2:
+                raise GuardrailError("heatmap_aoi_exceeds_basic_plan_limit")
+            granularity = payload.get("granularity")
+            if granularity not in {60, 80, 100}:
+                raise GuardrailError("unsupported_heatmap_granularity")
+        if request_at is not None:
+            if request_at.tzinfo is None:
+                raise GuardrailError("forecast_request_must_be_timezone_aware")
+            reference = now or datetime.now(timezone.utc)
+            if request_at > reference + timedelta(hours=self.forecast_horizon_hours):
+                raise GuardrailError("forecast_horizon_exceeded")
+        estimated = self.estimate(endpoint, payload)
+        if self.run_credits_used + estimated > self.max_run_credits:
+            raise GuardrailError("run_credit_cap_would_be_exceeded")
+        if estimated > self.remaining_credits:
+            raise GuardrailError("remaining_credit_balance_insufficient")
+        return estimated
+
+    def commit(self, estimated: int) -> None:
+        self.run_credits_used += estimated
+        self.remaining_credits -= estimated

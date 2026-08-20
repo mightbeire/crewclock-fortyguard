@@ -4,9 +4,9 @@
 
 - Total target: **2:50**, leaving ten seconds of recovery.
 - One user: Construction Superintendent.
-- One decision: approve tomorrow’s revised field plan.
+- One decision: approve the upcoming-shift revised field plan.
 - One transformation: 14 tasks visibly reorder across three crews.
-- One hero metric: **16 movable outdoor crew-hours shifted out of the highest modeled heat window**.
+- One hero metric: **scheduled high-heat crew-hours, 22 before → 6 proposed in the deterministic historical replay**.
 - No chain-of-thought. Show only high-level actions, inputs, constraints and results.
 - No safety certification claim. Say “planning evidence,” “modeled window,” and “employer policy.”
 
@@ -14,7 +14,7 @@
 
 1. Run `npm run dev` and open the CrewClock page.
 2. Click **Reset**.
-3. Confirm the status is `READY TO PLAN`, the schedule toggle is `Original 22h`, and the header says `FORTYGUARD CACHE READY · LIVE CALLS 0`.
+3. Confirm the status is `READY TO PLAN`, the schedule toggle is `Original 22h`, and the header says `FORTYGUARD CACHE READY · CACHED-LIVE REPLAY`.
 4. Confirm the inspector is closed.
 5. Do not use a live FortyGuard call during the demo.
 
@@ -26,7 +26,7 @@
 
 **Say:**
 
-> “Tomorrow’s construction plan is valid on paper. Fourteen tasks, three qualified crews, every inspection and deadline accounted for. But the heaviest movable work is scheduled in Phoenix’s worst modeled heat window. CrewClock fixes the timing without blowing the day.”
+> “The upcoming-shift construction plan is valid on paper. Fourteen tasks, three qualified crews, every inspection and deadline accounted for. But the heaviest movable work is scheduled in Phoenix’s worst modeled heat window. CrewClock fixes the timing without blowing the day.”
 
 Point to `22h` on the Before toggle. Do not discuss regulation.
 
@@ -36,13 +36,13 @@ Point to `22h` on the Before toggle. Do not discuss regulation.
 
 **Say:**
 
-> “The superintendent sees the real decision surface: tomorrow’s tasks, fixed commitments, crews, two workfaces, and cached FortyGuard evidence. This replay peaks at 42.5 degrees apparent temperature around 1 p.m. The task and crew data are clearly labelled demo inputs.”
+> “The superintendent sees the real decision surface: the upcoming-shift tasks, fixed commitments, crews, two workfaces, and cached FortyGuard evidence. This replay peaks at 40.2°C TCM tile maximum; env_params is selective context only around 1 p.m. The task and crew data are clearly labelled demo inputs.”
 
 Point once to the orange 11:00–15:00 band and once to locked tasks.
 
 ### 0:40–1:30 — Agent investigates
 
-Click **Run tomorrow’s plan**.
+Click **Run the upcoming-shift plan**.
 
 **Say while the activity rail advances:**
 
@@ -70,7 +70,7 @@ Point to constraint strip and agent card.
 
 ### 2:25–2:45 — Human approval
 
-Click **Approve tomorrow’s plan**.
+Click **Approve the upcoming-shift plan**.
 
 **Say:**
 
@@ -110,9 +110,13 @@ End on the three numbers: **22 → 6 → 16**.
 
 ## Failure-safe stage path
 
-- If animation stalls, click **Proposed 6h**; the deterministic plan remains available.
+- If animation stalls, click **CrewClock proposed plan**; the deterministic plan remains available.
 - If approval does not animate, open the Evidence drawer and state the already-computed `22 → 6` result.
-- If asked for current weather, say this is an intentionally reproducible historical replay; do not imply it is tomorrow’s forecast.
+- If asked for current weather, say this is an intentionally reproducible historical replay; do not imply it is a current forecast.
 - If asked to certify safety, refuse the premise and point to the onsite-authority boundary.
 
 `THREE_MINUTE_DEMO = PASS`
+
+## Foundation language
+
+Say “upcoming shift” and “scheduled high-heat crew-hours”. Explain that the historical Phoenix replay is cached-live evidence, while the schedule and employer policy are synthetic operational inputs. Do not call the environmental parameter curve a forecast, call wet bulb WBGT, or claim OSHA compliance.

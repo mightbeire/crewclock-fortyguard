@@ -1,6 +1,6 @@
 # CrewClock MVP specification
 
-> **We are building CrewClock for construction superintendents to solve the problem of planning tomorrow’s work around extreme heat without blowing the schedule.**
+> **CrewClock helps construction superintendents adjust the upcoming shift around hyperlocal heat without breaking the schedule.**
 
 Decision date: 2026-08-20
 
@@ -11,7 +11,7 @@ FortyGuard boundary: **zero new live requests**; only sanitized cached-live evid
 
 ## Plain-English product
 
-CrewClock turns tomorrow’s tasks, crews, qualifications, dependencies, deadlines, fixed commitments, and the employer’s own heat-control rules into a proposed daily plan. It investigates only work that thermal evidence could change, delegates the scheduling mathematics to deterministic code, verifies every hard constraint, and asks the superintendent to approve the recommendation.
+Before crews deploy, CrewClock identifies flexible outdoor work that overlaps the worst local heat, tests feasible alternatives, and lets the superintendent approve the least-disruptive adjustment. It investigates only work that thermal evidence could change, delegates the scheduling mathematics to deterministic code, verifies every hard constraint, and asks the superintendent to approve the recommendation.
 
 The worker gets better-timed work and clearer planned controls. The company gets a workable schedule with less last-minute replanning and more productive crew-hours outside unnecessarily harsh periods.
 
@@ -54,7 +54,7 @@ The federal heat-specific standard remains a **proposal**, not a final rule as o
 
 | Before-shift planning evidence | Onsite authoritative decision inputs |
 |---|---|
-| Tomorrow’s task, crew, qualification, deadline, dependency and fixed-commitment data | Current onsite WBGT or the employer’s approved measurement method |
+| Upcoming-shift task, crew, qualification, deadline, dependency and fixed-commitment data | Current onsite WBGT or the employer’s approved measurement method |
 | NWS advisories and ordinary forecast context | Actual workload/metabolic rate and duration |
 | FortyGuard spatial screening, hourly timing, persistence, exceedance and environmental context | Clothing/PPE, radiant sources, airflow, shade and microconditions |
 | Employer policy clauses and planned controls | Acclimatization status, symptoms and worker-specific conditions handled under policy |
@@ -105,9 +105,9 @@ The approved Phoenix cache demonstrates an hourly apparent-temperature profile a
 
 The MVP’s hero metric is:
 
-> **Movable outdoor crew-hours shifted out of the highest modeled heat window while all modeled qualifications, dependencies, deadlines, fixed commitments, and employer planning controls remain satisfied.**
+> **Scheduled high-heat crew-hours above the employer-configured project trigger while all modeled hard constraints remain satisfied.**
 
-In the deterministic demo: **22 before → 6 proposed = 16 crew-hours shifted**. This is a derived planning proxy, recomputed from task durations, headcount, eligibility and time overlap. It is not a health or safety outcome.
+In the deterministic demo: **22 before → 6 proposed = 16 crew-hours shifted**. This is a derived schedule metric, recomputed from task durations, headcount, eligibility and time overlap. It is not a health or safety outcome.
 
 ### 9. Real and public demo data
 
@@ -116,7 +116,7 @@ In the deterministic demo: **22 before → 6 proposed = 16 crew-hours shifted**.
 - **Schema authority:** [O*NET](https://www.onetonline.org/link/summary/11-9021.00) and [BLS](https://www.bls.gov/ooh/management/construction-managers.htm) support the user’s scheduling, supervision, delay-response, budget and deadline responsibilities.
 - **Synthetic and labelled:** the exact 14-task work package, three crews, qualifications, dependencies, deadlines, workface geometry, fixed commitments and demo employer policy.
 
-Public project data establishes realism and schema; it is not relabelled as a customer’s tomorrow schedule.
+Public project data establishes realism and schema; it is not relabelled as a customer’s upcoming-shift schedule.
 
 ### 10. Could weather plus a spreadsheet replicate most of CrewClock?
 
@@ -153,7 +153,7 @@ If a final retrospective test shows that one ordinary forecast column plus manua
 ## Exact MVP workflow
 
 ```text
-Tomorrow’s look-ahead + employer policy
+Upcoming-shift look-ahead + employer policy
                   ↓
 Agent validates provenance and classifies tasks
                   ↓
@@ -192,7 +192,7 @@ Division of labor:
 
 Primary information architecture:
 
-1. Tomorrow plan
+1. Upcoming shift plan
 2. Thermal evidence
 3. Agent activity
 4. Before/after comparison
@@ -237,7 +237,7 @@ Primary information architecture:
 
 ## Hostile final check
 
-1. **Why company?** It protects tomorrow’s production plan from avoidable heat-driven disruption while preserving the constraints the superintendent is paid to manage.
+1. **Why company?** It protects upcoming-shift production plan from avoidable heat-driven disruption while preserving the constraints the superintendent is paid to manage.
 2. **Why worker?** Heavy outdoor work can be planned earlier where feasible, and planned controls become visible before the shift.
 3. **Why not Weather.com?** Weather is one input; CrewClock selects hyperlocal evidence, joins it to work zones/tasks and proves a feasible operational change.
 4. **Why not spreadsheet?** A spreadsheet can model a small day, but it does not autonomously collect/provenance evidence, reconcile heterogeneous constraints, search alternatives, explain exceptions and independently verify the result.
@@ -265,3 +265,7 @@ CrewClock should be formally locked as the hackathon MVP. The locked claim is na
 - Guardrails: `?mode=missing-evidence`, `stale-evidence`, `tool-failure`, `ambiguous-policy`, and `no-improvement` provide deterministic fail-closed QA fixtures.
 - Network boundary: no external request path and no live FortyGuard call.
 - Primary viewport: 1440×900; verified at 1024×768 and 390×844 without horizontal overflow.
+
+## Foundation lock amendment (2026-08-21)
+
+The product is an upcoming-shift adjustment agent, not a day-ahead “tomorrow planner”. Heatmap is the primary FortyGuard signal; `env_params` is selective time-matched context only. The hero metric is exactly `scheduled high-heat crew-hours`, calculated from outdoor movable task interval overlap with the employer-configured trigger. The live future capability probe was ambiguous and the current replay is labelled cached-live historical evidence.

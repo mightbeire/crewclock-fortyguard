@@ -2,7 +2,7 @@
 
 ## Hero metric
 
-> **Movable outdoor crew-hours shifted out of the highest modeled heat window while preserving every modeled hard constraint.**
+> **Scheduled high-heat crew-hours above the employer-configured trigger while preserving every modeled hard constraint.**
 
 Metric type: **derived planning proxy**.
 
@@ -12,11 +12,11 @@ It measures schedule allocation. It does not measure safety, injury probability,
 
 Let:
 
-- `T` be tomorrow’s tasks;
+- `T` be the upcoming-shift tasks;
 - `E(t)` be true when task `t` is movable and classified by the employer as outdoor moderate/heavy;
 - `H(t)` be assigned crew headcount;
 - `I(t, p)` be the scheduled interval for task `t` under plan `p`;
-- `W` be the highest modeled thermal investigation window;
+- `W` be the employer-configured high-heat trigger interval;
 - `overlap(a, b)` be interval overlap in hours.
 
 ```text
@@ -52,7 +52,7 @@ The MVP window is `11:00–15:00`, selected from the cached Phoenix hourly appar
 ### Result
 
 ```text
-22 − 6 = 16 movable outdoor crew-hours shifted
+22 − 6 = 16 scheduled high-heat crew-hours reduced
 ```
 
 Sheltered/support tasks do not enter the metric. Fixed work does not enter the “movable” metric even if it overlaps the window; it remains visible as work requiring the employer’s planned controls and onsite authority.
@@ -92,9 +92,9 @@ An alternative with a lower thermal overlap but any hard failure is rejected. Re
 
 Allowed:
 
-- “modeled peak window”;
+- “employer high-heat trigger”;
 - “planning evidence”;
-- “crew-hours shifted”;
+- “scheduled high-heat crew-hours”;
 - “constraints preserved”;
 - “cached-live historical replay”;
 - “onsite WBGT and employer policy remain authoritative.”
@@ -105,7 +105,7 @@ Prohibited:
 - “16 hours safer”;
 - “compliant” unless every governing rule and authoritative input is actually represented;
 - “FortyGuard WBGT”;
-- “tomorrow’s conditions” when showing the historical cache;
+- “current conditions” when showing the historical cache;
 - dollars saved without a customer-approved cost model.
 
 ## Verification tests
@@ -148,3 +148,7 @@ Only with real field data:
 - decision delta versus weather + spreadsheet.
 
 No health-outcome or dollar conversion is authorized by the MVP evidence.
+
+## Locked primary metric
+
+`scheduled high-heat crew-hours = Σ(crew size × scheduled interval overlap with the employer-configured high-heat trigger)` for movable outdoor tasks. It is a derived schedule metric, not exposure, dose, WBGT, injuries prevented, or a safety percentage. FortyGuard `exceedance` remains a count of hours and is never substituted for degree-hours.

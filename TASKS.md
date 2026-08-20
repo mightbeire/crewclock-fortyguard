@@ -7,7 +7,7 @@
 - [x] Separate pre-shift planning evidence from onsite authoritative measurement and judgment.
 - [x] Define the agent/optimizer/superintendent division of labor.
 - [x] Define FortyGuard’s role and prohibit WBGT, safety-certification and compliance claims.
-- [x] Lock a deterministic hero metric: movable outdoor crew-hours shifted outside the modeled peak window.
+- [x] Lock the deterministic hero metric: scheduled high-heat crew-hours above the employer-configured project trigger.
 - [x] Build a coherent 14-task, three-crew Phoenix construction-day fixture.
 - [x] Label cached-live, public, derived, employer and synthetic inputs.
 - [x] Convert the reusable shell into CrewClock mission control.
@@ -53,4 +53,4 @@
 - [ ] No wearables, payroll, timecards or HR features.
 - [ ] No full CPM replacement or BIM authoring.
 - [ ] No health-outcome, “percent safer,” lives-saved or invented dollar metrics.
-- [ ] No live FortyGuard request without explicit team authorization.
+- [x] Run one bounded authorized future-hour capability probe; stop on ambiguous empty forecast evidence.

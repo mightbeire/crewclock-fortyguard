@@ -7,9 +7,9 @@ Primary track: Agentic AI
 Secondary fit: Industrial & Enterprise
 MVP decision: **CrewClock locked on 2026-08-20**
 
-> We help construction companies plan tomorrow’s work around extreme heat without blowing the schedule.
+> CrewClock helps construction superintendents adjust the upcoming shift around hyperlocal heat without breaking the schedule.
 
-More precisely: **We are building CrewClock for construction superintendents to turn tomorrow’s jobs, crews, deadlines, and company heat rules into a workable plan that avoids unnecessarily bad heat periods while keeping the project moving.**
+More precisely: **Before crews deploy, CrewClock identifies flexible outdoor work that overlaps the worst local heat, tests feasible alternatives, and lets the superintendent approve the least-disruptive adjustment.**
 
 ## Current product
 
@@ -45,7 +45,7 @@ The LLM never performs schedule mathematics directly. Required evidence resolves
 
 ## Locked hero metric
 
-**Movable outdoor crew-hours shifted out of the highest modeled heat window while all modeled qualifications, dependencies, deadlines, fixed commitments, and employer planning controls remain satisfied.**
+**Scheduled high-heat crew-hours, derived from outdoor movable task overlap with the employer-configured trigger while all modeled hard constraints remain satisfied.**
 
 This is a derived planning proxy. It is not a safety, health, compliance, productivity or dollar outcome.
 
@@ -54,7 +54,7 @@ This is a derived planning proxy. It is not a safety, health, compliance, produc
 - FortyGuard supports pre-shift spatial/temporal investigation and alternate-window screening.
 - FortyGuard is not WBGT and does not certify safety.
 - Onsite measurement, workload, PPE, acclimatization, worker condition, employer policy and professional judgment remain authoritative.
-- The current demo is a reproducible historical replay, not tomorrow’s forecast.
+- The current demo is a reproducible cached-live historical replay, not a current forecast.
 - The 14-task work package and employer policy are realistic but synthetic.
 - Public ADOT project data is context/schema evidence, not a customer work order.
 - The federal OSHA heat rule remains proposed as of the research date.

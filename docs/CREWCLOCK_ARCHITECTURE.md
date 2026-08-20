@@ -124,4 +124,4 @@ No interface state uses a live badge. `LIVE CALLS 0` remains visible in the head
 
 ## External boundary
 
-`LIVE_FORTYGUARD_CALLS = 0`. A controlled sponsor decision-delta run remains a separate, explicitly authorized next step after submission packaging.
+The 2026-08-21 controlled capability probe made two heatmap calls (8,440 credits total) and no env_params or premium calls. Both future Phoenix results were empty, so the probe is recorded as ambiguous and the live decision delta is `FAIL` rather than forced. The deterministic UI replay remains network-free and uses cached-live historical evidence.

@@ -251,7 +251,7 @@ export const runCrewClock = ({
   const base = { original, investigation, originalVerification, beforeCrewHours, deterministicId: 'CC-PHX-0716-v1' }
 
   if (!originalVerification.families.filter(family => family.id !== 'employer-policy').every(family => family.passed)) {
-    return { ...base, status: 'infeasible-original', recommendation: null, recommendationVerification: null, afterCrewHours: null, shiftedCrewHours: 0, stats: emptyStats, message: 'Tomorrow’s source plan is infeasible. Resolve operational constraints before optimization.' }
+    return { ...base, status: 'infeasible-original', recommendation: null, recommendationVerification: null, afterCrewHours: null, shiftedCrewHours: 0, stats: emptyStats, message: 'The upcoming-shift source plan is infeasible. Resolve operational constraints before optimization.' }
   }
   if (policyState === 'ambiguous') {
     return { ...base, status: 'ambiguous-policy', recommendation: null, recommendationVerification: null, afterCrewHours: null, shiftedCrewHours: 0, stats: emptyStats, message: 'Employer controls are ambiguous. Superintendent clarification is required.' }
@@ -287,7 +287,7 @@ export const runCrewClock = ({
     afterCrewHours,
     shiftedCrewHours,
     stats,
-    message: `${shiftedCrewHours} movable outdoor crew-hours can be shifted out of the highest modeled heat window.`,
+    message: `${shiftedCrewHours} scheduled high-heat crew-hours can be removed from the employer trigger overlap.`,
   }
 }
 
@@ -316,7 +316,7 @@ export const resetDemoState = (run: CrewClockRun = CANONICAL_RUN) => ({
 
 export const agentAudit = (run: CrewClockRun, approved: boolean) => {
   const entries = [
-    { time: '06:42', action: `Loaded tomorrow’s ${TASKS.length} tasks across ${CREWS.length} crews`, source: 'DEMO INPUT' },
+    { time: '06:42', action: `Loaded the upcoming shift: ${TASKS.length} tasks across ${CREWS.length} crews`, source: 'DEMO INPUT' },
     { time: '06:42', action: `Selected ${run.investigation.investigatedTaskIds.length} movable outdoor tasks; skipped ${run.investigation.skippedIndoorTaskIds.length} shaded tasks and held ${run.investigation.retainedFixedTaskIds.length} fixed commitments`, source: 'AGENT' },
     { time: '06:43', action: `Loaded approved cached-live Phoenix evidence for ${run.investigation.workfaceIds.length} affected workfaces`, source: 'FORTYGUARD · CACHED LIVE' },
   ]

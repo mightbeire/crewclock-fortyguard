@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import json
+import os
 from typing import Any, Protocol
 
 from .models import ActionProposal, AgentState, ToolResult
@@ -55,19 +57,42 @@ class MockProvider:
 
 
 class OpenAIResponsesProvider:
-    """Hosted-provider seam; intentionally inert until an API key is configured.
+    """Provider-neutral Responses API adapter with narrow function tools.
 
-    The adapter keeps provider-specific code out of the agent loop. A production
-    implementation should translate the provider response into ProviderDecision
-    and keep all action execution behind this repository's tool registry.
+    The deterministic registry remains authoritative. This class only translates
+    model tool calls into ``ProviderDecision`` and returns structured tool output
+    to the model; it never executes arbitrary code or raw HTTP.
     """
 
-    def __init__(self, client: Any, model: str) -> None:
+    def __init__(self, client: Any, model: str, tool_schemas: list[dict[str, Any]] | None = None) -> None:
         self.client = client
         self.model = model
+        self.tool_schemas = tool_schemas or []
+        self.messages: list[dict[str, Any]] = []
 
     def next_decision(self, state: AgentState) -> ProviderDecision:
-        raise NotImplementedError("Hosted adapter seam is configured, but response translation is not enabled in exploration mode.")
+        if not self.messages:
+            self.messages.append({"role": "user", "content": state.goal.text})
+        response = self.client.responses.create(model=self.model, input=self.messages, tools=[{"type": "function", "name": tool["name"], "description": tool["description"], "parameters": tool["parameters"]} for tool in self.tool_schemas])
+        output = getattr(response, "output", [])
+        for item in output:
+            if getattr(item, "type", None) == "function_call":
+                arguments = getattr(item, "arguments", "{}")
+                return ProviderDecision.call_tool(getattr(item, "name"), json.loads(arguments))
+        text = getattr(response, "output_text", "") or "provider_finished_without_tool_call"
+        return ProviderDecision.finish(text[:500])
 
     def observe(self, result: ToolResult, state: AgentState) -> None:
+        self.messages.append({"role": "tool", "content": json.dumps(result.to_dict(), sort_keys=True)})
+
+
+def build_openai_provider(tool_schemas: list[dict[str, Any]]) -> OpenAIResponsesProvider | None:
+    """Return a configured real provider, or ``None`` without exposing secrets."""
+    key = os.getenv("OPENAI_API_KEY")
+    if not key:
         return None
+    try:
+        from openai import OpenAI  # type: ignore[import-not-found]
+    except ImportError:
+        return None
+    return OpenAIResponsesProvider(OpenAI(api_key=key), os.getenv("OPENAI_MODEL") or "gpt-4.1-mini", tool_schemas)

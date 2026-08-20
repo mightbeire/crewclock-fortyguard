@@ -36,3 +36,19 @@ class JsonCache:
             json.dump(value, handle, indent=2, sort_keys=True)
         os.replace(temporary, target)
         return target
+
+    def put_success(self, key: str, *, endpoint: str, request: dict[str, Any], data: dict[str, Any], provenance: dict[str, Any]) -> Path:
+        """Write normalized success metadata without secrets or raw auth headers."""
+        return self.put(key, {
+            "endpoint": endpoint,
+            "request": request,
+            "retrieved_at": provenance.get("retrieved_at"),
+            "source_timestamp": provenance.get("source_timestamp"),
+            "activity_id": provenance.get("activity_id"),
+            "result_hash": hashlib.sha256(json.dumps(data, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest(),
+            "schema_version": provenance.get("schema_version", "crewclock.fortyguard.v1"),
+            "units": provenance.get("units", {}),
+            "provenance": provenance.get("provenance", "LIVE"),
+            "data": data,
+            "assumptions": provenance.get("assumptions", []),
+        })

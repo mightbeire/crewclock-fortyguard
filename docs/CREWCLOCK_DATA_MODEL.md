@@ -245,3 +245,7 @@ The locked `proposedStart` values are a regression oracle, not solver input. The
 - Policy: employer-authored structured rule pack with immutable version.
 - Approval: role-based, explicit and separate from external publication.
 - Onsite: optional measurement ingest used only as authoritative execution-time evidence.
+
+## Foundation lock additions
+
+`WorkZone.geometry` is a polygon where practical. Thermal values are area-weighted over all intersecting 60/80/100 m heatmap tiles; point assignment is explicit for point-like areas. `EmployerPolicy` includes provenance-labelled triggers and `BreakRule` intervals. `EvidenceArtifact` records endpoint, request hash, source/retrieval timestamps, schema version, units, and LIVE/CACHED-LIVE state. No range-based anchored `env_params` curve may populate a schedule exposure metric.
