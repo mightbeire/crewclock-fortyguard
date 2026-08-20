@@ -106,3 +106,12 @@ The second research pass used only cached-live responses, fixtures, primary sour
 - Chose cached Phoenix/Los Angeles/Las Vegas values because they provide verified temperatures and satellite context while keeping rehearsal deterministic and credit-safe.
 - Preserved human approval as a recommendation gate; the demo never executes an external operational action.
 - `FINAL_MVP_SELECTED = NO`.
+# 2026-08-20 — Built finalist showdown
+
+- Stopped concept generation and built equal micro-demos for the three existing finalists.
+- Standardized the comparison: six high-level agent actions, cached FortyGuard evidence, deterministic operational inputs, constraint verification, human approval and recomputed results.
+- Added distinct product-native transformations: stop resequencing for ShiftShield, course/crowd rerouting for CourseCorrect, and linked campus/timetable swaps for Recess Relay.
+- Recorded all operational constraints and hero metrics as deterministic scenario data. No health, safety, production or current-data claim is made.
+- The five-judge mean is CourseCorrect 8.92, Recess Relay 8.88 and ShiftShield 8.78. Judges disagree materially; the spread is too small for automatic selection.
+- Recommend CourseCorrect at 61% confidence for stage experience, with Recess Relay runner-up. The main counterargument is the mismatch between thermal-information timing and course/closure lead time.
+- `FINAL_MVP_SELECTED = NO`.

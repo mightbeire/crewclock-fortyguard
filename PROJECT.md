@@ -9,6 +9,10 @@ This repository is an evidence-building workspace, not a selected product. The f
 
 ## Current state
 
+- Built equal stage-quality micro-demos for ShiftShield, CourseCorrect and Recess Relay in one shared shell. Each has a distinct operational map/transformation but identical agent, approval, provenance and verification treatment.
+- Captured twelve real browser screenshots under `evidence/finalist-showdown/` and completed a five-persona hostile judging simulation in `docs/FINALIST_SHOWDOWN.md`.
+- The experience-based recommendation is CourseCorrect at 61% confidence, with Recess Relay runner-up. This is not a selection: `FINAL_MVP_SELECTED = NO`.
+
 - Completed a 40-project winner-archetype study across AI, climate, sponsor, civic, health and NASA competitions; the resulting ten principles are in `docs/WINNER_ARCHETYPE_RESEARCH.md`.
 - Mapped verified FortyGuard capabilities to operational decisions, generated 25 new concepts, killed 17 under the hard rules, stage-tested eight and retained three unresolved finalists: ShiftShield, CourseCorrect and Recess Relay.
 - Added a reusable React/Vite demo shell with a thermal map, deterministic six-step agent sequence, before/after transformation, hero metric, approval interaction, evidence drawer and high-level trace.
@@ -25,6 +29,7 @@ This repository is an evidence-building workspace, not a selected product. The f
 - Added deterministic fixture-backed and cached-live evaluation spikes for three finalists. The live operational windows remain synthetic.
 - No hosted LLM account was created. No final MVP, demo geography, or finalist has been selected.
 - The current evidence leader is ShiftShield, but `FINAL_MVP_SELECTED = NO` remains binding.
+- The prior evidence leader remains historical context; the built showdown supersedes Markdown-only ranking for the final human choice.
 
 ## Current due-diligence boundary
 

@@ -60,6 +60,17 @@ The demo shell is intentionally decoupled from product selection and the live AP
 - Activity labels disclose tool/action states only. They do not expose private model reasoning.
 - Approval changes presentation state only; no external mutation occurs.
 
+### Finalist showdown state contract
+
+All three micro-demos use the same deterministic UI state machine:
+
+```text
+opening → investigating evidence/alternatives → proposal ready
+        → human approval → verification → verified result
+```
+
+The product object is injected from `SCENARIOS` (`delivery`, `race`, or `campus`). The proposal is drawn as a non-committed dashed transformation; the route/course/schedule changes only after approval, and the hero metric appears only after the verification state. This prevents visual polish from implying that a recommendation executed itself.
+
 ## Future provider adapter contract
 
 An online provider should receive the goal, constraint summary, observation summaries, and tool schemas; it should return a structured tool call or proposal. It must not receive or emit credentials. The adapter must translate malformed or refusal responses into a bounded `finish`/error decision and must keep tool execution in this repository.

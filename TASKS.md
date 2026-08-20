@@ -2,6 +2,12 @@
 
 ## Done
 
+- [x] Build fair, equal-quality 60–90 second micro-demo paths for ShiftShield, CourseCorrect and Recess Relay.
+- [x] Give every finalist a distinct operational map, visible agent loop, constraints, approval, before/after, hero metric and evidence boundary.
+- [x] Capture opening, investigation, proposal and verified screenshots for all three under `evidence/finalist-showdown/`.
+- [x] Run the five-persona hostile judging panel, “why not?”, duplication, reality and eight-day regret tests.
+- [x] Record a recommendation without selecting the MVP; `FINAL_MVP_SELECTED = NO`.
+
 - [x] Reverse-engineer 40 recent winning/finalist hackathon projects and derive ten evidence-coded winner principles.
 - [x] Create the verified FortyGuard capability-to-decision opportunity map.
 - [x] Generate 25 new concepts; document 17 automatic kills and score eight survivors against the official rubric.
