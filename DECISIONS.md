@@ -67,3 +67,31 @@ Queue ranking, VRPTW sequencing and rail access constraints belong in rules/SQL/
 ## 2026-08-19 — No new FortyGuard calls in deep research
 
 The deep product-research pass used cached-live responses, existing fixtures, public sources and project results only. Measured account state remains 204,500 used and 1,795,500 remaining; no new paid endpoint was called.
+
+## 2026-08-20 — Execution-window verification is the durable pattern
+
+The best mutation is not a generic heat queue, alert or schedule. It begins with already-approved work and verifies whether this place/time/condition interval is executable, searches only valid alternatives, checks operational constraints, verifies again and routes the proposal to the authorized human.
+
+## 2026-08-20 — HFST is the single pavement wedge
+
+High-friction surface treatment is more defensible than broad road repair, HMA paving, patching, crack sealing, slurry, microsurfacing, seal coating or marking. Both low and excessive pavement heat can affect resin working/cure behavior, and the product has an understandable full-window decision. Direct pavement temperature, dryness, surface preparation, mixing and manufacturer instructions remain hard gates.
+
+## 2026-08-20 — Bridge steel coating is the evidence leader, not the MVP
+
+Bridge steel coating narrowly leads HFST because its inspector workflow, direct environmental records, cure persistence, multi-bridge public portfolio, program buyer and failure/audit consequences are better evidenced. The tie on the official rubric is retained rather than manufactured away. Human selection remains pending.
+
+## 2026-08-20 — No candidate clears the preferred FortyGuard-dependence bar
+
+Bridge coating, HFST and SPF roofing score 6/10. Direct steel/pavement/roof temperature and moisture/dew-point instruments control final release; wind is also missing from the verified cached FortyGuard contract. FortyGuard’s defensible role is portfolio screening, spatial/temporal investigation and alternate-window verification. If retrospective tests show NWS plus site meters produce the same assignment, kill the concept.
+
+## 2026-08-20 — Unknown required evidence is never a pass
+
+Every execution-window rule pack must return clause-level `PASS`, `FAIL` or `UNKNOWN`. A missing, stale, unit-ambiguous or conflicting required field blocks release and is escalated. The LLM selects evidence and coordinates tools; deterministic code performs dew-point, persistence, production and assignment mathematics.
+
+## 2026-08-20 — Public schedules are schema evidence, not customer work orders
+
+NYC resurfacing, NBI, WZDx, Chicago permits and public bridge contracts may supply real locations, dates, assets and contract structure. They must not be relabelled as real HFST/roof/coating work packages. Missing crew, closure, product and field-reading constraints may be synthetic only when explicitly marked.
+
+## 2026-08-20 — Zero live FortyGuard calls in the opportunity hunt
+
+The second research pass used only cached-live responses, fixtures, primary sources and public data. Measured account state remains 204,500 used and 1,795,500 remaining.

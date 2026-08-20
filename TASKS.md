@@ -29,6 +29,12 @@
 - [x] Create `docs/FINALIST_DUE_DILIGENCE.md`, `docs/RESEARCH_SOURCES.md`, `docs/JUDGE_RED_TEAM.md`, `docs/COMPETITOR_ANALYSIS.md`, and `docs/WORKFLOW_RESEARCH.md`.
 - [x] Find fatal evidence: road queue ranking overclaim, thermal incumbent/data weakness, and rail ambient-heat/RNT mismatch.
 - [x] Keep the MVP unselected; record evidence-derived mutations instead of generating an unbounded new idea list.
+- [x] Research 22 execution-window workflows across pavement, coatings, roofing, concrete, spraying, fire, lifting, solar and inspection.
+- [x] Validate asphalt paving/patching, crack sealing, chip seal, slurry, microsurfacing, marking, seal coating, concrete and HFST separately.
+- [x] Select HFST as the strongest pavement wedge and bridge steel coating as the strongest non-pavement research challenger.
+- [x] Attack both candidates against NOAA/NWS, RWIS/site sensors, direct substrate meters, deterministic engineering tools and incumbent platforms.
+- [x] Create `docs/EXECUTION_WINDOW_OPPORTUNITY_MATRIX.md` and `docs/TOP_TWO_EXECUTION_WINDOW_DOSSIERS.md` with top-five scorecards and hostile reviews.
+- [x] Keep the evidence leader separate from MVP selection; `FINAL_MVP_SELECTED = NO`.
 
 ## Human decision required later, not now
 
@@ -36,6 +42,7 @@
 - [ ] Select one of the three finalists as the MVP after discovery is complete.
 - [ ] Confirm final demo geography and whether any external operational data may be used.
 - [ ] Human review of the due-diligence verdicts and whether the road work-window mutation is worth an MVP.
+- [ ] Human review of bridge steel coating versus HFST after the retrospective decision-delta and buyer/work-package gates are tested.
 
 ## Optional follow-up
 
@@ -43,3 +50,4 @@
 - [ ] Implement the hosted-provider response translator after a provider is chosen.
 - [ ] Add UI only after the product workflow is selected.
 - [ ] Prepare the handbook-required live demo, judge-accessible repo/README, max-three-minute video, and max-500-word summary only after MVP selection.
+- [ ] Obtain real field substrate readings and a real look-ahead/work-package schema before claiming either execution-window candidate is validated.
