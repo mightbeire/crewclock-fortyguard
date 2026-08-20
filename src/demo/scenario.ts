@@ -1,89 +1,247 @@
-export type DemoId = 'shiftshield' | 'coursecorrect' | 'recess-relay'
-export type MapKind = 'delivery' | 'race' | 'campus'
-export type AgentStep = { label: string; detail: string; tool: string }
+export type CrewId = 'ground' | 'concrete' | 'electrical'
+export type ZoneId = 'north' | 'south' | 'laydown'
+export type TaskEnvironment = 'outdoor-heavy' | 'outdoor-moderate' | 'shaded-support'
 
-export type DemoScenario = {
-  id: DemoId; name: string; number: string; mapKind: MapKind; audience: string; problem: string
-  hero: [string, string]; lede: string; locationLabel: string; objectLabel: string
-  derived: { before: number; after: number; shifted: number; percent: number; unit: string; headline: string; label: string }
-  scale: { value: string; label: string }; context: string; constraints: string[]; steps: AgentStep[]
-  assumptions: string[]; publicData: string
+export type Crew = {
+  id: CrewId
+  name: string
+  trade: string
+  headcount: number
+  color: string
+  qualifications: string[]
 }
 
-export const MEASURED_EVIDENCE = {
-  date: '2025-07-15', maxTemperatureC: 40.1505, averageTemperatureC: 37.0796,
-  minTemperatureC: 33.4909, comparisonMaxC: 24.5086, source: 'FortyGuard /v1/heatmap',
-  cachePath: '.agent_cache/live_geographies/phoenix_paved_industrial.json', grid: '100 m requested API analysis grid',
-  satellite: { buildingsPercent: 73.87, roadsPercent: 12.94, treesPercent: 4.93, sourceCity: 'Las Vegas', cachePath: '.agent_cache/live_geographies/las_vegas_dense_paved.json' },
+export type Task = {
+  id: string
+  name: string
+  crewId: CrewId
+  zoneId: ZoneId
+  durationMinutes: number
+  originalStart: string
+  proposedStart: string
+  fixed: boolean
+  environment: TaskEnvironment
+  qualification: string
+  dependencies: string[]
+  deadline: string
+}
+
+export type AgentStep = {
+  label: string
+  detail: string
+  tool: string
+}
+
+export const CREWS: Crew[] = [
+  {
+    id: 'ground',
+    name: 'Crew A',
+    trade: 'Groundworks',
+    headcount: 6,
+    color: '#ffb25b',
+    qualifications: ['competent-person', 'excavation', 'equipment'],
+  },
+  {
+    id: 'concrete',
+    name: 'Crew B',
+    trade: 'Concrete',
+    headcount: 5,
+    color: '#6fd0ff',
+    qualifications: ['concrete-placement', 'finishing'],
+  },
+  {
+    id: 'electrical',
+    name: 'Crew C',
+    trade: 'Electrical',
+    headcount: 4,
+    color: '#d0ff5b',
+    qualifications: ['journey-electrician', 'signal-systems'],
+  },
+]
+
+export const TASKS: Task[] = [
+  {
+    id: 'G0', name: 'Traffic-control handoff', crewId: 'ground', zoneId: 'north', durationMinutes: 30,
+    originalStart: '05:30', proposedStart: '05:30', fixed: true, environment: 'outdoor-moderate',
+    qualification: 'competent-person', dependencies: [], deadline: '06:00',
+  },
+  {
+    id: 'G1', name: 'Equipment service & staging', crewId: 'ground', zoneId: 'laydown', durationMinutes: 120,
+    originalStart: '06:00', proposedStart: '12:00', fixed: false, environment: 'shaded-support',
+    qualification: 'equipment', dependencies: ['G0'], deadline: '14:00',
+  },
+  {
+    id: 'G2', name: 'Signal trench excavation', crewId: 'ground', zoneId: 'north', durationMinutes: 120,
+    originalStart: '08:00', proposedStart: '06:00', fixed: false, environment: 'outdoor-heavy',
+    qualification: 'excavation', dependencies: ['G0'], deadline: '10:00',
+  },
+  {
+    id: 'G3', name: 'Fine grade & compact', crewId: 'ground', zoneId: 'north', durationMinutes: 120,
+    originalStart: '10:00', proposedStart: '08:00', fixed: false, environment: 'outdoor-heavy',
+    qualification: 'equipment', dependencies: ['G2'], deadline: '12:00',
+  },
+  {
+    id: 'G4', name: 'Conduit bedding', crewId: 'ground', zoneId: 'north', durationMinutes: 120,
+    originalStart: '12:00', proposedStart: '10:00', fixed: false, environment: 'outdoor-heavy',
+    qualification: 'excavation', dependencies: ['G3'], deadline: '14:00',
+  },
+  {
+    id: 'C1', name: 'Foundation formwork', crewId: 'concrete', zoneId: 'south', durationMinutes: 120,
+    originalStart: '06:00', proposedStart: '06:00', fixed: false, environment: 'outdoor-moderate',
+    qualification: 'concrete-placement', dependencies: [], deadline: '08:00',
+  },
+  {
+    id: 'C2', name: 'Rebar & anchor bolts', crewId: 'concrete', zoneId: 'south', durationMinutes: 60,
+    originalStart: '08:00', proposedStart: '08:00', fixed: false, environment: 'outdoor-heavy',
+    qualification: 'concrete-placement', dependencies: ['C1'], deadline: '09:00',
+  },
+  {
+    id: 'C3', name: 'City inspection hold', crewId: 'concrete', zoneId: 'south', durationMinutes: 30,
+    originalStart: '09:00', proposedStart: '09:00', fixed: true, environment: 'shaded-support',
+    qualification: 'concrete-placement', dependencies: ['C2'], deadline: '09:30',
+  },
+  {
+    id: 'C4', name: 'Foundation concrete pour', crewId: 'concrete', zoneId: 'south', durationMinutes: 120,
+    originalStart: '09:30', proposedStart: '09:30', fixed: true, environment: 'outdoor-heavy',
+    qualification: 'concrete-placement', dependencies: ['C3'], deadline: '11:30',
+  },
+  {
+    id: 'C5', name: 'Finish & protect concrete', crewId: 'concrete', zoneId: 'south', durationMinutes: 90,
+    originalStart: '11:30', proposedStart: '11:30', fixed: true, environment: 'outdoor-moderate',
+    qualification: 'finishing', dependencies: ['C4'], deadline: '13:00',
+  },
+  {
+    id: 'E1', name: 'Cabinet pre-wire', crewId: 'electrical', zoneId: 'laydown', durationMinutes: 120,
+    originalStart: '06:00', proposedStart: '10:00', fixed: false, environment: 'shaded-support',
+    qualification: 'signal-systems', dependencies: [], deadline: '12:00',
+  },
+  {
+    id: 'E2', name: 'Proof duct & pull line', crewId: 'electrical', zoneId: 'south', durationMinutes: 120,
+    originalStart: '08:00', proposedStart: '06:00', fixed: false, environment: 'outdoor-moderate',
+    qualification: 'journey-electrician', dependencies: [], deadline: '10:00',
+  },
+  {
+    id: 'E3', name: 'Pull signal conductors', crewId: 'electrical', zoneId: 'south', durationMinutes: 120,
+    originalStart: '10:00', proposedStart: '08:00', fixed: false, environment: 'outdoor-heavy',
+    qualification: 'journey-electrician', dependencies: ['E2'], deadline: '12:00',
+  },
+  {
+    id: 'E4', name: 'Inspector test window', crewId: 'electrical', zoneId: 'south', durationMinutes: 60,
+    originalStart: '13:00', proposedStart: '13:00', fixed: true, environment: 'outdoor-moderate',
+    qualification: 'signal-systems', dependencies: ['E1', 'E3'], deadline: '14:00',
+  },
+]
+
+export const THERMAL_EVIDENCE = {
+  source: 'FortyGuard /v1/env_params and /v1/heatmap',
+  status: 'cached-live',
+  location: 'Phoenix planning AOI · 33.434° N, 112.018° W',
+  observationDate: '2025-07-15',
+  timezone: 'GMT−7',
+  grid: '100 m requested analysis grid',
+  maxTemperatureC: 40.1505,
+  averageTemperatureC: 37.0796,
+  apparentTemperatureC: [32.0,31.0,30.3,30.0,29.5,28.9,30.6,31.4,33.3,35.1,37.0,39.6,41.3,42.5,40.7,39.3,34.8,37.3,38.6,38.0,36.9,36.1,35.3,32.7],
+  highWindow: { start: '11:00', end: '15:00', basis: 'five-hour modeled apparent-temperature peak window' },
+  timeOfMeasureCells: 99,
+  timeOfMeasureRangeHours: [4, 16],
+  cachePaths: [
+    '.agent_cache/live_geographies/phoenix_paved_industrial.json',
+    '.agent_cache/live_followups/env_phoenix.json',
+    '.agent_cache/live_followups/phoenix_time_of_measure.json',
+  ],
 } as const
 
-export const SCENARIOS: Record<DemoId, DemoScenario> = {
-  shiftshield: {
-    id: 'shiftshield', name: 'ShiftShield', number: '01', mapKind: 'delivery', audience: 'Delivery operations managers',
-    problem: 'Stop drivers spending avoidable time in the hottest parts of their routes.', hero: ['Move the stops.', 'Miss the peak.'],
-    lede: 'The agent finds flexible deliveries, changes only their sequence, preserves every promise—and proves the thermal difference.',
-    locationLabel: 'PHX DELIVERY ZONE · 33.45° N', objectLabel: '7 stops · 3 flexible',
-    derived: { before: 168, after: 94, shifted: 74, percent: 44, unit: 'hot-cell minutes', headline: '−44%', label: 'peak-window route exposure' },
-    scale: { value: '7', label: 'delivery stops' }, context: 'A fixed sequence crosses the hottest modeled cells during their peak. Three stops have valid alternate positions.',
-    constraints: ['7/7 promises kept', 'Shift ends 16:30', 'Cold-chain stop locked', 'Dispatcher approval'],
-    steps: [
-      { label: 'Reading today’s route', detail: '7 stops · 3 marked flexible', tool: 'route.inspect' },
-      { label: 'Selecting thermal evidence', detail: '4 relevant cells requested from cache', tool: 'fortyguard.heatmap' },
-      { label: 'Testing stop sequences', detail: '12 feasible orders compared', tool: 'route.compare' },
-      { label: 'Checking promises', detail: 'Time windows, shift and locked stop pass', tool: 'constraints.verify' },
-      { label: 'Proposing sequence 1·2·5·4·3·6·7', detail: 'Awaiting dispatcher approval', tool: 'recommendation.prepare' },
-      { label: 'Verifying approved route', detail: '168 → 94 hot-cell minutes', tool: 'result.verify' },
-    ],
-    assumptions: ['Stops, durations, time windows and route ordering are deterministic scenario data.', 'Hot-cell minutes are a planning proxy, not a health or safety measure.', 'Street geometry is illustrative scenario geometry.'],
-    publicData: 'No external public dataset is presented as production input in this micro-demo.',
-  },
-  coursecorrect: {
-    id: 'coursecorrect', name: 'CourseCorrect', number: '02', mapKind: 'race', audience: 'Race organizers',
-    problem: 'Stop thousands of participants being sent through avoidably hot parts of a race course.', hero: ['Reroute one block.', 'Move 2,400 people.'],
-    lede: 'The agent tests course and wave alternatives, protects distance and event constraints, then quantifies the crowd-scale change.',
-    locationLabel: 'PHX 10K COURSE · 33.45° N', objectLabel: '2,400 runners · 4 waves',
-    derived: { before: 38400, after: 16800, shifted: 21600, percent: 56, unit: 'participant-minutes', headline: '21,600', label: 'participant-minutes shifted' },
-    scale: { value: '2.4k', label: 'participants' }, context: 'Four waves spend 16 modeled minutes on the hottest course segment; an equal-distance alternative cuts that overlap to 7.',
-    constraints: ['10.0 km ± 50 m', '4 closures unchanged', '3 aid stations retained', 'Race director approval'],
-    steps: [
-      { label: 'Reading course and waves', detail: '2,400 runners · 4 start waves', tool: 'event.inspect' },
-      { label: 'Selecting thermal segments', detail: '6 course cells inspected from cache', tool: 'fortyguard.heatmap' },
-      { label: 'Testing course alternatives', detail: '8 detour/time combinations compared', tool: 'course.compare' },
-      { label: 'Checking event constraints', detail: 'Distance, closures and aid stations pass', tool: 'constraints.verify' },
-      { label: 'Proposing one-block detour', detail: 'Awaiting race director approval', tool: 'recommendation.prepare' },
-      { label: 'Verifying approved course', detail: '21,600 participant-minutes shifted', tool: 'result.verify' },
-    ],
-    assumptions: ['Participant count, pace, waves, closures and aid stations are deterministic scenario data.', 'Participant-minutes are arithmetic exposure overlap, not a clinical-risk measure.', 'Course geometry is illustrative scenario geometry.'],
-    publicData: 'The workflow is compatible with public street/course geometry; none is represented as live production data here.',
-  },
-  'recess-relay': {
-    id: 'recess-relay', name: 'Recess Relay', number: '03', mapKind: 'campus', audience: 'School administrators',
-    problem: 'Stop outdoor activities being scheduled in the hottest parts of campus.', hero: ['One campus.', 'Three temperatures.'],
-    lede: 'The agent pairs the timetable with campus thermal evidence, swaps compatible activities, and checks every supervision rule.',
-    locationLabel: 'PHX CAMPUS · 33.45° N', objectLabel: '180 students · 3 spaces',
-    derived: { before: 5400, after: 1800, shifted: 3600, percent: 67, unit: 'student-minutes', headline: '3,600', label: 'student-minutes shifted' },
-    scale: { value: '180', label: 'students scheduled' }, context: 'The largest group is assigned to the modeled hottest asphalt court. Two compatible space/time swaps preserve the school day.',
-    constraints: ['6/6 activities kept', 'Supervision covered', 'Capacity respected', 'Accessible route retained'],
-    steps: [
-      { label: 'Reading campus timetable', detail: '180 students · 6 outdoor activities', tool: 'schedule.inspect' },
-      { label: 'Selecting campus evidence', detail: 'Court, field and green zone inspected', tool: 'fortyguard.heatmap' },
-      { label: 'Testing activity swaps', detail: '9 compatible space/time pairs compared', tool: 'schedule.compare' },
-      { label: 'Checking school constraints', detail: 'Supervision, capacity and access pass', tool: 'constraints.verify' },
-      { label: 'Proposing two swaps', detail: 'Awaiting administrator approval', tool: 'recommendation.prepare' },
-      { label: 'Verifying approved timetable', detail: '3,600 student-minutes shifted', tool: 'result.verify' },
-    ],
-    assumptions: ['Students, activities, timetable, capacity and supervision are deterministic scenario data.', 'Student-minutes are a planning proxy, not a claim of safety or health benefit.', 'Campus geometry and zone temperatures are illustrative allocations of cached evidence.'],
-    publicData: 'The workflow can use public campus footprints; this micro-demo uses clearly synthetic campus geometry.',
-  },
+export const EMPLOYER_POLICY = {
+  name: 'Desert Build Co. · demo policy v1.4',
+  status: 'synthetic employer policy',
+  planningRules: [
+    'Prefer movable moderate/heavy outdoor work outside the modeled 11:00–15:00 peak window.',
+    'Preserve fixed delivery, inspection, access, and traffic-control commitments.',
+    'Keep every task with a crew holding its required qualification.',
+    'Plan a shaded recovery after 90 minutes of continuous outdoor work during the peak window.',
+    'Flag new or returning workers for the employer’s acclimatization procedure.',
+  ],
+  authorityBoundary: 'Onsite supervisor applies the employer plan using current onsite WBGT, workload, PPE, worker condition, and professional judgment.',
+} as const
+
+export const AGENT_STEPS: AgentStep[] = [
+  { label: 'Read tomorrow’s work plan', detail: '14 tasks · 3 crews · 2 field zones', tool: 'lookahead.inspect' },
+  { label: 'Select work needing investigation', detail: '7 flexible outdoor tasks; 5 fixed commitments retained', tool: 'work.classify' },
+  { label: 'Load thermal evidence', detail: 'Cached Phoenix hourly profile + 100 m analysis cells', tool: 'fortyguard.cached_evidence' },
+  { label: 'Generate feasible alternatives', detail: 'Deterministic scheduler tests crew-safe sequences', tool: 'schedule.optimize' },
+  { label: 'Verify plan and policy constraints', detail: 'Qualifications, logic, deadlines, fixed work, controls', tool: 'constraints.verify' },
+  { label: 'Prepare superintendent decision', detail: 'Evidence, exceptions, metric, and rollback ready', tool: 'recommendation.prepare' },
+  { label: 'Recompute approved result', detail: '22 → 6 modeled peak-window crew-hours', tool: 'result.verify' },
+]
+
+const toMinutes = (time: string) => {
+  const [hours, minutes] = time.split(':').map(Number)
+  return hours * 60 + minutes
 }
 
-export const DEMO_IDS = Object.keys(SCENARIOS) as DemoId[]
-export const PROPOSAL_STEP = 4
-export const VERIFY_STEP = 5
+const overlaps = (start: number, duration: number, windowStart: number, windowEnd: number) =>
+  Math.max(0, Math.min(start + duration, windowEnd) - Math.max(start, windowStart))
 
-export function validateScenario(scenario: DemoScenario) {
-  const d = scenario.derived
-  return d.before - d.after === d.shifted && Math.round((d.shifted / d.before) * 100) === d.percent && scenario.steps.length === 6 && scenario.assumptions.some(value => value.includes('not a'))
+export const isMetricEligible = (task: Task) => !task.fixed && task.environment !== 'shaded-support'
+
+export const peakWindowCrewHours = (plan: 'original' | 'proposed') => {
+  const windowStart = toMinutes(THERMAL_EVIDENCE.highWindow.start)
+  const windowEnd = toMinutes(THERMAL_EVIDENCE.highWindow.end)
+  return TASKS.filter(isMetricEligible).reduce((total, task) => {
+    const crew = CREWS.find(item => item.id === task.crewId)!
+    const start = toMinutes(plan === 'original' ? task.originalStart : task.proposedStart)
+    return total + overlaps(start, task.durationMinutes, windowStart, windowEnd) / 60 * crew.headcount
+  }, 0)
 }
 
-export function validateAllScenarios() { return DEMO_IDS.every(id => validateScenario(SCENARIOS[id])) }
+export const validatePolicy = (plan: 'original' | 'proposed') => {
+  const windowStart = toMinutes(THERMAL_EVIDENCE.highWindow.start)
+  const windowEnd = toMinutes(THERMAL_EVIDENCE.highWindow.end)
+  return TASKS.filter(task => task.environment !== 'shaded-support').every(task => {
+    const start = toMinutes(plan === 'original' ? task.originalStart : task.proposedStart)
+    return overlaps(start, task.durationMinutes, windowStart, windowEnd) <= 90
+  })
+}
+
+export const HERO_METRIC = {
+  before: peakWindowCrewHours('original'),
+  after: peakWindowCrewHours('proposed'),
+  moved: peakWindowCrewHours('original') - peakWindowCrewHours('proposed'),
+  type: 'derived planning proxy',
+  label: 'movable outdoor crew-hours in the highest modeled heat window',
+} as const
+
+const taskEnd = (task: Task, plan: 'original' | 'proposed') =>
+  toMinutes(plan === 'original' ? task.originalStart : task.proposedStart) + task.durationMinutes
+
+export const validatePlan = (plan: 'original' | 'proposed') => TASKS.every(task => {
+  const crew = CREWS.find(item => item.id === task.crewId)
+  const start = toMinutes(plan === 'original' ? task.originalStart : task.proposedStart)
+  const dependenciesPass = task.dependencies.every(id => {
+    const dependency = TASKS.find(item => item.id === id)
+    return dependency ? taskEnd(dependency, plan) <= start : false
+  })
+  const qualificationPass = crew?.qualifications.includes(task.qualification) ?? false
+  const deadlinePass = taskEnd(task, plan) <= toMinutes(task.deadline)
+  const fixedPass = !task.fixed || task.originalStart === task.proposedStart
+  return dependenciesPass && qualificationPass && deadlinePass && fixedPass
+})
+
+export const validateScenario = () =>
+  TASKS.length === 14 &&
+  CREWS.length === 3 &&
+  HERO_METRIC.before === 22 &&
+  HERO_METRIC.after === 6 &&
+  HERO_METRIC.moved === 16 &&
+  validatePlan('original') &&
+  validatePlan('proposed') &&
+  !validatePolicy('original') &&
+  validatePolicy('proposed') &&
+  THERMAL_EVIDENCE.status === 'cached-live' &&
+  EMPLOYER_POLICY.status === 'synthetic employer policy'
+
+export const MINUTE_START = 5 * 60 + 30
+export const MINUTE_END = 14 * 60 + 30
+export const timelinePosition = (time: string) => ((toMinutes(time) - MINUTE_START) / (MINUTE_END - MINUTE_START)) * 100
+export const timelineWidth = (durationMinutes: number) => (durationMinutes / (MINUTE_END - MINUTE_START)) * 100

@@ -1,51 +1,76 @@
-# FortyGuard Agentic Exploration
+# CrewClock
 
 Team: `btn operations`
 
 Primary track: Agentic AI
+
 Secondary fit: Industrial & Enterprise
+MVP decision: **CrewClock locked on 2026-08-20**
 
-This repository is an evidence-building workspace, not a selected product. The final MVP is deliberately unselected.
+> We help construction companies plan tomorrow’s work around extreme heat without blowing the schedule.
 
-## Current state
+More precisely: **We are building CrewClock for construction superintendents to turn tomorrow’s jobs, crews, deadlines, and company heat rules into a workable plan that avoids unnecessarily bad heat periods while keeping the project moving.**
 
-- Built equal stage-quality micro-demos for ShiftShield, CourseCorrect and Recess Relay in one shared shell. Each has a distinct operational map/transformation but identical agent, approval, provenance and verification treatment.
-- Captured twelve real browser screenshots under `evidence/finalist-showdown/` and completed a five-persona hostile judging simulation in `docs/FINALIST_SHOWDOWN.md`.
-- The experience-based recommendation is CourseCorrect at 61% confidence, with Recess Relay runner-up. This is not a selection: `FINAL_MVP_SELECTED = NO`.
+## Current product
 
-- Completed a 40-project winner-archetype study across AI, climate, sponsor, civic, health and NASA competitions; the resulting ten principles are in `docs/WINNER_ARCHETYPE_RESEARCH.md`.
-- Mapped verified FortyGuard capabilities to operational decisions, generated 25 new concepts, killed 17 under the hard rules, stage-tested eight and retained three unresolved finalists: ShiftShield, CourseCorrect and Recess Relay.
-- Added a reusable React/Vite demo shell with a thermal map, deterministic six-step agent sequence, before/after transformation, hero metric, approval interaction, evidence drawer and high-level trace.
-- Demo mode uses sanitized cached-live values only, labels the operational workflow and 44% exposure proxy as scenario-derived, and has no FortyGuard API client or live-call path.
+The reusable React/Vite stage shell has been converted into CrewClock mission control:
 
-- Preserved the vendored `temperature-api-quickstart` and its cached sample responses.
-- Audited the supplied participant handbook ZIP; it is now authoritative for scope, tracks, judging, conduct, and submission requirements.
-- Verified the local FortyGuard key against the usage endpoint without printing it: active Hackathon account, 2,000,000 credits, 0 used at verification time. Controlled live analysis tests now measure 204,500 used and 1,795,500 remaining after caching successful responses.
-- Expanded live discovery with eight geography pairs and seven targeted follow-ups; measured account usage is now 204,500 with 1,795,500 remaining.
-- Verified live `/v1/heatmap`, `/v1/env_params`, and satellite segmentation; spatial/temporal schemas and limitations are recorded in `docs/LIVE_API_VALIDATION.md`.
-- Completed deep finalist due diligence that narrowed the former road leader to an execution-window hypothesis, held the thermal concept, and killed the rail patrol concept. The later cross-industry pass supersedes that provisional road ranking. No MVP is selected.
-- Completed a second execution-window opportunity hunt across 22 workflows and individually validated pavement treatments. The strongest pavement wedge is HFST installation-window verification; bridge steel coating is the strongest non-pavement challenger and current evidence leader. Both are conditional because direct substrate measurements remain authoritative and FortyGuard dependence is 6/10, below the preferred 7/10 bar.
-- Added provider-neutral agent infrastructure under `src/fortyguard_agent/`.
-- Added deterministic fixture-backed and cached-live evaluation spikes for three finalists. The live operational windows remain synthetic.
-- No hosted LLM account was created. No final MVP, demo geography, or finalist has been selected.
-- The current evidence leader is ShiftShield, but `FINAL_MVP_SELECTED = NO` remains binding.
-- The prior evidence leader remains historical context; the built showdown supersedes Markdown-only ranking for the final human choice.
+- a 14-task Phoenix construction-day fixture;
+- three crews and fifteen workers with trade qualifications;
+- two field workfaces and one shaded laydown zone;
+- fixed inspections, traffic-control and concrete commitments;
+- cached-live Phoenix FortyGuard TCM, hourly environmental parameters and time-of-measure evidence;
+- a seven-step high-level agent run;
+- a deterministic before/proposed schedule and independent constraint checks;
+- superintendent approval;
+- a recomputed `22 → 6 = 16` crew-hour planning metric;
+- an evidence drawer that separates cached-live, public, derived, employer and synthetic inputs.
 
-## Current due-diligence boundary
+The UI contains no live FortyGuard request path. Current reserve remains approximately `1,795,500` credits.
 
-- Zero new FortyGuard calls were made in the deep research pass. Existing cached-live responses remain the only live evidence.
-- Zero new FortyGuard calls were made in the execution-window opportunity hunt. Account state remains 204,500 used and 1,795,500 remaining.
-- Worker safety claims require site WBGT/workload/PPE/acclimatization inputs; FortyGuard environmental output is planning evidence, not safety certification.
-- Road queue priority is not the same as heat-sensitive execution-window feasibility.
-- Rail patrol sequencing from ambient heat and satellite context is not supported; rail-temperature/RNT/CWR/operator inputs are required.
-- Full findings are in `docs/FINALIST_DUE_DILIGENCE.md`, with sources, workflows, competitors and judge attacks in the companion documents.
-- The execution-window comparison is in `docs/EXECUTION_WINDOW_OPPORTUNITY_MATRIX.md`; the two research dossiers are in `docs/TOP_TWO_EXECUTION_WINDOW_DOSSIERS.md`.
+## Locked architecture
 
-## Start here next session
+```text
+agent = investigate + select evidence + orchestrate + explain + verify + escalate
+optimizer = deterministic scheduling under constraints
+superintendent = approve / reject / revise
+onsite responsible person = current measurement + employer-plan execution + stop-work authority
+```
 
-1. Read `DECISIONS.md` and `TASKS.md`.
-2. Read `docs/FINALIST_DUE_DILIGENCE.md`.
-3. Read `docs/EXECUTION_WINDOW_OPPORTUNITY_MATRIX.md` and `docs/TOP_TWO_EXECUTION_WINDOW_DOSSIERS.md`.
-4. Run `python scripts/run_exploration.py` and `pytest`.
-5. Read `docs/WINNER_BLUEPRINT.md` and `docs/WINNER_CALIBER_FINALISTS.md`, then run `npm run dev` to rehearse the reusable shell.
-6. Keep `FINAL_MVP_SELECTED = NO` until the humans choose; demand real operational inputs and decision-delta validation before making field claims.
+The LLM never performs schedule mathematics directly. Required evidence resolves to `PASS`, `FAIL`, or `UNKNOWN`; unknown required evidence blocks the recommendation.
+
+## Locked hero metric
+
+**Movable outdoor crew-hours shifted out of the highest modeled heat window while all modeled qualifications, dependencies, deadlines, fixed commitments, and employer planning controls remain satisfied.**
+
+This is a derived planning proxy. It is not a safety, health, compliance, productivity or dollar outcome.
+
+## Evidence boundary
+
+- FortyGuard supports pre-shift spatial/temporal investigation and alternate-window screening.
+- FortyGuard is not WBGT and does not certify safety.
+- Onsite measurement, workload, PPE, acclimatization, worker condition, employer policy and professional judgment remain authoritative.
+- The current demo is a reproducible historical replay, not tomorrow’s forecast.
+- The 14-task work package and employer policy are realistic but synthetic.
+- Public ADOT project data is context/schema evidence, not a customer work order.
+- The federal OSHA heat rule remains proposed as of the research date.
+- No external schedule action occurs in the MVP.
+
+## Start here
+
+1. Read `docs/CREWCLOCK_MVP_SPEC.md`.
+2. Read `docs/CREWCLOCK_DATA_MODEL.md` and `docs/CREWCLOCK_MEASUREMENT.md`.
+3. Rehearse with `docs/CREWCLOCK_DEMO_SCRIPT.md`.
+4. Run `npm run dev`, `npm run test:ui`, and `python -m pytest -q`.
+5. Preserve the no-live-call rule until the team explicitly authorizes final decision-delta validation.
+
+## Final validation gate
+
+Before claiming a sponsor-specific operational advantage, compare one real mapped multi-zone look-ahead under:
+
+1. ordinary forecast + superintendent/spreadsheet baseline; and
+2. the same constraints with authorized FortyGuard evidence.
+
+Record whether FortyGuard changes the tasks investigated, timing/zone ranking, feasible plan, or superintendent decision. Narrow or stop the sponsor claim if it does not.
+
+Historical exploration, due diligence, live-schema validation, money-first research and prior finalist records remain in `docs/` and Git history.

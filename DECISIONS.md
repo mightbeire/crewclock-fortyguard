@@ -115,3 +115,18 @@ The second research pass used only cached-live responses, fixtures, primary sour
 - The five-judge mean is CourseCorrect 8.92, Recess Relay 8.88 and ShiftShield 8.78. Judges disagree materially; the spread is too small for automatic selection.
 - Recommend CourseCorrect at 61% confidence for stage experience, with Recess Relay runner-up. The main counterargument is the mismatch between thermal-information timing and course/closure lead time.
 - `FINAL_MVP_SELECTED = NO`.
+
+# 2026-08-20 — Lock CrewClock as the hackathon MVP
+
+- Human preference selected CrewClock for a final narrow validation; broad idea generation stopped.
+- Primary user is **Construction Superintendent**. O*NET and BLS support responsibility for onsite scheduling, trade coordination, supervision, deadlines, delay response, progress and budget.
+- OSHA, NIOSH and a published JE Dunn heat program verify that construction employers already change work timing, work/rest periods, workload, crew allocation and controls because of heat.
+- CrewClock is a pre-shift operations planner, not a heat-safety or compliance system. FortyGuard is not WBGT. Onsite measurement, employer policy, workload, PPE, acclimatization, symptoms and authorized judgment remain controlling.
+- The federal OSHA heat-specific rule is still proposed as of the decision date. The product imports employer rules and must never present the proposal as binding federal law.
+- The agent selects evidence, orchestrates, explains, verifies and escalates. Deterministic code performs schedule and metric mathematics. The Construction Superintendent approves; the MVP performs no external action.
+- The locked hero metric is **movable outdoor crew-hours shifted out of the highest modeled heat window while modeled hard constraints remain satisfied**. The fixture recomputes `22 before → 6 proposed = 16 shifted`.
+- The 14 tasks, three crews, qualifications, dependencies, deadlines, fixed commitments, workface geometry and employer rule pack are explicitly synthetic. Phoenix FortyGuard evidence is cached-live; ADOT/OSHA/NIOSH inputs are public context.
+- Ordinary forecast plus a spreadsheet is the hostile baseline. CrewClock survives only as an evidence-selection, multi-constraint scheduling, verification and approval workflow. A final real multi-zone test must show whether FortyGuard changes the operational decision.
+- The reusable finalist shell is converted into CrewClock mission control with schedule, thermal profile, workface map, agent activity, before/after, approval, hero metric and evidence boundary.
+- `CREWCLOCK_MVP_READY = YES`; CrewClock is formally locked as the hackathon MVP, subject to the documented final decision-delta gate.
+- Zero new live FortyGuard requests were made. Reserve remains approximately `1,795,500` credits.

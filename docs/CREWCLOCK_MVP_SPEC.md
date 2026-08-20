@@ -1,0 +1,255 @@
+# CrewClock MVP specification
+
+> **We are building CrewClock for construction superintendents to solve the problem of planning tomorrow’s work around extreme heat without blowing the schedule.**
+
+Decision date: 2026-08-20
+
+Decision: **`CREWCLOCK_MVP_READY = YES`**
+
+Product state: CrewClock is locked as the hackathon MVP. This is a product decision, not a claim of field efficacy or safety certification.
+FortyGuard boundary: **zero new live requests**; only sanitized cached-live evidence is used.
+
+## Plain-English product
+
+CrewClock turns tomorrow’s tasks, crews, qualifications, dependencies, deadlines, fixed commitments, and the employer’s own heat-control rules into a proposed daily plan. It investigates only work that thermal evidence could change, delegates the scheduling mathematics to deterministic code, verifies every hard constraint, and asks the superintendent to approve the recommendation.
+
+The worker gets better-timed work and clearer planned controls. The company gets a workable schedule with less last-minute replanning and more productive crew-hours outside unnecessarily harsh periods.
+
+CrewClock does **not** certify safety, calculate regulatory compliance, replace a heat-illness prevention plan, or replace onsite measurements and professional judgment.
+
+## Final reality check
+
+### 1. Do U.S. construction teams already modify work because of heat?
+
+**Yes.** This is directly evidenced rather than inferred:
+
+- [NIOSH’s construction guidance](https://www.cdc.gov/niosh/bulletin/2020/heat-stress-construction.html) tells employers to schedule hot jobs for cooler parts of the day, modify work/rest schedules, add crew, restrict overtime, postpone non-urgent work, and monitor each site.
+- [OSHA’s controls guidance](https://www.osha.gov/heat-exposure/controls) describes cooler-time scheduling, shorter shifts for new or unacclimatized workers, mandatory recovery breaks, job rotation, workload reduction, mechanization, water, shade, and emergency response.
+- [JE Dunn’s published heat program](https://www.osha.gov/sites/default/files/2023BeatTheHeatWinners/Contest_Message_JEDUNNConstruction_HeatProgram_508c.pdf) says high heat is addressed in pre-start plans and JSAs; work is scheduled earlier where possible; supervision observes workers; and water, shade, and breaks are provided.
+
+This clears the mandatory “temperature is already inside the decision loop” test.
+
+### 2. What decisions do they make?
+
+Real operating decisions include:
+
+- start earlier, move work later, shorten a shift, or postpone non-urgent work;
+- sequence heavy outdoor work before cooler or sheltered work;
+- change work/rest periods and recovery locations;
+- rotate tasks, reduce physical demand, mechanize work, or add crew;
+- treat new and returning workers differently under the employer’s acclimatization procedure;
+- preserve delivery, inspection, traffic-control, access, and subcontractor commitments;
+- ready water, shade/cooling, first aid, communications, and emergency response;
+- monitor conditions onsite and stop or change work when the authorized person decides controls are insufficient.
+
+CrewClock assists with the **pre-shift plan**. It does not make the live stop-work decision.
+
+### 3. What do company heat plans require operational planning for?
+
+[OSHA’s planning guidance](https://www.osha.gov/heat-exposure/planning) asks employers to define daily oversight, acclimatization, first aid and emergency response, controls and work practices, heat measurement, responses to NWS advisories, total-heat-stress assessment, and training. Industry plans add site-specific trigger levels, water and shade logistics, pre-task communication, supervision, recovery periods, and work sequencing.
+
+The federal heat-specific standard remains a **proposal**, not a final rule as of this research date. [OSHA’s current rulemaking page](https://www.osha.gov/heat-exposure/rulemaking/) records the 2024 proposal and completed 2025 hearing/comment process. CrewClock therefore imports the employer’s adopted policy; it does not present proposed federal language as binding law.
+
+### 4. Planning decisions versus onsite authoritative measurements
+
+| Before-shift planning evidence | Onsite authoritative decision inputs |
+|---|---|
+| Tomorrow’s task, crew, qualification, deadline, dependency and fixed-commitment data | Current onsite WBGT or the employer’s approved measurement method |
+| NWS advisories and ordinary forecast context | Actual workload/metabolic rate and duration |
+| FortyGuard spatial screening, hourly timing, persistence, exceedance and environmental context | Clothing/PPE, radiant sources, airflow, shade and microconditions |
+| Employer policy clauses and planned controls | Acclimatization status, symptoms and worker-specific conditions handled under policy |
+| Proposed alternate task sequence | Superintendent/competent-person/EHS judgment and stop-work authority |
+
+CrewClock may recommend and explain. Missing, stale, conflicting, or authoritative onsite evidence returns `UNKNOWN` and escalates; it never returns an invented pass.
+
+### 5. Legitimate CrewClock inputs
+
+- one-day or short look-ahead tasks;
+- durations, work locations/zones, trade and crew assignments;
+- qualification requirements and worker/crew qualification flags;
+- task dependencies, deadlines, permits, inspections, deliveries and access windows;
+- fixed versus movable work and approved alternates;
+- task workload/environment category supplied by the contractor;
+- employer heat-policy rules and planned controls;
+- authoritative advisories and forecasts;
+- cached/live FortyGuard evidence with date, geography, endpoint and unit provenance;
+- onsite readings at execution time, when a future integration is authorized.
+
+The MVP does not ingest diagnoses, medications, or other sensitive medical details.
+
+### 6. What FortyGuard improves before the shift
+
+FortyGuard is a **planning evidence selector**, not a safety sensor. Its verified value is:
+
+- screening which work zones or sites deserve investigation at 100 m requested analysis granularity;
+- showing hourly environmental timing through `env_params`;
+- showing surface-temperature summaries through TCM;
+- showing where a threshold is exceeded and for how long when an approved exceedance request exists;
+- showing persistence and time-of-measure patterns across an AOI;
+- adding satellite-derived physical context where segmentation is interpretable;
+- ranking timing/location alternatives before scarce onsite attention is spent.
+
+The approved Phoenix cache demonstrates an hourly apparent-temperature profile and a 99-cell time-of-measure result. It does not prove a universal spatial advantage or a production decision delta.
+
+### 7. What FortyGuard must not be used to claim
+
+- It is not WBGT.
+- It does not establish that work is safe.
+- It does not certify compliance or satisfy onsite monitoring requirements.
+- It does not know workload, PPE, acclimatization, symptoms, radiant sources, or current field conditions unless an authoritative integration supplies them.
+- A modeled heat window is not an injury probability.
+- The MVP metric is not “lives saved,” “injuries prevented,” or “percent safer.”
+- Cached historical evidence is not tomorrow’s forecast.
+
+### 8. Honest measurable output
+
+The MVP’s hero metric is:
+
+> **Movable outdoor crew-hours shifted out of the highest modeled heat window while all modeled qualifications, dependencies, deadlines, fixed commitments, and employer planning controls remain satisfied.**
+
+In the deterministic demo: **22 before → 6 proposed = 16 crew-hours shifted**. This is a derived planning proxy, recomputed from task durations, headcount, eligibility and time overlap. It is not a health or safety outcome.
+
+### 9. Real and public demo data
+
+- **Real cached-live:** Phoenix FortyGuard TCM, hourly environmental parameters, and 99-cell time-of-measure analysis for 2025-07-15.
+- **Real public:** [ADOT’s active project list](https://apps.azdot.gov/websurf/) provides recognizable Phoenix project names, locations and work types. The [SR-51 pavement rehabilitation project](https://azdot.gov/projects/central-district-projects/sr-51-i-10-to-shea-boulevard-pavement-rehabilitation) provides public project elements, operating windows and an explicit weather-sensitive schedule.
+- **Schema authority:** [O*NET](https://www.onetonline.org/link/summary/11-9021.00) and [BLS](https://www.bls.gov/ooh/management/construction-managers.htm) support the user’s scheduling, supervision, delay-response, budget and deadline responsibilities.
+- **Synthetic and labelled:** the exact 14-task work package, three crews, qualifications, dependencies, deadlines, workface geometry, fixed commitments and demo employer policy.
+
+Public project data establishes realism and schema; it is not relabelled as a customer’s tomorrow schedule.
+
+### 10. Could weather plus a spreadsheet replicate most of CrewClock?
+
+**Not at the targeted workflow boundary, but it is the correct hostile baseline.** A skilled superintendent can use a forecast and spreadsheet to rearrange a small one-site day. CrewClock does not win merely by displaying hourly weather or moving one task.
+
+The MVP earns its place only when it repeatedly:
+
+1. joins a real look-ahead to crews, qualifications, dependencies, deadlines, inspections, deliveries and fixed work;
+2. decides which tasks/zones merit thermal investigation instead of querying everything;
+3. selects and records sponsor-specific evidence with provenance;
+4. turns employer policy into explicit planning constraints without pretending to certify compliance;
+5. delegates scheduling to deterministic code;
+6. rejects infeasible alternatives and verifies the selected result;
+7. explains exceptions and routes a reversible proposal to the superintendent;
+8. records an audit trail and recomputes the outcome after approval.
+
+If a final retrospective test shows that one ordinary forecast column plus manual sorting produces the same task ranking and verified plan with comparable effort, the FortyGuard wedge fails and the product must be narrowed or stopped. That is a final validation gate, not a reason to leave the hackathon MVP undefined.
+
+## Exact user
+
+### Primary user: Construction Superintendent
+
+[O*NET](https://www.onetonline.org/link/summary/11-9021.00) lists Construction Superintendent among reported titles for construction managers and assigns the occupation responsibility for planning/scheduling work to deadlines, supervising workers, determining labor requirements, resolving work procedures and tracking cost/progress. BLS likewise says construction managers work onsite, prepare timetables, coordinate subcontractors, respond to delays/emergencies, and keep projects on time and budget.
+
+| Field | MVP definition |
+|---|---|
+| Job title | Construction Superintendent |
+| Responsibility | Own tomorrow’s field plan and coordinate trades, access, deliveries, inspections, production and site controls |
+| CrewClock-assisted decisions | Which flexible tasks move; which fixed tasks need controls; which zones require investigation; which feasible plan should be issued |
+| Approval authority | Accept/reject the recommended look-ahead; request changes; escalate safety questions; never delegate stop-work authority to CrewClock |
+| KPIs | Milestones met, productive crew-hours, planned-versus-actual work, trade coordination, rework/delay avoidance, policy execution |
+| Existing tools | P6/MS Project/ALICE for schedules, Procore/Autodesk for field records and look-aheads, spreadsheets, weather apps, toolbox/pre-task plans |
+
+## Exact MVP workflow
+
+```text
+Tomorrow’s look-ahead + employer policy
+                  ↓
+Agent validates provenance and classifies tasks
+                  ↓
+Agent selects only sites/tasks where thermal evidence could change the plan
+                  ↓
+FortyGuard + ordinary forecast/advisory context
+                  ↓
+Deterministic scheduler generates feasible alternatives
+                  ↓
+Deterministic verifier checks:
+crew qualifications · dependencies · deadlines · fixed work · planned controls
+                  ↓
+Agent explains the best alternative, exceptions and uncertainty
+                  ↓
+Construction Superintendent approves / rejects / requests revision
+                  ↓
+Verifier recomputes result; audit record is stored; execution remains external
+```
+
+Division of labor:
+
+- **Agent:** investigate, select evidence, orchestrate tools, explain, verify, stop and escalate.
+- **Optimizer:** scheduling/constraint mathematics and objective comparison.
+- **Superintendent:** operational approval and judgment.
+- **Onsite responsible person:** current heat assessment, policy implementation and stop-work response.
+
+## Three-minute product route/state model
+
+| State | Visible product state | Allowed transition |
+|---|---|---|
+| `opening` | Original plan, sites, cached evidence badge, no result | Run investigation |
+| `investigating` | High-level tool actions and evidence selection | Continue or fail closed |
+| `proposal` | Reordered schedule, preserved constraints, exceptions, approval gate | Approve, reject, revise |
+| `verified` | Approved plan and recomputed 22→6→16 result | Export/audit later; no external action in MVP |
+| `unknown` | Missing/stale/conflicting required evidence | Escalate; no recommendation |
+
+Primary information architecture:
+
+1. Tomorrow plan
+2. Thermal evidence
+3. Agent activity
+4. Before/after comparison
+5. Constraint verification
+6. Superintendent approval
+7. Result and decision log
+
+## Scope
+
+### Must have
+
+- single-day construction schedule with 8–15 tasks and 2–4 crews;
+- task locations/zones, durations, dependencies, qualifications, deadlines and fixed/movable flags;
+- employer planning policy with explicit provenance;
+- map and cached FortyGuard timing/thermal layer;
+- agent evidence selection and high-level activity trace;
+- deterministic constraint scheduler and independent verifier;
+- original/proposed plan toggle and visible schedule movement;
+- approval gate, rollback-safe recommendation and audit record;
+- recomputed hero metric and real/derived/synthetic evidence drawer;
+- hard copy stating that onsite measurements and judgment remain authoritative.
+
+### Should have
+
+- CSV/JSON look-ahead import;
+- configurable employer rule pack with clause-level `PASS`/`FAIL`/`UNKNOWN`;
+- multiple feasible alternatives with schedule/thermal trade-off;
+- onsite-reading check-in and variance capture;
+- export to a field-planning tool or daily log after explicit approval;
+- final decision-delta comparison against NWS/ordinary forecast only.
+
+### Cut
+
+- worker medical profiles or individual risk scores;
+- automatic safety certification or legal-compliance claims;
+- autonomous stop-work, dispatch or schedule publication;
+- wearable monitoring;
+- payroll, timecards and HR functionality;
+- full CPM replacement, BIM authoring or generic weather dashboard;
+- injury, mortality or “percent safer” estimates;
+- portfolio analytics, predictive claims and production integrations before a real pilot.
+
+## Hostile final check
+
+1. **Why company?** It protects tomorrow’s production plan from avoidable heat-driven disruption while preserving the constraints the superintendent is paid to manage.
+2. **Why worker?** Heavy outdoor work can be planned earlier where feasible, and planned controls become visible before the shift.
+3. **Why not Weather.com?** Weather is one input; CrewClock selects hyperlocal evidence, joins it to work zones/tasks and proves a feasible operational change.
+4. **Why not spreadsheet?** A spreadsheet can model a small day, but it does not autonomously collect/provenance evidence, reconcile heterogeneous constraints, search alternatives, explain exceptions and independently verify the result.
+5. **Why not optimizer?** The optimizer cannot decide what evidence is trustworthy, map policy prose to an investigation, handle uncertainty, request missing context, explain the decision or route approval.
+6. **Why agent?** Investigation and orchestration span schedule, workface, policy, thermal, advisory and exception data; the agent selects tools and stops when evidence is sufficient.
+7. **Why FortyGuard?** It contributes spatial screening, hourly environmental timing, persistence/exceedance and context before onsite attention is available; it must prove a decision delta in final validation.
+8. **What is real?** Cached Phoenix FortyGuard data, public ADOT project context and official workflow guidance. Tasks, crews, policy and workface geometry are labelled synthetic.
+9. **What improves?** Movable outdoor crew-hours overlapping the modeled peak window fall from 22 to 6 while modeled hard constraints remain satisfied.
+10. **What if wrong?** No schedule is externally changed; stale/unknown evidence blocks recommendation; the superintendent can reject; onsite policy and measurements override; the original plan remains available.
+
+## Lock decision
+
+`CREWCLOCK_MVP_READY = YES`
+
+CrewClock should be formally locked as the hackathon MVP. The locked claim is narrow: **pre-shift operational planning under the contractor’s own constraints**, not safety certification. The final sponsor validation must compare a real multi-zone task ranking under FortyGuard against ordinary forecast data and record whether the operational decision changes.
