@@ -13,9 +13,9 @@
 ## Before walking on stage
 
 1. Run `npm run dev` and open the CrewClock page.
-2. Click **Reset stage**.
-3. Confirm the status is `READY`, the schedule toggle is `Before 22h`, and the badge says `CACHED · ZERO CREDITS`.
-4. Confirm the evidence drawer is closed.
+2. Click **Reset**.
+3. Confirm the status is `READY TO PLAN`, the schedule toggle is `Original 22h`, and the header says `FORTYGUARD CACHE READY · LIVE CALLS 0`.
+4. Confirm the inspector is closed.
 5. Do not use a live FortyGuard call during the demo.
 
 ## Exact arc
@@ -48,7 +48,7 @@ Click **Run tomorrow’s plan**.
 
 > “CrewClock reads the look-ahead, selects only flexible outdoor work that deserves thermal investigation, loads the relevant evidence, and hands the math to a deterministic scheduler. It then checks qualifications, dependencies, deadlines, fixed work, and the company’s own planned controls.”
 
-Do not narrate hidden reasoning. Let the six high-level actions land.
+Do not narrate hidden reasoning. Let the seven high-level stages land.
 
 ### 1:30–2:00 — Schedule transforms
 
@@ -70,7 +70,7 @@ Point to constraint strip and agent card.
 
 ### 2:25–2:45 — Human approval
 
-Click **Approve plan**.
+Click **Approve tomorrow’s plan**.
 
 **Say:**
 
@@ -78,7 +78,7 @@ Click **Approve plan**.
 
 ### 2:45–3:00 — Hero metric
 
-Scroll or point to the result band.
+Point to the verified result in the right rail; no scrolling is required at 1440×900.
 
 **Say:**
 

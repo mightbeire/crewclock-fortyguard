@@ -17,20 +17,24 @@
 - [x] Write the MVP spec, data model, measurement contract and exact three-minute demo script.
 - [x] Complete desktop browser QA of opening, proposal, approval and verified states.
 - [x] Preserve zero new live FortyGuard requests and the 1,795,500-credit reserve.
+- [x] Replace fixture-driven proposal timing with the deterministic crew scheduler.
+- [x] Add candidate rejection and six-family hard-constraint verification.
+- [x] Add fail-closed missing/stale evidence, tool failure, ambiguous-policy, infeasible-input and no-improvement states.
+- [x] Add deterministic approval/replay/reset behavior and a factual agent audit trail.
+- [x] Complete 1440×900, 1024×768 and 390×844 browser QA with no horizontal overflow.
+- [x] Capture the six required workflow states plus responsive evidence under `evidence/crewclock-mvp/`.
 
 ## Required before final submission
 
 - [ ] Obtain one real, non-sensitive next-day look-ahead or a contractor-reviewed schema with at least two mapped work zones.
 - [ ] Encode one real employer heat policy with its owner’s permission and clause-level planning/onsite boundaries.
-- [ ] Add the deterministic constraint solver behind the current verified fixture interface.
-- [ ] Add `UNKNOWN` UI state for missing, stale, conflicting or out-of-coverage required evidence.
 - [ ] Add CSV/JSON look-ahead import with schema validation and redaction guidance.
 - [ ] Run the ordinary-weather + spreadsheet baseline against the same look-ahead.
 - [ ] Only after explicit authorization, use the reserved FortyGuard budget for a final multi-zone decision-delta test.
 - [ ] Record whether FortyGuard changes investigation, ranking, feasible schedule or superintendent approval.
 - [ ] Conduct a practitioner review with a construction superintendent or qualified field planner; do not call it a customer interview unless it is one.
-- [ ] Add mobile/tablet breakpoint rehearsal and accessibility checks.
-- [ ] Capture final evidence screenshots and record the three-minute video.
+- [x] Add mobile/tablet breakpoint rehearsal and accessibility-oriented semantic checks.
+- [ ] Record the three-minute video from the captured final workflow.
 - [ ] Prepare the judge-accessible repository, live-demo fallback, summary and submission assets.
 
 ## Should have if time permits

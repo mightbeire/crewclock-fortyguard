@@ -1,215 +1,74 @@
-import { useEffect, useMemo, useState } from 'react'
-import {
-  ArrowRight,
-  Check,
-  CirclePause,
-  ClipboardCheck,
-  Clock3,
-  Database,
-  HardHat,
-  Layers3,
-  LockKeyhole,
-  MapPin,
-  Play,
-  RotateCcw,
-  ShieldCheck,
-  Sparkles,
-  ThermometerSun,
-  Users,
-  X,
-} from 'lucide-react'
-import {
-  AGENT_STEPS,
-  CREWS,
-  EMPLOYER_POLICY,
-  HERO_METRIC,
-  TASKS,
-  THERMAL_EVIDENCE,
-  Task,
-  timelinePosition,
-  timelineWidth,
-} from './demo/scenario'
+import { useEffect, useState } from 'react'
+import { AlertTriangle, ArrowRight, Check, ChevronRight, ClipboardCheck, Clock3, Database, Eye, HardHat, Layers3, LockKeyhole, MapPin, Play, RotateCcw, ShieldCheck, ThermometerSun, Users, X } from 'lucide-react'
+import { CREWS, EMPLOYER_POLICY, TASKS, THERMAL_EVIDENCE, type Task, timelinePosition, timelineWidth } from './demo/scenario'
+import { CANONICAL_RUN, agentAudit, approveRecommendation, runCrewClock, type CrewClockRun, type EvidenceState, type Schedule } from './demo/engine'
 
 type PlanView = 'original' | 'proposed'
-const PROPOSAL_STEP = 5
-const VERIFY_STEP = 6
+type DrawerView = 'evidence' | 'audit' | null
+const STAGES = [
+  ['Checking tomorrow’s work', '14 tasks · 3 crews · constraints loaded', 'lookahead.inspect'],
+  ['Selecting affected work', '7 movable outdoor tasks · 2 shaded tasks skipped', 'work.classify'],
+  ['Comparing thermal timing', '2 affected workfaces · cached-live evidence', 'fortyguard.cached_evidence'],
+  ['Testing schedule alternatives', `${CANONICAL_RUN.stats.candidatesConsidered.toLocaleString()} deterministic schedules evaluated`, 'schedule.optimize'],
+  ['Checking hard constraints', 'Fixed work · logic · crews · deadlines · policy', 'constraints.verify'],
+  ['Recommendation ready', '22 → 6 modeled peak-window crew-hours', 'recommendation.prepare'],
+  ['Approved plan verified', 'Human decision recorded · result recomputed', 'result.verify'],
+] as const
 
-function ThermalProfile() {
+const getRunMode = (): CrewClockRun => {
+  const mode = new URLSearchParams(window.location.search).get('mode')
+  const evidence: Record<string, EvidenceState> = { 'missing-evidence': 'missing', 'stale-evidence': 'stale', 'tool-failure': 'tool-failure' }
+  if (mode && evidence[mode]) return runCrewClock({ evidenceState: evidence[mode] })
+  if (mode === 'ambiguous-policy') return runCrewClock({ policyState: 'ambiguous' })
+  if (mode === 'no-improvement') return runCrewClock({ tasks: TASKS.map(task => ({ ...task, fixed: true, proposedStart: task.originalStart })) })
+  return CANONICAL_RUN
+}
+
+function SourceTag({ children, tone = 'lime' }: { children: React.ReactNode; tone?: 'lime' | 'orange' | 'blue' | 'gray' }) {
+  return <span className={`source-tag ${tone}`}>{children}</span>
+}
+
+function ThermalProfile({ active }: { active: boolean }) {
   const values = THERMAL_EVIDENCE.apparentTemperatureC.slice(5, 17)
-  const min = 27
-  const max = 44
-  const points = values.map((value, index) => `${index / (values.length - 1) * 100},${52 - (value - min) / (max - min) * 43}`).join(' ')
-  return <section className="thermal-card">
-    <div className="card-heading">
-      <div><span className="kicker">CACHED-LIVE EVIDENCE</span><h3>Modeled thermal timing</h3></div>
-      <div className="peak-tag"><ThermometerSun size={14}/><strong>42.5°C</strong><span>apparent · 13:00</span></div>
-    </div>
-    <div className="thermal-chart">
-      <div className="peak-window"><span>11:00–15:00 INVESTIGATED WINDOW</span></div>
-      <svg viewBox="0 0 100 58" preserveAspectRatio="none" aria-label="Cached hourly apparent temperature profile">
-        <defs><linearGradient id="area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#ff844d" stopOpacity=".42"/><stop offset="1" stopColor="#ff844d" stopOpacity="0"/></linearGradient></defs>
-        <polygon points={`0,56 ${points} 100,56`} fill="url(#area)"/>
-        <polyline points={points} fill="none" stroke="#ff9d57" strokeWidth="1.4" vectorEffect="non-scaling-stroke"/>
-      </svg>
-      <div className="chart-axis"><span>05:00</span><span>08:00</span><span>11:00</span><span>14:00</span><span>16:00</span></div>
-    </div>
-    <p>Historical replay for 15 Jul 2025. Planning evidence only—onsite WBGT and the employer’s heat plan remain authoritative.</p>
+  const points = values.map((value, index) => `${index / (values.length - 1) * 100},${56 - (value - 27) / 17 * 47}`).join(' ')
+  return <section className={`thermal-panel ${active ? 'active' : ''}`}>
+    <div className="panel-title"><div><SourceTag>FORTYGUARD · CACHED LIVE</SourceTag><h2>Thermal timing</h2></div><Eye size={15}/></div>
+    <div className="thermal-summary"><span><strong>42.5°C</strong><small>apparent peak · 13:00</small></span><span><strong>11–15</strong><small>highest modeled window</small></span></div>
+    <div className="thermal-chart"><div className="thermal-window"><span>PEAK WINDOW</span></div><svg viewBox="0 0 100 60" preserveAspectRatio="none" aria-label="Cached hourly apparent-temperature profile"><defs><linearGradient id="thermalArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#ff824d" stopOpacity=".55"/><stop offset="1" stopColor="#ff824d" stopOpacity="0"/></linearGradient></defs><polygon points={`0,59 ${points} 100,59`} fill="url(#thermalArea)"/><polyline points={points} fill="none" stroke="#ff9d57" strokeWidth="1.4" vectorEffect="non-scaling-stroke"/></svg><div className="axis"><span>05</span><span>08</span><span>11</span><span>14</span><span>16</span></div></div>
+    <p className="fineprint">Historical Phoenix replay · 15 Jul 2025 · planning evidence, not onsite conditions</p>
   </section>
 }
 
-function SiteMap() {
-  return <section className="site-card">
-    <div className="card-heading"><div><span className="kicker">PHOENIX WORK PACKAGE</span><h3>Two workfaces, one laydown</h3></div><MapPin size={18}/></div>
-    <div className="site-map">
-      <svg viewBox="0 0 520 220" role="img" aria-label="Illustrative Phoenix construction work zones">
-        <defs><radialGradient id="heatA"><stop stopColor="#ff7048" stopOpacity=".72"/><stop offset="1" stopColor="#ff7048" stopOpacity="0"/></radialGradient><pattern id="grid" width="22" height="22" patternUnits="userSpaceOnUse"><path d="M22 0H0V22" fill="none" stroke="#4d514b" strokeWidth=".5"/></pattern></defs>
-        <rect width="520" height="220" fill="url(#grid)" opacity=".55"/>
-        <circle cx="280" cy="110" r="150" fill="url(#heatA)"/>
-        <path className="map-road" d="M-10 172 C105 132 188 146 275 101 S420 58 540 38"/>
-        <path className="map-road thin" d="M94 -10 L152 230M400 -10 L342 230"/>
-        <g className="map-zone north"><rect x="120" y="48" width="145" height="66" rx="5"/><text x="136" y="72">NORTH WORKFACE</text><text x="136" y="94">GROUNDWORKS</text></g>
-        <g className="map-zone south"><rect x="290" y="105" width="150" height="68" rx="5"/><text x="306" y="130">SOUTH WORKFACE</text><text x="306" y="151">CONCRETE · SIGNAL</text></g>
-        <g className="map-zone laydown"><rect x="50" y="144" width="112" height="49" rx="5"/><text x="64" y="165">LAYDOWN</text><text x="64" y="181">SHADE · SERVICE</text></g>
-      </svg>
-      <span className="map-boundary">Zone geometry is synthetic · thermal evidence is cached-live</span>
-    </div>
-  </section>
+function SiteMap({ active }: { active: boolean }) {
+  return <section className={`map-panel ${active ? 'active' : ''}`}><div className="panel-title"><div><SourceTag tone="gray">DEMO INPUT</SourceTag><h2>Workfaces</h2></div><MapPin size={16}/></div><div className="site-map"><svg viewBox="0 0 420 258" role="img" aria-label="Illustrative Phoenix construction workfaces"><defs><radialGradient id="heatNorth"><stop stopColor="#ff6c42" stopOpacity=".72"/><stop offset="1" stopColor="#ff6c42" stopOpacity="0"/></radialGradient><radialGradient id="heatSouth"><stop stopColor="#ff9d57" stopOpacity=".62"/><stop offset="1" stopColor="#ff9d57" stopOpacity="0"/></radialGradient><pattern id="siteGrid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M20 0H0V20" fill="none" stroke="#566056" strokeWidth=".5"/></pattern></defs><rect width="420" height="258" fill="url(#siteGrid)" opacity=".36"/><circle className="heat-spot" cx="192" cy="82" r="130" fill="url(#heatNorth)"/><circle className="heat-spot" cx="306" cy="188" r="105" fill="url(#heatSouth)"/><path className="road" d="M-15 225C86 170 155 193 228 142S350 78 440 61"/><path className="road minor" d="M71-12L143 270M359-10L302 270"/><g className="workface north"><rect x="98" y="45" width="150" height="72" rx="4"/><text x="114" y="70">NORTH WORKFACE</text><text x="114" y="91">4 TASKS INVESTIGATED</text><circle cx="230" cy="64" r="4"/></g><g className="workface south"><rect x="245" y="146" width="150" height="70" rx="4"/><text x="261" y="171">SOUTH WORKFACE</text><text x="261" y="192">3 TASKS INVESTIGATED</text><circle cx="378" cy="165" r="4"/></g><g className="workface laydown"><rect x="32" y="173" width="130" height="54" rx="4"/><text x="47" y="195">LAYDOWN · SHADE</text><text x="47" y="214">2 TASKS SKIPPED</text></g></svg><div className="map-scan"><i/></div></div><div className="map-legend"><span><i className="investigated"/>Investigated</span><span><i className="skipped"/>Thermally skipped</span></div></section>
 }
 
-function TaskBlock({ task, plan }: { task: Task; plan: PlanView }) {
-  const start = plan === 'original' ? task.originalStart : task.proposedStart
-  const changed = task.originalStart !== task.proposedStart
-  return <div
-    className={`task ${task.environment} ${task.fixed ? 'fixed' : ''} ${changed ? 'changed' : ''}`}
-    style={{ left: `${timelinePosition(start)}%`, width: `${timelineWidth(task.durationMinutes)}%` }}
-    title={`${task.id} · ${task.name} · ${start} · ${task.durationMinutes} min`}
-  >
-    {task.fixed && <LockKeyhole size={10}/>}<span>{task.name}</span><small>{start}</small>
-  </div>
+function TaskBlock({ task, schedule, original, showMove }: { task: Task; schedule: Schedule; original: Schedule; showMove: boolean }) {
+  const start = schedule[task.id]
+  return <div className={`task-block ${task.environment} ${task.fixed ? 'fixed' : ''} ${start !== original[task.id] && showMove ? 'moved' : ''}`} style={{ left: `${timelinePosition(start)}%`, width: `${timelineWidth(task.durationMinutes)}%` }} title={`${task.id} · ${task.name} · ${start} · ${task.durationMinutes} minutes`}>{task.fixed && <LockKeyhole size={9}/>}<span>{task.id} · {task.name}</span><small>{start}</small></div>
 }
 
-function ScheduleBoard({ plan, verified, onPlanChange }: { plan: PlanView; verified: boolean; onPlanChange: (plan: PlanView) => void }) {
-  return <section className={`schedule-card plan-${plan}`}>
-    <div className="schedule-head">
-      <div><span className="kicker">TOMORROW · TUESDAY 15 JUL</span><h2>{plan === 'original' ? 'Original field plan' : 'CrewClock proposal'}</h2></div>
-      <div className="plan-toggle" role="group" aria-label="Schedule comparison">
-        <button className={plan === 'original' ? 'active' : ''} onClick={() => onPlanChange('original')}>Before <b>22h</b></button>
-        <button className={plan === 'proposed' ? 'active' : ''} onClick={() => onPlanChange('proposed')}>Proposed <b>6h</b></button>
-      </div>
-    </div>
-    <div className="timeline-header"><span>05:30</span><span>08:00</span><span>11:00</span><span>13:00</span><span>15:00</span></div>
-    <div className="schedule-grid">
-      <div className="high-window-band"><span>MODELED PEAK WINDOW</span></div>
-      {CREWS.map(crew => <div className="crew-row" key={crew.id}>
-        <div className="crew-label"><i style={{ background: crew.color }}/><span><strong>{crew.name}</strong><small>{crew.trade} · {crew.headcount}</small></span></div>
-        <div className="crew-track">
-          {TASKS.filter(task => task.crewId === crew.id).map(task => <TaskBlock key={task.id} task={task} plan={plan}/>)}
-        </div>
-      </div>)}
-    </div>
-    <div className="schedule-legend">
-      <span><i className="heavy"/> Outdoor moderate/heavy</span><span><i className="support"/> Shaded/support</span><span><LockKeyhole size={11}/> Fixed commitment</span><span className={verified ? 'verified' : ''}><Check size={12}/> 14/14 tasks retained</span>
-    </div>
-  </section>
+function ScheduleBoard({ run, plan, revealed, verified, onPlan }: { run: CrewClockRun; plan: PlanView; revealed: boolean; verified: boolean; onPlan: (plan: PlanView) => void }) {
+  const schedule = plan === 'proposed' && run.recommendation ? run.recommendation : run.original
+  const changed = TASKS.filter(task => run.recommendation && run.recommendation[task.id] !== run.original[task.id])
+  return <section className={`schedule-panel ${plan === 'proposed' ? 'proposed' : ''}`}><div className="schedule-heading"><div><SourceTag tone={plan === 'proposed' ? 'lime' : 'gray'}>{plan === 'proposed' ? 'CREWCLOCK PLAN' : 'ORIGINAL PLAN'}</SourceTag><h2>Tomorrow’s crew schedule</h2></div><div className="plan-switch" role="group" aria-label="Compare schedules"><button className={plan === 'original' ? 'active' : ''} onClick={() => onPlan('original')}>Original <b>22h</b></button><button disabled={!revealed} className={plan === 'proposed' ? 'active' : ''} onClick={() => onPlan('proposed')}>CrewClock <b>{revealed ? '6h' : '—'}</b></button></div></div><div className="timeline-head"><span>05:30</span><span>08:00</span><span>11:00</span><span>13:00</span><span>15:00</span></div><div className="schedule-grid"><div className="peak-band"><span>HIGHEST MODELED HEAT</span></div>{CREWS.map(crew => <div className="crew-row" key={crew.id}><div className="crew-label"><i style={{ background: crew.color }}/><span><strong>{crew.name}</strong><small>{crew.trade} · {crew.headcount}</small></span></div><div className="crew-track">{TASKS.filter(task => task.crewId === crew.id).map(task => <TaskBlock key={task.id} task={task} schedule={schedule} original={run.original} showMove={revealed}/>)}</div></div>)}</div><div className="schedule-key"><span><i className="outdoor"/>Outdoor</span><span><i className="support"/>Shaded/support</span><span><LockKeyhole size={10}/>Fixed</span><span className={verified ? 'pass' : ''}><Check size={11}/>{verified ? '6/6 constraint families pass' : '14 tasks retained'}</span></div><div className={`change-strip ${revealed ? 'visible' : ''}`}><div><SourceTag tone="orange">DERIVED</SourceTag><strong>{revealed ? changed.length : '—'} tasks retimed</strong><small>Thermal objective remains subordinate to hard constraints.</small></div><div className="change-list">{revealed && changed.map(task => <span key={task.id}><b>{task.id}</b> {run.original[task.id]} <ArrowRight/> {run.recommendation?.[task.id]}</span>)}</div></div></section>
 }
 
-function AgentPanel({ step, running, approved, onStart, onApprove }: { step: number; running: boolean; approved: boolean; onStart: () => void; onApprove: () => void }) {
-  const proposed = step >= PROPOSAL_STEP
-  const verified = step === VERIFY_STEP
-  const progress = Math.max(0, (step + 1) / AGENT_STEPS.length * 100)
-  return <aside className="agent-card">
-    <div className="agent-head"><div><span className="kicker">AGENT RUN · CC-0715</span><h2>{running ? 'CrewClock is working' : verified ? 'Plan verified' : proposed ? 'Decision required' : 'Ready to investigate'}</h2></div><span className={`agent-orb ${running ? 'active' : ''}`}><Layers3 size={18}/></span></div>
-    <div className="agent-progress"><i style={{ width: `${progress}%` }}/></div>
-    <ol>{AGENT_STEPS.map((item, index) => <li key={item.label} className={index < step ? 'done' : index === step ? 'current' : ''}>
-      <span className="step-icon">{index < step ? <Check/> : index === step && running ? <span className="spinner"/> : String(index + 1).padStart(2, '0')}</span>
-      <div><strong>{item.label}</strong><small>{index <= step ? item.detail : item.tool}</small></div>
-    </li>)}</ol>
-    {!proposed && <button className="primary run-button" onClick={onStart}><Play size={15} fill="currentColor"/>{step < 0 ? 'Run tomorrow’s plan' : 'Replay investigation'}</button>}
-    {proposed && !verified && <div className="approval-callout"><ShieldCheck/><div><strong>Feasible plan ready</strong><small>Superintendent retains decision authority.</small></div><button onClick={onApprove} disabled={approved}>{approved ? <><Check/> Approved</> : <><CirclePause/> Approve plan</>}</button></div>}
-    {verified && <div className="verified-callout"><Check/><div><strong>Approved result recomputed</strong><small>No external schedule was changed.</small></div></div>}
-  </aside>
+function AgentPanel({ run, stage, running, approved, onRun, onApprove, onAudit }: { run: CrewClockRun; stage: number; running: boolean; approved: boolean; onRun: () => void; onApprove: () => void; onAudit: () => void }) {
+  const revealed = stage >= 5 && run.status === 'recommended'; const verified = stage >= 6 && approved; const failure = stage >= 2 && run.status !== 'recommended'; const visibleStages = failure ? STAGES.slice(0, 3) : STAGES
+  return <aside className="agent-panel"><div className="agent-title"><div><SourceTag>AGENT RUN · CC-PHX-0716</SourceTag><h2>{failure ? 'Guardrail engaged' : verified ? 'Plan verified' : revealed ? 'Decision required' : running ? 'CrewClock is working' : 'Ready for tomorrow'}</h2></div><span className={`agent-pulse ${running ? 'running' : ''}`}><Layers3 size={16}/></span></div><div className="progress"><i style={{ width: `${Math.max(0, (stage + 1) / visibleStages.length * 100)}%` }}/></div><ol className="agent-stages">{visibleStages.map((item, index) => <li key={item[0]} className={index < stage || verified ? 'done' : index === stage ? 'current' : ''}><span className="stage-index">{index < stage || verified ? <Check size={11}/> : String(index + 1).padStart(2, '0')}</span><div><strong>{item[0]}</strong><small>{index <= stage ? item[1] : item[2]}</small></div></li>)}</ol>{failure && <div className="guardrail"><AlertTriangle/><div><strong>No schedule change issued</strong><small>{run.message}</small></div></div>}{!running && stage < 0 && <button id="run-plan" className="primary-action" onClick={onRun}><Play size={14} fill="currentColor"/>Run tomorrow’s plan</button>}{revealed && !approved && <div className="approval-box"><div className="decision-metric"><span>PROPOSED IMPROVEMENT</span><strong>{run.shiftedCrewHours}</strong><small>crew-hours shifted</small></div><ul><li><Check/> {run.recommendationVerification?.passedFamilies}/6 hard-constraint families pass</li><li><Check/> 5 fixed commitments unchanged</li><li><Check/> Assumptions and evidence attached</li></ul><button id="approve-plan" onClick={onApprove}><ShieldCheck size={15}/>Approve tomorrow’s plan</button></div>}{verified && <div className="hero-result"><span><Check/> APPROVED · VERIFIED</span><strong>{run.shiftedCrewHours}</strong><h3>CREW-HOURS<br/>SHIFTED</h3><p>out of the highest modeled heat window</p><small>DERIVED planning metric · not a safety outcome</small></div>}{(stage >= 0 || failure) && <button className="audit-link" onClick={onAudit}>Open factual audit trail <ChevronRight size={13}/></button>}</aside>
+}
+
+function Inspector({ view, run, approved, onClose }: { view: DrawerView; run: CrewClockRun; approved: boolean; onClose: () => void }) {
+  const audit = agentAudit(run, approved)
+  return <><div className={`drawer-backdrop ${view ? 'open' : ''}`} onClick={onClose}/><aside className={`inspector ${view ? 'open' : ''}`} aria-hidden={!view}><div className="inspector-head"><div><SourceTag>{view === 'audit' ? 'FACTUAL ACTIONS ONLY' : 'EVIDENCE INSPECTOR'}</SourceTag><h2>{view === 'audit' ? 'Agent audit trail' : 'Why this plan?'}</h2></div><button className="plain-icon" onClick={onClose} aria-label="Close inspector"><X/></button></div>{view === 'audit' ? <div className="audit-list">{audit.map((event, index) => <article key={`${event.time}-${index}`}><time>{event.time}</time><div><strong>{event.action}</strong><SourceTag tone={event.source.includes('FORTYGUARD') ? 'lime' : event.source === 'DERIVED' ? 'orange' : 'gray'}>{event.source}</SourceTag></div></article>)}</div> : <><section className="inspector-block"><SourceTag>FORTYGUARD · CACHED LIVE</SourceTag><dl><dt>AOI</dt><dd>{THERMAL_EVIDENCE.location}</dd><dt>Observation</dt><dd>{THERMAL_EVIDENCE.observationDate} · {THERMAL_EVIDENCE.timezone}</dd><dt>Temperature map</dt><dd>max {THERMAL_EVIDENCE.maxTemperatureC}°C · avg {THERMAL_EVIDENCE.averageTemperatureC}°C</dd><dt>Hourly context</dt><dd>42.5°C apparent peak · 13:00</dd><dt>Spatial analysis</dt><dd>{THERMAL_EVIDENCE.timeOfMeasureCells} cells · {THERMAL_EVIDENCE.grid}</dd></dl></section><section className="inspector-block"><SourceTag tone="orange">DERIVED</SourceTag><dl><dt>Eligible work</dt><dd>7 movable outdoor tasks</dd><dt>Original overlap</dt><dd>{run.beforeCrewHours} crew-hours</dd><dt>Proposed overlap</dt><dd>{run.afterCrewHours ?? '—'} crew-hours</dd><dt>Shifted</dt><dd>{run.shiftedCrewHours} crew-hours</dd><dt>Verifier</dt><dd>{run.recommendationVerification?.passedFamilies ?? '—'}/6 families</dd></dl></section><section className="inspector-block"><SourceTag tone="blue">EMPLOYER POLICY</SourceTag><strong>{EMPLOYER_POLICY.name}</strong><ul>{EMPLOYER_POLICY.planningRules.slice(0, 4).map(rule => <li key={rule}>{rule}</li>)}</ul></section><section className="inspector-block"><SourceTag tone="gray">DEMO INPUT</SourceTag><p>The work package, crew assignments, deadlines, qualifications, workface geometry, and employer policy are synthetic scenario inputs—not customer records.</p></section><div className="authority-note"><ShieldCheck/><p><strong>Human authority preserved.</strong> {EMPLOYER_POLICY.authorityBoundary}</p></div><div className="cache-paths"><Database/><div><strong>Sanitized local cache · no network calls</strong>{THERMAL_EVIDENCE.cachePaths.map(path => <small key={path}>{path}</small>)}</div></div></>}</aside></>
 }
 
 export default function App() {
-  const [step, setStep] = useState(-1)
-  const [running, setRunning] = useState(false)
-  const [approved, setApproved] = useState(false)
-  const [planView, setPlanView] = useState<PlanView>('original')
-  const [evidenceOpen, setEvidenceOpen] = useState(false)
-  const proposed = step >= PROPOSAL_STEP
-  const verified = step === VERIFY_STEP
-
-  useEffect(() => {
-    if (!running || step >= PROPOSAL_STEP) return
-    const timer = window.setTimeout(() => {
-      const nextStep = step + 1
-      setStep(nextStep)
-      if (nextStep === PROPOSAL_STEP) {
-        setRunning(false)
-        setPlanView('proposed')
-      }
-    }, 950)
-    return () => window.clearTimeout(timer)
-  }, [running, step])
-
-  const status = useMemo(() => verified ? 'VERIFIED' : proposed ? 'AWAITING APPROVAL' : running ? 'INVESTIGATING' : 'READY', [verified, proposed, running])
-  const start = () => { setStep(0); setRunning(true); setApproved(false); setPlanView('original') }
-  const approve = () => { setApproved(true); window.setTimeout(() => { setStep(VERIFY_STEP); setPlanView('proposed') }, 700) }
-  const reset = () => { setStep(-1); setRunning(false); setApproved(false); setPlanView('original') }
-
-  return <main data-state={verified ? 'verified' : proposed ? 'proposed' : running ? 'investigating' : 'opening'}>
-    <header className="topbar">
-      <div className="brand"><span className="mark"><Clock3 size={17}/></span><span>CREWCLOCK<small>FIELD PLANNING</small></span></div>
-      <nav><button className="active">Tomorrow plan</button><button onClick={() => setEvidenceOpen(true)}>Evidence</button><button onClick={() => setEvidenceOpen(true)}>Decision log</button></nav>
-      <div className="cache-status"><span className="dot"/> CACHED · ZERO CREDITS</div>
-      <button className="icon-button" onClick={() => setEvidenceOpen(true)} aria-label="Open evidence"><Database size={16}/></button>
-    </header>
-
-    <section className="mission-head">
-      <div className="mission-copy">
-        <span className="eyebrow"><Sparkles size={13}/> MISSION CONTROL FOR TOMORROW’S CONSTRUCTION DAY</span>
-        <h1>Keep the day moving.<br/><em>Move the heat.</em></h1>
-        <p>Turn tomorrow’s jobs, crews, deadlines, and company heat rules into one workable plan—before the shift starts.</p>
-      </div>
-      <div className="run-summary">
-        <div className="run-id"><span>PHX SIGNAL PACKAGE</span><strong>{status}</strong><small>Historical thermal replay · superintendent review</small></div>
-        <div className="headline-metric"><strong>{verified ? HERO_METRIC.moved : '—'}</strong><span>crew-hours moved out of the<br/>highest modeled heat window</span></div>
-      </div>
-    </section>
-
-    <section className="stat-strip">
-      <div><HardHat/><span><strong>14</strong><small>tomorrow tasks</small></span></div>
-      <div><Users/><span><strong>3 / 15</strong><small>crews / workers</small></span></div>
-      <div><Clock3/><span><strong>11–15</strong><small>investigated window</small></span></div>
-      <div><ClipboardCheck/><span><strong>{verified ? '6/6' : '—'}</strong><small>constraint groups pass</small></span></div>
-      <div><ThermometerSun/><span><strong>42.5°</strong><small>cached apparent peak °C</small></span></div>
-    </section>
-
-    <section className="cockpit">
-      <div className="left-rail">
-        <ScheduleBoard plan={planView} verified={verified} onPlanChange={setPlanView}/>
-        <div className="evidence-row"><ThermalProfile/><SiteMap/></div>
-      </div>
-      <AgentPanel step={step} running={running} approved={approved} onStart={start} onApprove={approve}/>
-    </section>
-
-    <section className={`result-band ${verified ? 'revealed' : ''}`}>
-      <div><span className="kicker">VERIFIED TRANSFORMATION</span><h2>Same obligations. Better-timed work.</h2></div>
-      <div className="result-numbers"><article><span>BEFORE</span><strong>22</strong><small>modeled peak-window crew-hours</small></article><ArrowRight/><article><span>PROPOSED</span><strong>{proposed ? '6' : '—'}</strong><small>modelled peak-window crew-hours</small></article><article className="hero-result"><span>SHIFTED</span><strong>{verified ? '16' : '—'}</strong><small>derived planning proxy · not a safety outcome</small></article></div>
-      <div className="constraint-row"><span>CONSTRAINTS PRESERVED</span>{['14/14 tasks', '3/3 crew qualifications', '11/11 dependencies', '5/5 fixed commitments', '14/14 deadlines', 'policy control passes'].map(item => <div key={item}><Check/> {item}</div>)}</div>
-    </section>
-
-    <footer><span>CREWCLOCK · FORTYGUARD HACKATHON ’26</span><span>Planning support ≠ safety certification</span><button onClick={reset}><RotateCcw size={12}/> Reset stage</button></footer>
-
-    <div className={`drawer-backdrop ${evidenceOpen ? 'open' : ''}`} onClick={() => setEvidenceOpen(false)}/>
-    <aside className={`drawer ${evidenceOpen ? 'open' : ''}`}>
-      <div className="drawer-head"><div><span className="kicker">AUDITABLE INPUTS</span><h2>What is real?</h2></div><button className="icon-button" onClick={() => setEvidenceOpen(false)} aria-label="Close evidence"><X/></button></div>
-      <div className="evidence-block real"><span>REAL · CACHED-LIVE FORTYGUARD</span><dl><dt>Location</dt><dd>{THERMAL_EVIDENCE.location}</dd><dt>Date</dt><dd>{THERMAL_EVIDENCE.observationDate}</dd><dt>Maximum TCM</dt><dd>{THERMAL_EVIDENCE.maxTemperatureC} °C</dd><dt>Apparent peak</dt><dd>42.5 °C at 13:00</dd><dt>Time analysis</dt><dd>{THERMAL_EVIDENCE.timeOfMeasureCells} cells · {THERMAL_EVIDENCE.grid}</dd></dl></div>
-      <div className="evidence-block derived"><span>DERIVED · DETERMINISTIC</span><dl><dt>Eligible workload</dt><dd>Flexible outdoor moderate/heavy tasks</dd><dt>Original overlap</dt><dd>{HERO_METRIC.before} crew-hours</dd><dt>Proposed overlap</dt><dd>{HERO_METRIC.after} crew-hours</dd><dt>Shifted</dt><dd>{HERO_METRIC.moved} crew-hours</dd></dl></div>
-      <div className="evidence-block synthetic"><span>SYNTHETIC · DEMO OPERATIONS</span><p>The 14-task work package, three crews, workface geometry, qualifications, dependencies, deadlines, fixed commitments, and employer policy are realistic scenario data—not a customer record.</p></div>
-      <div className="evidence-block policy"><span>EMPLOYER POLICY · NOT FORTYGUARD</span><strong>{EMPLOYER_POLICY.name}</strong><ul>{EMPLOYER_POLICY.planningRules.map(rule => <li key={rule}>{rule}</li>)}</ul></div>
-      <div className="authority"><ShieldCheck/><div><strong>Onsite authority remains in control</strong><p>{EMPLOYER_POLICY.authorityBoundary} CrewClock must stop and escalate when required evidence is missing, stale, or conflicting.</p></div></div>
-      <div className="provenance"><Database/><div><strong>Sanitized cache only</strong>{THERMAL_EVIDENCE.cachePaths.map(path => <small key={path}>{path}</small>)}</div></div>
-    </aside>
-  </main>
+  const [run] = useState(getRunMode); const [stage, setStage] = useState(-1); const [running, setRunning] = useState(false); const [approved, setApproved] = useState(false); const [plan, setPlan] = useState<PlanView>('original'); const [drawer, setDrawer] = useState<DrawerView>(null)
+  const revealed = stage >= 5 && run.status === 'recommended'; const verified = stage >= 6 && approved; const investigating = running && stage >= 1 && stage <= 4
+  useEffect(() => { if (!running) return; const stopAt = run.status === 'recommended' ? 5 : 2; const timer = window.setTimeout(() => { const next = stage + 1; setStage(next); if (next >= stopAt) { setRunning(false); if (run.status === 'recommended') setPlan('proposed') } }, 620); return () => window.clearTimeout(timer) }, [running, stage, run.status])
+  const start = () => { setStage(0); setRunning(true); setApproved(false); setPlan('original') }; const approve = () => { const decision = approveRecommendation(run); if (!decision.approved) return; setApproved(true); window.setTimeout(() => { setStage(6); setPlan('proposed') }, 420) }; const reset = () => { setStage(-1); setRunning(false); setApproved(false); setPlan('original'); setDrawer(null) }
+  const status = verified ? 'APPROVED · VERIFIED' : revealed ? 'AWAITING APPROVAL' : running ? 'AGENT INVESTIGATING' : stage >= 0 && run.status !== 'recommended' ? 'NO CHANGE ISSUED' : 'READY TO PLAN'
+  return <main className="app-shell" data-state={verified ? 'verified' : revealed ? 'proposed' : investigating ? 'investigating' : 'initial'}><header className="topbar"><div className="brand"><span className="brand-mark"><Clock3 size={15}/></span><span>CREWCLOCK<small>FIELD PLANNING</small></span></div><div className="system-status"><i/>FORTYGUARD CACHE READY <span>·</span> LIVE CALLS 0</div><button onClick={() => setDrawer('evidence')}><Database size={14}/>Evidence</button><button onClick={() => setDrawer('audit')}><ClipboardCheck size={14}/>Audit</button><button className="reset-control" onClick={reset}><RotateCcw size={13}/>Reset</button></header><section className="day-brief"><div className="date-lockup"><span>TOMORROW</span><strong>WED · JUL 16</strong><small>Shift 05:30–14:30 · Phoenix, AZ</small></div><div className="project-lockup"><span>PROJECT</span><strong>ADOT SR-202 SIGNAL PACKAGE</strong><small>Traffic systems · PHX-SIG-04</small></div><div className="brief-stat"><HardHat/><span><strong>14</strong><small>tasks</small></span></div><div className="brief-stat"><Users/><span><strong>3 / 15</strong><small>crews / people</small></span></div><div className="brief-stat hot"><ThermometerSun/><span><strong>11–15</strong><small>modeled peak</small></span></div><div className={`day-status ${verified ? 'verified' : ''}`}><span>{status}</span><strong>{verified ? `${run.shiftedCrewHours}h SHIFTED` : revealed ? 'DECISION READY' : '22h IN PEAK WINDOW'}</strong><small>{verified ? 'derived result · constraints pass' : 'tomorrow’s source plan'}</small></div></section><section className="operations-grid"><div className="evidence-column"><SiteMap active={investigating}/><ThermalProfile active={stage >= 2}/></div><ScheduleBoard run={run} plan={plan} revealed={revealed || verified} verified={verified} onPlan={setPlan}/><AgentPanel run={run} stage={stage} running={running} approved={approved} onRun={start} onApprove={approve} onAudit={() => setDrawer('audit')}/></section><footer className="bottomline"><span>CC-PHX-0716-v1 · deterministic replay</span><span><ShieldCheck size={11}/>Planning support ≠ compliance or safety certification</span><span>FortyGuard evidence: cached-live · schedule: demo input · result: derived</span></footer><Inspector view={drawer} run={run} approved={approved} onClose={() => setDrawer(null)}/></main>
 }

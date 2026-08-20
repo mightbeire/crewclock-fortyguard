@@ -225,9 +225,19 @@ drawer:decision-log
 plan-view:original | proposed
 ```
 
-The current shell implements these as local React state to keep the stage path deterministic. Production routing can map them to `/projects/:projectId/plans/:planId` without changing the domain model.
+The MVP implements these as local React state to keep the stage path deterministic. `src/demo/engine.ts` owns schedule generation and verification; `src/App.tsx` only orchestrates presentation and approval state. Production routing can map them to `/projects/:projectId/plans/:planId` without changing the domain model.
 
-## Future integration seams
+## Implemented solver contract
+
+The engine creates a `Schedule` map of task IDs to local start times, enumerates 30-minute starts within each deadline and the modeled workday, and combines the best feasible crew schedules. Its objective order is:
+
+1. all hard-constraint families pass;
+2. minimize eligible crew-hour overlap with `11:00–15:00`;
+3. minimize absolute minutes moved from the original plan.
+
+The locked `proposedStart` values are a regression oracle, not solver input. The generated canonical schedule must match them exactly.
+
+## Remaining integration seams
 
 - Look-ahead import: CSV first, then Procore/Autodesk/P6 adapters.
 - Thermal provider: existing guarded FortyGuard toolkit and cache.

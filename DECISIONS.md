@@ -130,3 +130,13 @@ The second research pass used only cached-live responses, fixtures, primary sour
 - The reusable finalist shell is converted into CrewClock mission control with schedule, thermal profile, workface map, agent activity, before/after, approval, hero metric and evidence boundary.
 - `CREWCLOCK_MVP_READY = YES`; CrewClock is formally locked as the hackathon MVP, subject to the documented final decision-delta gate.
 - Zero new live FortyGuard requests were made. Reserve remains approximately `1,795,500` credits.
+
+# 2026-08-20 — Ship the deterministic CrewClock production MVP
+
+- The canonical recommendation is no longer accepted from fixture timestamps. `src/demo/engine.ts` enumerates 30-minute crew assignments, applies feasibility first, minimizes eligible peak-window crew-hours second, and minimizes schedule movement third.
+- The solver independently reproduces all seven canonical task moves and the `22 → 6 = 16` result. Fixture proposal times remain only as a regression oracle.
+- Verification is grouped into fixed commitments, dependencies, qualifications, deadlines/bounds, crew availability, and employer policy. Approval triggers a final recomputation; it does not publish externally.
+- Conditional investigation is explicit: seven movable outdoor tasks across two workfaces are investigated, two movable shaded tasks are skipped, and five fixed commitments are retained without unnecessary thermal queries.
+- Missing/stale evidence, tool failure, ambiguous policy, infeasible source input, and no-improvement outcomes fail closed and issue no proposal.
+- The one-screen desktop layout is the canonical demo surface. Query-string failure fixtures exist only for deterministic QA and do not add presenter controls.
+- Zero live FortyGuard calls were made. The reserve remains `1,795,500` credits.

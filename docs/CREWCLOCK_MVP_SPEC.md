@@ -253,3 +253,15 @@ Primary information architecture:
 `CREWCLOCK_MVP_READY = YES`
 
 CrewClock should be formally locked as the hackathon MVP. The locked claim is narrow: **pre-shift operational planning under the contractor’s own constraints**, not safety certification. The final sponsor validation must compare a real multi-zone task ranking under FortyGuard against ordinary forecast data and record whether the operational decision changes.
+
+## Implemented production snapshot
+
+- Canonical route: `/`, with one compact operational workspace and no marketing landing page.
+- Deterministic run ID: `CC-PHX-0716-v1`.
+- Solver: exhaustive 30-minute interval assignment by crew; feasibility, thermal objective, then minimum movement.
+- Selective investigation: 7 movable outdoor tasks investigated, 2 movable shaded tasks skipped, 5 fixed commitments retained.
+- Verification: 6/6 modeled hard-constraint families, before recommendation and after approval.
+- Approval: local, explicit, auditable, reversible with Reset, and separated from publication.
+- Guardrails: `?mode=missing-evidence`, `stale-evidence`, `tool-failure`, `ambiguous-policy`, and `no-improvement` provide deterministic fail-closed QA fixtures.
+- Network boundary: no external request path and no live FortyGuard call.
+- Primary viewport: 1440×900; verified at 1024×768 and 390×844 without horizontal overflow.

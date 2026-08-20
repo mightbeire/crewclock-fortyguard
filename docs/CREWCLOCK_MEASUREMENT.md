@@ -86,7 +86,7 @@ An alternative with a lower thermal overlap but any hard failure is rejected. Re
 | 11:00–15:00 investigated window | Derived | Selected from cached hourly profile |
 | Tasks, times, crews and zones | Synthetic | CrewClock demo fixture |
 | Employer rule pack | Synthetic employer policy | CrewClock demo fixture |
-| 22, 6 and 16 crew-hours | Derived deterministic | `src/demo/scenario.ts` |
+| 22, 6 and 16 crew-hours | Derived deterministic | `src/demo/engine.ts` with fixture regression in `src/demo/scenario.ts` |
 
 ## UI wording contract
 
@@ -118,6 +118,8 @@ Automated tests must:
 4. verify all evidence/policy provenance labels exist;
 5. fail if cached-live evidence is relabelled current or onsite authoritative;
 6. fail if the hero metric becomes a safety outcome.
+
+The production MVP suite also verifies deterministic replay, exact solver reproduction of the canonical proposal, crew non-overlap, selective investigation, missing-evidence failure, and the no-feasible-improvement path.
 
 ## Final live-validation protocol—no calls authorized in this run
 

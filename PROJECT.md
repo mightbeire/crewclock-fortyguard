@@ -13,7 +13,7 @@ More precisely: **We are building CrewClock for construction superintendents to 
 
 ## Current product
 
-The reusable React/Vite stage shell has been converted into CrewClock mission control:
+CrewClock is now a submission-grade, single-screen React/Vite mission-control workspace:
 
 - a 14-task Phoenix construction-day fixture;
 - three crews and fifteen workers with trade qualifications;
@@ -21,10 +21,14 @@ The reusable React/Vite stage shell has been converted into CrewClock mission co
 - fixed inspections, traffic-control and concrete commitments;
 - cached-live Phoenix FortyGuard TCM, hourly environmental parameters and time-of-measure evidence;
 - a seven-step high-level agent run;
-- a deterministic before/proposed schedule and independent constraint checks;
+- an executable deterministic interval scheduler that independently reproduces the locked proposal;
+- six modeled hard-constraint families with candidate rejection and post-approval verification;
+- selective investigation that queries seven movable outdoor tasks while skipping shaded and fixed work;
 - superintendent approval;
 - a recomputed `22 → 6 = 16` crew-hour planning metric;
-- an evidence drawer that separates cached-live, public, derived, employer and synthetic inputs.
+- evidence and audit inspectors that separate cached-live, derived, employer and synthetic inputs;
+- fail-closed states for missing/stale evidence, tool failure, ambiguous policy, infeasible input and no better plan;
+- deterministic reset and query-addressable QA fixtures with no network dependency.
 
 The UI contains no live FortyGuard request path. Current reserve remains approximately `1,795,500` credits.
 
@@ -61,8 +65,9 @@ This is a derived planning proxy. It is not a safety, health, compliance, produc
 1. Read `docs/CREWCLOCK_MVP_SPEC.md`.
 2. Read `docs/CREWCLOCK_DATA_MODEL.md` and `docs/CREWCLOCK_MEASUREMENT.md`.
 3. Rehearse with `docs/CREWCLOCK_DEMO_SCRIPT.md`.
-4. Run `npm run dev`, `npm run test:ui`, and `python -m pytest -q`.
-5. Preserve the no-live-call rule until the team explicitly authorizes final decision-delta validation.
+4. Run `npm run dev`, `npm run test:ui`, `npm run typecheck`, `npm run lint`, `npm run build`, and `python -m pytest -q`.
+5. Read `docs/CREWCLOCK_ARCHITECTURE.md` for the implemented agent/scheduler boundary.
+6. Preserve the no-live-call rule until the team explicitly authorizes final decision-delta validation.
 
 ## Final validation gate
 
