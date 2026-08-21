@@ -16,7 +16,7 @@ temperature threshold. `env_params` is optional context only. Missing Phoenix
 exceedance windows are an honest evidence blocker, not a reason to use TCM,
 heat-index, or synthetic duration.
 
-Product state: CrewClock is locked as the hackathon MVP. This is a product decision, not a claim of field efficacy or safety certification.
+Product state: CrewClock is locked as the hackathon MVP. The canonical Phoenix demo is `EVIDENCE TEMPORARILY UNAVAILABLE`; it preserves the current plan and offers `RECHECK_THERMAL_EVIDENCE`. This is a product decision, not a claim of field efficacy or safety certification.
 FortyGuard boundary: **zero new live requests**; only sanitized cached-live evidence is used.
 
 ## Plain-English product
@@ -278,4 +278,4 @@ CrewClock should be formally locked as the hackathon MVP. The locked claim is na
 
 ## Foundation lock amendment (2026-08-21)
 
-The product is an upcoming-shift adjustment agent, not a day-ahead “tomorrow planner”. FortyGuard `exceedance` is the SHHCH duration source; `env_params` is selective time-matched context only. The live future capability probe was ambiguous and the current Phoenix replay is labelled cached-live context with no demonstrated schedule-aligned exceedance windows.
+The product is an upcoming-shift adjustment agent, not a day-ahead “tomorrow planner”. FortyGuard `exceedance` is the SHHCH duration source; `env_params` is selective time-matched context only. The live future capability probe was ambiguous and the current Phoenix replay is labelled `EVIDENCE_UNAVAILABLE` with no demonstrated schedule-aligned exceedance windows.

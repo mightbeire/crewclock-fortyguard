@@ -6,6 +6,7 @@ import json
 from typing import Any
 
 from .guardrails import Budget, GuardrailError, SafetyPolicy
+from .cache import request_hash
 from .models import AgentState, AgentTrace, ApprovalRequest, Observation, Provenance, ToolResult, utc_now
 from .providers import LLMProvider
 from .state_machine import (
@@ -180,7 +181,15 @@ class AgentRunner:
                     proposal = decision.proposal
                     state.proposals.append(proposal)
                     if proposal.requires_approval or self.policy.needs_approval(proposal.action_type):
-                        state.approvals.append(ApprovalRequest(proposal=proposal))
+                        verified = next((observation.content.get("data", {}) for observation in reversed(state.observations) if observation.kind == "tool_result" and observation.content.get("data", {}).get("status") == "VERIFIED"), {})
+                        state.approvals.append(ApprovalRequest(
+                            proposal=proposal,
+                            candidate_hash=verified.get("schedule_hash"),
+                            evidence_hash=verified.get("evidence_hash") or verified.get("evidence_provenance_hash"),
+                            policy_version=verified.get("policy_version"),
+                            task_state_hash=verified.get("task_state_hash"),
+                            verification_hash=request_hash("local:verification", verified) if verified else None,
+                        ))
                         state.termination_reason = "awaiting_human_approval"
                     else:
                         state.termination_reason = "recommendation_ready"
@@ -327,8 +336,12 @@ class AgentRunner:
             return "EVIDENCE_UNAVAILABLE"
         if status in {"NO_FEASIBLE_IMPROVEMENT", "KEEP_CURRENT_PLAN", "KEEP_CURRENT_PLAN_AND_RECHECK", "NO_ACTION_REQUIRED", "REJECTED_FIXED_COMMITMENT"}:
             return str(status)
-        if status in {"PENDING_SUPERINTENDENT_APPROVAL", "AWAITING_APPROVAL"}:
+        if status in {"PENDING_SUPERINTENDENT_APPROVAL", "AWAITING_APPROVAL", "APPROVAL_RECEIVED"}:
             return "AWAITING_APPROVAL"
+        if status == "FINAL_VERIFICATION_FAILED":
+            return "FINAL_VERIFICATION_FAILED"
+        if status == "APPROVED":
+            return "APPROVED"
         if status == "AI_ANALYSIS_UNAVAILABLE":
             return "AI_ANALYSIS_UNAVAILABLE"
         return None
@@ -366,16 +379,40 @@ class AgentRunner:
             return "NO_ACTION_REQUIRED"
         return None
 
-    @staticmethod
-    def resolve_approval(state: AgentState, index: int, approved: bool) -> AgentState:
-        """Resolve a pending recommendation without executing external actions."""
+    def resolve_approval(self, state: AgentState, index: int, approved: bool, *, final_verification: Callable[[ActionProposal], bool] | None = None) -> AgentState:
+        """Resolve approval only after context checks and final verification."""
         if index < 0 or index >= len(state.approvals):
             raise IndexError("approval_index_out_of_range")
         request = state.approvals[index]
         if request.status != "pending":
             raise ValueError("approval_already_resolved")
-        request.status = "approved" if approved else "rejected"
+        if not approved:
+            request.status = "rejected"
+            request.decided_at = utc_now()
+            state.termination_reason = "rejected_recommendation"
+            state.operational_state = "REJECTED"
+            return state
+        latest = next((observation.content.get("data", {}) for observation in reversed(state.observations) if observation.kind == "tool_result" and observation.content.get("data", {}).get("status") == "VERIFIED"), None)
+        context_ok = isinstance(latest, dict) and latest.get("valid") is True and all((request.candidate_hash, request.evidence_hash, request.policy_version, request.task_state_hash, request.verification_hash)) and request.candidate_hash == latest.get("schedule_hash") and request.evidence_hash == latest.get("evidence_hash") and request.policy_version == latest.get("policy_version") and request.task_state_hash == latest.get("task_state_hash") and request.verification_hash == request_hash("local:verification", latest)
+        if final_verification is not None:
+            final_ok = bool(final_verification(request.proposal))
+        elif "verify_schedule" in self.registry.names():
+            try:
+                final_result = self.registry.get("verify_schedule").handler(request.proposal.parameters)
+                final_ok = final_result.ok and final_result.data.get("status") == "VERIFIED" and final_result.data.get("valid") is True
+            except Exception:
+                final_ok = False
+        else:
+            final_ok = False
+        if not context_ok or not final_ok:
+            request.status = "rejected"
+            request.decided_at = utc_now()
+            state.termination_reason = "FINAL_VERIFICATION_FAILED"
+            state.operational_state = "FINAL_VERIFICATION_FAILED"
+            state.authoritative_result = {"status": "FINAL_VERIFICATION_FAILED", "valid": False, "approval_boundary": "human approval alone is insufficient"}
+            return state
+        request.status = "approved"
         request.decided_at = utc_now()
-        state.termination_reason = "approved_recommendation" if approved else "rejected_recommendation"
-        state.operational_state = "APPROVED" if approved else "REJECTED"
+        state.termination_reason = "approved_recommendation"
+        state.operational_state = "APPROVED"
         return state

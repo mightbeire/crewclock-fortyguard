@@ -41,7 +41,7 @@ All tool results return:
 5. assumptions;
 6. a bounded error string when unsuccessful.
 
-The agent must distinguish API measurements from derived metrics and heuristic recommendations. `calculate_exposure_metric` is deliberately named a proxy and is not a medical or regulatory exposure model.
+The agent must distinguish API measurements from derived metrics and heuristic recommendations. Contextual temperature summaries are not decision-grade thermal evidence and never satisfy SHHCH.
 
 ## Sources
 

@@ -26,12 +26,12 @@ def evaluate_window_baselines(profile: list[float], windows: list[dict[str, int]
     toolkit = FortyGuardToolkit()
     rows = []
     for window in windows:
-        metric = toolkit.calculate_exposure_metric({"hourly_c": profile, "work_windows": [window], "threshold_c": threshold_c}).data
+        metric = toolkit.calculate_contextual_temperature_summary({"hourly_c": profile, "work_windows": [window], "threshold_c": threshold_c}).data
         values = profile[window["start_hour"]:window["end_hour"]]
-        rows.append({"window": window, "thermal_load_proxy_degree_hours": metric["thermal_load_proxy_degree_hours"], "hours_above_threshold": sum(value > threshold_c for value in values), "peak_c": max(values)})
+        rows.append({"window": window, "contextual_temperature_exceedance_degree_hours": metric["contextual_temperature_exceedance_degree_hours"], "hours_above_threshold": sum(value > threshold_c for value in values), "peak_c": max(values)})
     naive = rows[0]
     static_threshold = min(rows, key=lambda row: (row["hours_above_threshold"], row["peak_c"], row["window"]["start_hour"]))
-    agent = min(rows, key=lambda row: (row["thermal_load_proxy_degree_hours"], row["hours_above_threshold"], row["window"]["start_hour"]))
+    agent = min(rows, key=lambda row: (row["contextual_temperature_exceedance_degree_hours"], row["hours_above_threshold"], row["window"]["start_hour"]))
     return {"no_assistance": naive, "static_threshold_rule": static_threshold, "naive_first_choice": naive, "agent_verified_proxy": agent, "candidates": rows}
 
 
@@ -39,7 +39,7 @@ def build_spike_registry(toolkit: FortyGuardToolkit, profile_by_site: dict[str, 
     registry = ToolRegistry()
     registry.register(ToolSpec("get_heatmap", "Retrieve a FortyGuard heat profile or fixture.", {"type": "object"}, lambda args: toolkit.get_heatmap(args)))
     registry.register(ToolSpec("summarize_heat_profile", "Summarize measured or fixture hourly temperature values.", {"type": "object"}, toolkit.summarize_heat_profile))
-    registry.register(ToolSpec("calculate_exposure_metric", "Calculate a transparent degree-hour proxy for a candidate work window.", {"type": "object"}, toolkit.calculate_exposure_metric))
+    registry.register(ToolSpec("calculate_contextual_temperature_summary", "Summarize contextual temperature for a candidate work window.", {"type": "object"}, toolkit.calculate_contextual_temperature_summary))
     registry.register(ToolSpec("compare_locations", "Compare location profiles using the same derived metric.", {"type": "object"}, toolkit.compare_locations))
     return registry
 
@@ -49,22 +49,22 @@ def run_deterministic_spike(name: str, profile: list[float], *, baseline_window:
     registry = build_spike_registry(toolkit, {"site": profile})
     decisions = [
         ProviderDecision.call_tool("summarize_heat_profile", {"hourly_c": profile, "threshold_c": threshold_c}),
-        ProviderDecision.call_tool("calculate_exposure_metric", {"hourly_c": profile, "work_windows": [candidate_window], "threshold_c": threshold_c}),
+        ProviderDecision.call_tool("calculate_contextual_temperature_summary", {"hourly_c": profile, "work_windows": [candidate_window], "threshold_c": threshold_c}),
         ProviderDecision.propose(ActionProposal(
             action_type="maintenance_window",
             description=f"Use the candidate window {candidate_window['start_hour']}:00–{candidate_window['end_hour']}:00 after reviewing FortyGuard-derived heat evidence.",
             parameters={"window": candidate_window},
             confidence=0.82,
             requires_approval=True,
-            evidence=["FortyGuard fixture-backed hourly profile", "derived thermal_load_proxy_degree_hours"],
+            evidence=["FortyGuard fixture-backed contextual profile", "derived contextual temperature summary"],
         )),
     ]
     runner = AgentRunner(registry, MockProvider(decisions), budget=Budget(max_iterations=5, max_tool_calls=4, max_api_credits=4), policy=SafetyPolicy(allowed_tools=registry.names()))
     state, trace = runner.run(AgentState(Goal(text=f"Choose a lower-heat window for {name}", user="operations manager", success_metric="Minimize thermal load proxy while preserving the work window.")))
-    baseline_result = toolkit.calculate_exposure_metric({"hourly_c": profile, "work_windows": [baseline_window], "threshold_c": threshold_c})
-    agent_result = toolkit.calculate_exposure_metric({"hourly_c": profile, "work_windows": [candidate_window], "threshold_c": threshold_c})
-    baseline = float(baseline_result.data["thermal_load_proxy_degree_hours"])
-    agent = float(agent_result.data["thermal_load_proxy_degree_hours"])
+    baseline_result = toolkit.calculate_contextual_temperature_summary({"hourly_c": profile, "work_windows": [baseline_window], "threshold_c": threshold_c})
+    agent_result = toolkit.calculate_contextual_temperature_summary({"hourly_c": profile, "work_windows": [candidate_window], "threshold_c": threshold_c})
+    baseline = float(baseline_result.data["contextual_temperature_exceedance_degree_hours"])
+    agent = float(agent_result.data["contextual_temperature_exceedance_degree_hours"])
     return ScenarioResult(name, baseline, agent, round(baseline - agent, 4), state.termination_reason, len(trace.events), state.termination_reason == "awaiting_human_approval")
 
 

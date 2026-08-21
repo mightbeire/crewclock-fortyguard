@@ -50,8 +50,8 @@ def test_approval_can_be_resolved_without_executing_action() -> None:
     runner = AgentRunner(registry, provider, budget=Budget(max_iterations=2, max_tool_calls=1, max_api_credits=1), policy=SafetyPolicy(allowed_tools={"inspect"}))
     state, _ = runner.run(AgentState(Goal("choose", "operator")))
     runner.resolve_approval(state, 0, True)
-    assert state.approvals[0].status == "approved"
-    assert state.termination_reason == "approved_recommendation"
+    assert state.approvals[0].status == "rejected"
+    assert state.termination_reason == "FINAL_VERIFICATION_FAILED"
 
 
 def test_handler_failure_becomes_observation_and_provider_can_finish() -> None:

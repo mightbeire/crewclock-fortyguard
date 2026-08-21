@@ -14,7 +14,7 @@
 
 1. Run `npm run dev` and open the CrewClock page.
 2. Click **Reset**.
-3. Confirm the status is `READY TO PLAN` and the header says `FORTYGUARD CACHE READY · CACHED-LIVE REPLAY`. If the evidence badge says `EVIDENCE UNAVAILABLE`, do not present a before/after SHHCH number.
+3. Confirm the status is `READY TO PLAN` and the header says `THERMAL EVIDENCE UNAVAILABLE · PROVIDER INVESTIGATION`. Do not present a before/after SHHCH number.
 4. Confirm the inspector is closed.
 5. Do not use a live FortyGuard call during the demo.
 
@@ -102,7 +102,7 @@ End on the validated evidence state and the derived metric only if the complete 
 
 ### “What is real?”
 
-> “The Phoenix FortyGuard responses are cached-live, the construction context is grounded in public ADOT and OSHA/NIOSH sources, and the 14-task look-ahead is a labelled synthetic work package.”
+> “The Phoenix contextual responses are cached-live, but compatible decision-grade exceedance evidence is unavailable. The construction context is grounded in public ADOT and OSHA/NIOSH sources, and the 14-task look-ahead is a labelled synthetic work package.”
 
 ### “Why an agent?”
 
@@ -119,4 +119,4 @@ End on the validated evidence state and the derived metric only if the complete 
 
 ## Foundation language
 
-Say “upcoming shift” and “scheduled high-heat crew-hours”. Explain that the historical Phoenix replay is cached-live evidence, while the schedule and employer policy are synthetic operational inputs. Do not call the environmental parameter curve a forecast, call wet bulb WBGT, or claim OSHA compliance.
+Say “upcoming shift” and “scheduled high-heat crew-hours”. Explain that the Phoenix contextual replay is cached-live, while SHHCH is unavailable pending compatible exceedance evidence and the schedule/employer policy are synthetic operational inputs. Do not call the environmental parameter curve a forecast, call wet bulb WBGT, or claim OSHA compliance.

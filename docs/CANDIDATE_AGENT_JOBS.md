@@ -33,7 +33,7 @@ The value is in exploring alternatives and returning a feasible change, not maki
 Tile-level peak timing, exceedance, persistence, and environmental context distinguish nearby jobs and sustained exposure better than a citywide weather alert.
 
 ### TOOLS
-`get_heatmap`, `get_environmental_parameters`, `summarize_heat_profile`, `calculate_exposure_metric`, schedule constraint checker.
+`get_heatmap`, `get_environmental_parameters`, `summarize_heat_profile`, `calculate_contextual_temperature_summary`, schedule constraint checker.
 
 ### ACTION
 Recommend a reordered route, earlier/later appointment, crew rotation, or escalation.

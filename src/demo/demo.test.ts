@@ -12,6 +12,7 @@ import {
 } from './scenario'
 import {
   CANONICAL_RUN,
+  agentAudit,
   approveRecommendation,
   fixtureRecommendation,
   originalSchedule,
@@ -42,7 +43,7 @@ describe('CrewClock deterministic demo', () => {
   })
 
   it('keeps evidence and policy provenance explicit', () => {
-    expect(THERMAL_EVIDENCE.status).toBe('cached-live-context-only')
+    expect(THERMAL_EVIDENCE.status).toBe('EVIDENCE_UNAVAILABLE')
     expect(THERMAL_EVIDENCE.cachePaths).toHaveLength(3)
     expect(EMPLOYER_POLICY.status).toBe('synthetic employer policy')
     expect(EMPLOYER_POLICY.authorityBoundary).toContain('Onsite')
@@ -99,6 +100,13 @@ describe('CrewClock deterministic demo', () => {
     expect(run.recommendation).toBeNull()
   })
 
+  it('reports truthful evidence provenance for unavailable and provider-error states', () => {
+    expect(agentAudit(runCrewClock({ evidenceState: 'missing' }), false).map(entry => entry.source)).toContain('EVIDENCE_UNAVAILABLE')
+    expect(agentAudit(runCrewClock({ evidenceState: 'stale' }), false).map(entry => entry.source)).toContain('EVIDENCE_UNAVAILABLE')
+    expect(agentAudit(runCrewClock({ evidenceState: 'tool-failure' }), false).map(entry => entry.source)).toContain('PROVIDER_ERROR')
+    expect(agentAudit(CANONICAL_RUN, false).map(entry => entry.source)).toContain('SYNTHETIC')
+  })
+
   it('blocks an ambiguous employer policy', () => {
     const run = runCrewClock({ policyState: 'ambiguous' })
     expect(run.status).toBe('ambiguous-policy')
@@ -138,12 +146,13 @@ describe('CrewClock deterministic demo', () => {
 
   it('uses the same evidence window for temporal and area-weighted SHHCH', () => {
     const window: ExceedanceWindow = {
-      analyticType: 'exceedance', start: '12:00', end: '14:00', units: 'hours', status: 'VALID', provenance: 'CACHED_LIVE_FORTYGUARD:test',
+      analyticType: 'exceedance', start: '12:00', end: '14:00', units: 'hours', status: 'VALID', provenance: 'CACHED_LIVE_FORTYGUARD:test', aoi: 'phoenix-test-aoi', date: '2025-07-15', timezone: 'America/Phoenix', analyticSource: 'FortyGuard:/v1/heatmap', projectThermalTrigger: { thresholdC: 32, quantity: 'fortyguard_modeled_temperature', thresholdUnits: 'celsius', direction: 'above' }, resultHash: 'hash-test-window', version: 'v1',
       tiles: [
         { polygon: [[0, 0], [5, 0], [5, 10], [0, 10]], valueHours: 2 },
         { polygon: [[5, 0], [10, 0], [10, 10], [5, 10]], valueHours: 0 },
       ],
     }
+    const coolWindow: ExceedanceWindow = { ...window, start: '14:00', end: '16:00', resultHash: 'hash-cool', qualifying: false, tiles: window.tiles.map(tile => ({ ...tile, valueHours: 0 })) }
     const result = calculateScheduledHighHeatCrewHours(
       { full: '12:00', partial: '13:00' },
       [
@@ -152,8 +161,8 @@ describe('CrewClock deterministic demo', () => {
       ],
       [{ id: 'ground', headcount: 5 }],
       [{ id: 'north', polygon: [[0, 0], [10, 0], [10, 10], [0, 10]] }],
-      [window],
-      { thresholdC: 32, quantity: 'fortyguard_modeled_temperature', provenance: 'PROJECT_THERMAL_TRIGGER:test' },
+      [window, coolWindow],
+      { thresholdC: 32, quantity: 'fortyguard_modeled_temperature', provenance: 'PROJECT_THERMAL_TRIGGER:test', thresholdUnits: 'celsius', direction: 'above' },
     )
     expect(result.valid).toBe(true)
     expect(result.totalCrewHours).toBe(7.5)

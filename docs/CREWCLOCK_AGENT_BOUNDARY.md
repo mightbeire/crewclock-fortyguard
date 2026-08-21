@@ -12,18 +12,28 @@ The real runtime exposes only local function tools. It does not expose arbitrary
 
 ## Evidence boundary
 
-This run is cached-live only. `get_workface_thermal_evidence` requires an explicit fixture and returns compact summaries with `source = CACHED_LIVE_FORTYGUARD`. A completed activity with zero cells is `COMPLETED_BUT_EMPTY = INVALID_EVIDENCE`; it cannot support a recommendation.
+This run is offline and provider-gated. `get_workface_thermal_evidence` requires an explicit fixture and returns compact summaries with a truthful source state. A completed activity with zero cells is `COMPLETED_BUT_EMPTY = INVALID_EVIDENCE`; it cannot support a recommendation.
 
 SHHCH is deterministic and accepts only valid FortyGuard `exceedance` windows,
 polygon workface overlap, and the project modeled-temperature trigger.
 `env_params` can provide optional time-matched context but cannot provide
 exceedance duration, a diurnal forecast, WBGT, or spatial ranking.
 
+Evidence contracts distinguish `DECISION_GRADE_THERMAL_EVIDENCE` from
+`CONTEXTUAL_ENVIRONMENTAL_EVIDENCE`. TCM, env_params, apparent-temperature
+curves and illustrative visuals cannot satisfy SHHCH. Every decision-grade
+window binds AOI, date, start/end, timezone, analytic source, project trigger,
+units, direction, provenance, and result hash/version. `RECHECK_THERMAL_EVIDENCE`
+preserves the current schedule, clears invalid evidence, and retries only when
+explicitly invoked.
+
 Terminal states are explicit: `NO_ACTION_REQUIRED`, `EVIDENCE_UNAVAILABLE`,
 `KEEP_CURRENT_PLAN`, `KEEP_CURRENT_PLAN_AND_RECHECK`,
 `NO_FEASIBLE_IMPROVEMENT`, `AWAITING_APPROVAL`, `APPROVED`, `REJECTED`, and
-`ERROR_SAFE`. A schedule-changing recommendation is not ready before
-deterministic verification.
+`ERROR_SAFE`, and `FINAL_VERIFICATION_FAILED`. A schedule-changing
+recommendation is not ready before deterministic verification; approval moves
+through `AWAITING_APPROVAL` → `APPROVAL_RECEIVED` → final deterministic
+verification → `APPROVED`.
 
 ## Untrusted input boundary
 

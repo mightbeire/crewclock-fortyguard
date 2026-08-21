@@ -10,7 +10,7 @@ windows over polygon workfaces. Optional `env_params` context cannot feed it.
 
 ## Runtime boundary
 
-CrewClock is a deterministic, offline-capable demonstration of an agent-guided construction planning workflow. The React interface never calls FortyGuard or any external service. Approved cached-live Phoenix evidence is imported from the canonical fixture; operational data and employer policy are labelled demo inputs.
+CrewClock is a deterministic, offline-capable demonstration of an agent-guided construction planning workflow. The React interface never calls FortyGuard or any external service. The canonical Phoenix state imports only contextual cached artifacts; compatible decision-grade exceedance evidence is absent, so the product preserves the current plan and exposes recheck. Operational data and employer policy are labelled demo inputs.
 
 ```text
 superintendent goal
@@ -86,8 +86,8 @@ READY
   → OPTIMIZING
   → VERIFYING
   → AWAITING_APPROVAL
-      ├─ reset/reject → READY + original plan
-      └─ approve → APPROVED_VERIFYING → VERIFIED
+      ├─ reject → REJECTED + original plan
+      └─ approval received → FINAL_VERIFICATION_FAILED or APPROVED
 ```
 
 Evidence or policy failure branches from the investigation stages to `NO_CHANGE_ISSUED`. The original plan remains visible and no approval action is offered.
@@ -107,13 +107,14 @@ These states use the wording “No defensible improvement found” where applica
 
 ## Approval and audit
 
-Approval is a local demonstration event. It records the human gate in the factual audit, changes the recommendation to an approved plan, and reruns the deterministic verification. It does not write to Primavera, Procore, dispatch, payroll, or any external system. Reset returns the exact canonical starting state.
+Approval is a local demonstration event. It records `AWAITING_APPROVAL`, `APPROVAL_RECEIVED`, `FINAL_VERIFICATION_FAILED`, or `APPROVED` in the factual audit. Candidate, evidence, policy, task-state, and verification hashes must still match and the deterministic verifier runs again; human approval alone cannot publish a plan. It does not write to Primavera, Procore, dispatch, payroll, or any external system. Reset returns the exact canonical starting state.
 
 ## Provenance contract
 
 | Label | Meaning |
 |---|---|
-| `FORTYGUARD · CACHED LIVE` | Values returned by prior authorized API calls and stored in sanitized local cache |
+| `CACHED_LIVE_FORTYGUARD` | Compatible values returned by prior authorized API calls and stored in sanitized local cache |
+| `EVIDENCE_UNAVAILABLE` | No compatible decision-grade evidence is available for the required schedule period |
 | `DERIVED` | Scheduler, verifier, and crew-hour arithmetic |
 | `EMPLOYER POLICY` | Synthetic employer planning fixture, not FortyGuard and not law |
 | `DEMO INPUT` | Synthetic schedule, crews, qualifications, deadlines, and workface geometry |

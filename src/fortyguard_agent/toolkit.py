@@ -125,9 +125,10 @@ class FortyGuardToolkit:
             )
         features = raw_result.get("map_data", {}).get("features", [])
         properties = [feature.get("properties", {}) for feature in features]
+        decision_grade = analytic_type == "exceedance"
         compact: dict[str, Any] = {
-            "status": "VALID_THERMAL_EVIDENCE",
-            "decision_relevant_result": "THERMAL_EVIDENCE_AVAILABLE",
+            "status": "VALID_THERMAL_EVIDENCE" if decision_grade else "CONTEXT_AVAILABLE",
+            "decision_relevant_result": "THERMAL_EVIDENCE_AVAILABLE" if decision_grade else "OPTIONAL_CONTEXT_ONLY",
             "valid": True,
             "next_allowed_actions": ["CALCULATE_THERMAL_OVERLAP", "GENERATE_FEASIBLE_SCHEDULE_ALTERNATIVES"],
             "workfaces": arguments.get("workfaces", []),
@@ -137,7 +138,8 @@ class FortyGuardToolkit:
             "n_cells": (raw_result.get("stats_data") or {}).get("n_cells", len(features)),
             "source": "CACHED_LIVE_FORTYGUARD",
             "coverage": "VALID",
-            "thermal_evidence_valid": True,
+            "thermal_evidence_valid": decision_grade,
+            "evidence_class": "DECISION_GRADE_THERMAL_EVIDENCE" if decision_grade else "CONTEXTUAL_ENVIRONMENTAL_EVIDENCE",
             "evidence_id": provenance.request_hash,
         }
         if analytic_type == "tcm":
@@ -202,6 +204,7 @@ class FortyGuardToolkit:
                 source="CACHED_LIVE_FORTYGUARD",
                 coverage="VALID",
                 role="context_only_not_shhch_source",
+                evidence_class="CONTEXTUAL_ENVIRONMENTAL_EVIDENCE",
             ),
             Provenance(source="cached", endpoint="/v1/env_params", assumptions=("CACHED_LIVE_FORTYGUARD", "range arrays omitted from model context")),
         )
@@ -259,23 +262,24 @@ class FortyGuardToolkit:
         )
 
     @staticmethod
-    def calculate_exposure_metric(arguments: dict[str, Any]) -> ToolResult:
+    def calculate_contextual_temperature_summary(arguments: dict[str, Any]) -> ToolResult:
         if arguments.get("source_endpoint") == "/v1/env_params":
-            return ToolResult({}, Provenance(source="derived", endpoint="local:calculate_exposure_metric"), error="env_params_anchor_curve_cannot_be_shift_exposure")
+            return ToolResult({}, Provenance(source="derived", endpoint="local:calculate_contextual_temperature_summary"), error="env_params_context_cannot_supply_shhch")
         profile = [float(x) for x in arguments.get("hourly_c", [])]
         windows = arguments.get("work_windows", [])
         threshold = float(arguments.get("threshold_c", 32.0))
         if not profile or not windows:
-            return ToolResult({}, Provenance(source="derived", endpoint="local:calculate_exposure_metric"), error="hourly_c_and_work_windows_required")
+            return ToolResult({}, Provenance(source="derived", endpoint="local:calculate_contextual_temperature_summary"), error="hourly_c_and_work_windows_required")
         selected: list[float] = []
         for window in windows:
             start, end = int(window["start_hour"]), int(window["end_hour"])
             selected.extend(profile[start:end])
         burden = sum(max(0.0, value - threshold) for value in selected)
         return ToolResult(
-            {"thermal_load_proxy_degree_hours": round(burden, 4), "hours": len(selected), "threshold_c": threshold},
-            Provenance(source="derived", endpoint="local:calculate_exposure_metric", assumptions=("proxy is degree-hours above a configurable threshold; not a medical exposure model",)),
+            {"contextual_temperature_exceedance_degree_hours": round(burden, 4), "hours": len(selected), "threshold_c": threshold},
+            Provenance(source="derived", endpoint="local:calculate_contextual_temperature_summary", assumptions=("context-only arithmetic; never a SHHCH source",)),
         )
+
 
     @staticmethod
     def inspect_shift_plan(arguments: dict[str, Any]) -> ToolResult:
@@ -309,58 +313,38 @@ class FortyGuardToolkit:
 
     @staticmethod
     def generate_feasible_schedule_alternatives(arguments: dict[str, Any]) -> ToolResult:
-        requested = arguments.get("task_ids", [])
-        known = arguments.get("known_task_ids")
-        if not isinstance(requested, list) or not all(isinstance(task_id, str) for task_id in requested):
-            return ToolResult({}, Provenance(source="derived", endpoint="local:generate_feasible_schedule_alternatives"), error="task_ids_must_be_string_array")
-        if not isinstance(known, list) or not all(isinstance(task_id, str) for task_id in known):
-            return ToolResult({}, Provenance(source="derived", endpoint="local:generate_feasible_schedule_alternatives"), error="known_task_ids_required")
-        unknown = sorted(set(requested) - set(known))
-        if unknown:
-            return ToolResult({"unknown_task_ids": unknown}, Provenance(source="derived", endpoint="local:generate_feasible_schedule_alternatives"), error="unknown_task_id")
-        if arguments.get("feasible_improvements") == 0 or arguments.get("outcome") == "none":
-            return ToolResult(
-                deterministic_decision_result(
-                    status="NO_FEASIBLE_IMPROVEMENT",
-                    valid=True,
-                    decision_relevant_result="KEEP_CURRENT_PLAN",
-                    provenance="DETERMINISTIC_LOCAL_SCHEDULER",
-                    next_allowed_actions=["KEEP_CURRENT_PLAN"],
-                    requested_task_ids=requested,
-                    known_task_count=len(known),
-                    feasible_improvements=0,
-                    current_plan_valid=True,
-                    recommended_action="KEEP_CURRENT_PLAN",
-                ),
-                Provenance(source="derived", endpoint="local:generate_feasible_schedule_alternatives"),
-            )
-        return ToolResult(
-            deterministic_decision_result(
-                status="FEASIBLE_ALTERNATIVES_PENDING",
-                valid=True,
-                decision_relevant_result="VERIFY_CANDIDATE_SCHEDULE",
-                provenance="DETERMINISTIC_LOCAL_SCHEDULER",
-                next_allowed_actions=["VERIFY_SCHEDULE"],
-                requested_task_ids=requested,
-                known_task_count=len(known),
-                thermal_objective_subordinate_to_hard_constraints=True,
-            ),
-            Provenance(source="derived", endpoint="local:generate_feasible_schedule_alternatives"),
-        )
+        from .policy import BreakRule, EmployerPolicy
+        from .scheduler import generate_feasible_schedule_alternatives
+        endpoint = "local:generate_feasible_schedule_alternatives"
+        tasks, crews, baseline = arguments.get("tasks"), arguments.get("crews"), arguments.get("baseline", arguments.get("schedule"))
+        if not isinstance(tasks, list) or not isinstance(crews, dict) or not isinstance(baseline, dict):
+            return ToolResult({}, Provenance(source="derived", endpoint=endpoint), error="canonical_scheduler_inputs_required")
+        policy_data = arguments.get("policy") or {}
+        try:
+            rules = tuple(BreakRule(str(item["trigger_name"]), int(item["after_continuous_minutes"]), int(item["duration_minutes"]), "DEMO_POLICY") for item in policy_data.get("break_rules", []))
+            policy = EmployerPolicy(str(policy_data.get("policy_id", "runtime")), str(policy_data.get("version", "1")), str(policy_data.get("name", "runtime policy")), "DEMO_POLICY", str(policy_data.get("effective_date", "1970-01-01")), "modeled-temperature", policy_data.get("initial_trigger"), policy_data.get("high_trigger"), str(policy_data.get("units", "celsius")), rules)
+            candidates = generate_feasible_schedule_alternatives(tasks, crews, policy, baseline=baseline, shift_start=arguments["shift_start"], shift_end=arguments["shift_end"], trigger_start=arguments["trigger_start"], trigger_end=arguments["trigger_end"])
+        except (KeyError, TypeError, ValueError) as exc:
+            return ToolResult({}, Provenance(source="derived", endpoint=endpoint), error=f"scheduler_input_invalid:{exc}")
+        return ToolResult({"status": "FEASIBLE_ALTERNATIVES" if candidates else "NO_FEASIBLE_IMPROVEMENT", "valid": bool(candidates), "candidates": candidates, "candidate_count": len(candidates), "deterministic": True, "next_allowed_actions": ["VERIFY_SCHEDULE"] if candidates else ["KEEP_CURRENT_PLAN"]}, Provenance(source="derived", endpoint=endpoint))
 
     @staticmethod
     def verify_schedule(arguments: dict[str, Any]) -> ToolResult:
-        return ToolResult(
-            deterministic_decision_result(
-                status="VERIFIED",
-                valid=True,
-                decision_relevant_result="VERIFIED_SCHEDULE",
-                provenance="DETERMINISTIC_LOCAL_VERIFIER",
-                next_allowed_actions=["COMPARE_SCHEDULE_METRICS", "REQUEST_SUPERINTENDENT_APPROVAL"],
-                schedule_hash=request_hash("local:verify_schedule", arguments),
-            ),
-            Provenance(source="derived", endpoint="local:verify_schedule"),
-        )
+        from .policy import BreakRule, EmployerPolicy
+        from .scheduler import verify_schedule
+        endpoint = "local:verify_schedule"
+        tasks, schedule, crews = arguments.get("tasks"), arguments.get("schedule"), arguments.get("crews")
+        if not isinstance(tasks, list) or not isinstance(schedule, dict) or not isinstance(crews, dict):
+            return ToolResult({"status": "VERIFICATION_FAILED", "valid": False, "error": "canonical_verifier_inputs_required"}, Provenance(source="derived", endpoint=endpoint), error="canonical_verifier_inputs_required")
+        policy_data = arguments.get("policy") or {}
+        try:
+            rules = tuple(BreakRule(str(item["trigger_name"]), int(item["after_continuous_minutes"]), int(item["duration_minutes"]), "DEMO_POLICY") for item in policy_data.get("break_rules", []))
+            policy = EmployerPolicy(str(policy_data.get("policy_id", "runtime")), str(policy_data.get("version", "1")), str(policy_data.get("name", "runtime policy")), "DEMO_POLICY", str(policy_data.get("effective_date", "1970-01-01")), "modeled-temperature", policy_data.get("initial_trigger"), policy_data.get("high_trigger"), str(policy_data.get("units", "celsius")), rules)
+            result = verify_schedule(tasks, schedule, crews, policy, shift_start=arguments["shift_start"], shift_end=arguments["shift_end"], trigger_start=arguments["trigger_start"], trigger_end=arguments["trigger_end"], require_thermal_evidence=bool(arguments.get("require_thermal_evidence", False)), thermal_evidence_valid=bool(arguments.get("thermal_evidence_valid", True)))
+        except (KeyError, TypeError, ValueError) as exc:
+            return ToolResult({"status": "VERIFICATION_FAILED", "valid": False, "error": str(exc)}, Provenance(source="derived", endpoint=endpoint), error=str(exc))
+        data = {"status": result.status, "valid": result.passed, "decision_relevant_result": "VERIFIED_SCHEDULE" if result.passed else "KEEP_CURRENT_PLAN_AND_RECHECK", "checks": [{"name": check.name, "passed": check.passed, "detail": check.detail} for check in result.checks], "schedule_hash": request_hash(endpoint, {"tasks": tasks, "schedule": schedule, "crews": crews, "policy": policy_data}), "evidence_hash": request_hash("local:evidence", arguments.get("evidence", arguments.get("thermal_evidence", {}))), "task_state_hash": request_hash("local:task-state", {"tasks": tasks, "crews": crews}), "policy_version": policy.version, "next_allowed_actions": ["COMPARE_SCHEDULE_METRICS", "REQUEST_SUPERINTENDENT_APPROVAL"] if result.passed else ["KEEP_CURRENT_PLAN_AND_RECHECK"]}
+        return ToolResult(data, Provenance(source="derived", endpoint=endpoint))
 
     @staticmethod
     def compare_schedule_metrics(arguments: dict[str, Any]) -> ToolResult:
@@ -396,6 +380,11 @@ class FortyGuardToolkit:
     @staticmethod
     def request_superintendent_approval(arguments: dict[str, Any]) -> ToolResult:
         return ToolResult({"status": "PENDING_SUPERINTENDENT_APPROVAL", "recommendation_id": arguments.get("recommendation_id"), "publish_blocked_until_approval": True}, Provenance(source="derived", endpoint="local:request_superintendent_approval"))
+
+    @staticmethod
+    def recheck_thermal_evidence(arguments: dict[str, Any]) -> ToolResult:
+        """Explicit, guarded recheck transition; this method never calls a provider."""
+        return ToolResult({"status": "EVIDENCE_UNAVAILABLE", "action": "RECHECK_THERMAL_EVIDENCE", "retry_invoked": True, "current_schedule_preserved": arguments.get("current_schedule"), "valid_evidence_cleared": True, "live_provider_call": False, "next_allowed_actions": ["RECHECK_THERMAL_EVIDENCE"]}, Provenance(source="derived", endpoint="local:recheck_thermal_evidence"))
 
     @staticmethod
     def compare_locations(arguments: dict[str, Any]) -> ToolResult:

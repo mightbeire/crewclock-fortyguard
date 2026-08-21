@@ -34,8 +34,8 @@ function ThermalProfile({ active }: { active: boolean }) {
   const values = THERMAL_EVIDENCE.apparentTemperatureC.slice(5, 17)
   const points = values.map((value, index) => `${index / (values.length - 1) * 100},${56 - (value - 27) / 17 * 47}`).join(' ')
   return <section className={`thermal-panel ${active ? 'active' : ''}`}>
-    <div className="panel-title"><div><SourceTag>FORTYGUARD · CACHED LIVE</SourceTag><h2>Thermal timing</h2></div><Eye size={15}/></div>
-    <div className="thermal-summary"><span><strong>40.2°C</strong><small>TCM tile maximum · cached-live</small></span><span><strong>11–15</strong><small>employer trigger window</small></span></div>
+    <div className="panel-title"><div><SourceTag tone="orange">EVIDENCE UNAVAILABLE</SourceTag><h2>Thermal timing</h2></div><Eye size={15}/></div>
+    <div className="thermal-summary"><span><strong>—</strong><small>SHHCH unavailable pending valid FortyGuard evidence</small></span><span><strong>RECHECK</strong><small>when provider is available</small></span></div>
     <div className="thermal-chart"><div className="thermal-window"><span>PROJECT TRIGGER</span></div><svg viewBox="0 0 100 60" preserveAspectRatio="none" aria-label="Cached contextual signal; not a shift exposure forecast"><defs><linearGradient id="thermalArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#ff824d" stopOpacity=".55"/><stop offset="1" stopColor="#ff824d" stopOpacity="0"/></linearGradient></defs><polygon points={`0,59 ${points} 100,59`} fill="url(#thermalArea)"/><polyline points={points} fill="none" stroke="#ff9d57" strokeWidth="1.4" vectorEffect="non-scaling-stroke"/></svg><div className="axis"><span>05</span><span>08</span><span>11</span><span>14</span><span>16</span></div></div>
     <p className="fineprint">Historical Phoenix replay · 15 Jul 2025 · heatmap primary; env_params is context only</p>
   </section>

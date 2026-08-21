@@ -26,14 +26,14 @@ TCM, heat index, and `env_params` cannot supply its duration. The deterministic
 engine and offline repair are complete, while Phoenix exceedance evidence
 remains the blocker before a numeric canonical replay.
 - fixed inspections, traffic-control and concrete commitments;
-- cached-live Phoenix FortyGuard TCM, hourly environmental parameters and time-of-measure evidence;
+- cached Phoenix contextual FortyGuard TCM, environmental parameters and time-of-measure evidence; compatible Phoenix exceedance evidence is currently unavailable;
 - a seven-step high-level agent run;
 - an executable deterministic interval scheduler that independently reproduces the locked proposal;
 - six modeled hard-constraint families with candidate rejection and post-approval verification;
 - selective investigation that queries seven movable outdoor tasks while skipping shaded and fixed work;
 - superintendent approval;
 - an SHHCH engine that emits a number only when Phoenix schedule-aligned exceedance windows are validated;
-- evidence and audit inspectors that separate cached-live, derived, employer and synthetic inputs;
+- evidence and audit inspectors that separate cached-live context, decision-grade evidence, derived, employer and synthetic inputs;
 - fail-closed states for missing/stale evidence, tool failure, ambiguous policy, infeasible input and no better plan;
 - deterministic reset and query-addressable QA fixtures with no network dependency.
 
@@ -67,7 +67,7 @@ This is a derived planning proxy. It is not a safety, health, compliance, produc
 - FortyGuard supports pre-shift spatial/temporal investigation and alternate-window screening.
 - FortyGuard is not WBGT and does not certify safety.
 - Onsite measurement, workload, PPE, acclimatization, worker condition, employer policy and professional judgment remain authoritative.
-- The current demo is a reproducible cached-live historical replay, not a current forecast.
+- The current canonical demo state is `THERMAL EVIDENCE UNAVAILABLE / PROVIDER INVESTIGATION`; it preserves the current plan and is not a current forecast.
 - The 14-task work package and employer policy are realistic but synthetic.
 - Public ADOT project data is context/schema evidence, not a customer work order.
 - The federal OSHA heat rule remains proposed as of the research date.

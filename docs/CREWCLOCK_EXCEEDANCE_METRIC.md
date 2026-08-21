@@ -2,7 +2,7 @@
 
 CrewClock's hero metric is Scheduled High-Heat Crew-Hours (SHHCH). Its only
 duration source is a FortyGuard heatmap with `analytic_type="exceedance"`.
-`env_params` is optional, time-matched context and is never a duration,
+`env_params` is `CONTEXTUAL_ENVIRONMENTAL_EVIDENCE`, optional time-matched context and is never a duration,
 spatial-ranking, WBGT, or SHHCH source.
 
 ## Calculation contract
@@ -10,8 +10,10 @@ spatial-ranking, WBGT, or SHHCH source.
 ```text
 FortyGuard exceedance windows
   → area-weight tiles over the task workface polygon
-  → intersect that window with the task's scheduled interval
-  → weighted exceedance hours × crew size
+  → bind AOI/date/timezone/source/trigger/units/direction/provenance/hash/version
+  → union overlapping qualifying intervals
+  → intersect the union with the task's scheduled interval
+  → unique weighted exceedance hours × crew size
   → sum outdoor task contributions
 ```
 
@@ -25,7 +27,10 @@ The deterministic implementation is `calculate_scheduled_high_heat_crew_hours`
 in `src/fortyguard_agent/shhch.py` and the equivalent demo implementation in
 `src/demo/shhch.ts`. It preserves per-task provenance and fails closed for
 missing workfaces, uncovered intervals, stale/invalid evidence, wrong units,
-unsupported thresholds, and absent schedule-aligned windows.
+unsupported thresholds, and absent schedule-aligned windows. Covered cool
+intervals contribute zero; missing or partial coverage is unavailable. Fixed
+outdoor work contributes to `TOTAL_SHHCH` and is separately exposed as
+`FIXED_SHHCH`; only movable work is an optimization decision surface.
 
 ## Threshold semantics
 

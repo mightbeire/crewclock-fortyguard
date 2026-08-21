@@ -66,6 +66,12 @@ export type CrewClockRun = {
   stats: SchedulerStats
   deterministicId: string
   message: string
+  candidateHash: string | null
+  evidenceHash: string
+  policyVersion: string
+  taskStateHash: string
+  tasks: Task[]
+  crews: Crew[]
 }
 
 export const timeToMinutes = (time: string) => {
@@ -119,6 +125,9 @@ export const verifySchedule = (
   crews: Crew[] = CREWS,
   baseline: Schedule = originalSchedule(tasks),
 ): Verification => {
+  if (!Array.isArray(tasks) || tasks.length === 0 || !schedule || typeof schedule !== 'object' || Object.keys(schedule).length !== tasks.length || new Set(tasks.map(task => task.id)).size !== tasks.length || Object.keys(schedule).some(id => !tasks.some(task => task.id === id))) {
+    return { passed: false, passedFamilies: 0, totalFamilies: 6, totalChecks: 1, families: [{ id: 'fixed', label: 'Schedule schema', passed: false, checks: 1, detail: 'Empty, malformed, incomplete, or extra task schedule' }, { id: 'dependencies', label: 'Dependencies', passed: false, checks: 0, detail: 'Not evaluated' }, { id: 'qualifications', label: 'Qualifications', passed: false, checks: 0, detail: 'Not evaluated' }, { id: 'deadlines', label: 'Deadlines + bounds', passed: false, checks: 0, detail: 'Not evaluated' }, { id: 'crew-availability', label: 'Crew availability', passed: false, checks: 0, detail: 'Not evaluated' }, { id: 'employer-policy', label: 'Employer controls', passed: false, checks: 0, detail: 'Not evaluated' }] }
+  }
   const fixedTasks = tasks.filter(task => task.fixed)
   const dependencyEdges = tasks.flatMap(task => task.dependencies.map(dependency => ({ dependency, task })))
   const sameCrewPairs = crews.flatMap(crew => {
@@ -129,31 +138,33 @@ export const verifySchedule = (
   const windowStart = timeToMinutes(THERMAL_EVIDENCE.highWindow.start)
   const windowEnd = timeToMinutes(THERMAL_EVIDENCE.highWindow.end)
 
-  const fixedPass = fixedTasks.every(task => schedule[task.id] === baseline[task.id])
+  const validTimes = tasks.every(task => typeof schedule[task.id] === 'string' && /^\d{2}:\d{2}$/.test(schedule[task.id]) && timeToMinutes(schedule[task.id]) >= MINUTE_START && timeToMinutes(schedule[task.id]) <= MINUTE_END)
+  const fixedPass = validTimes && fixedTasks.every(task => schedule[task.id] === baseline[task.id])
   const dependenciesPass = dependencyEdges.every(({ dependency, task }) => {
     const predecessor = tasks.find(item => item.id === dependency)
     return predecessor && schedule[dependency] && schedule[task.id]
       ? timeToMinutes(schedule[dependency]) + predecessor.durationMinutes <= timeToMinutes(schedule[task.id])
       : false
   })
-  const qualificationsPass = tasks.every(task =>
+  const qualificationsPass = validTimes && tasks.every(task =>
     crews.find(crew => crew.id === task.crewId)?.qualifications.includes(task.qualification),
   )
-  const deadlinesPass = tasks.every(task => {
+  const deadlinesPass = validTimes && tasks.every(task => {
     const start = schedule[task.id]
     return Boolean(start) && timeToMinutes(start) >= MINUTE_START &&
       timeToMinutes(start) + task.durationMinutes <= timeToMinutes(task.deadline) &&
       timeToMinutes(start) + task.durationMinutes <= MINUTE_END
   })
-  const availabilityPass = sameCrewPairs.every(({ task, other }) => {
+  const availabilityPass = validTimes && sameCrewPairs.every(({ task, other }) => {
     const taskStart = schedule[task.id]
     const otherStart = schedule[other.id]
     if (!taskStart || !otherStart) return false
     return overlapMinutes(timeToMinutes(taskStart), task.durationMinutes, timeToMinutes(otherStart), timeToMinutes(otherStart) + other.durationMinutes) === 0
   })
-  const policyPass = outdoorTasks.every(task => {
-    const start = schedule[task.id]
-    return Boolean(start) && overlapMinutes(timeToMinutes(start), task.durationMinutes, windowStart, windowEnd) <= 90
+  const policyPass = validTimes && crews.every(crew => {
+    const intervals = tasks.filter(task => task.crewId === crew.id && task.environment !== 'shaded-support').map(task => [timeToMinutes(schedule[task.id]), timeToMinutes(schedule[task.id]) + task.durationMinutes] as [number, number]).map(([start, end]) => [Math.max(start, windowStart), Math.min(end, windowEnd)] as [number, number]).filter(([start, end]) => end > start).sort((a, b) => a[0] - b[0])
+    let runEnd = -1; let runStart = -1
+    return intervals.every(([start, end]) => { if (start > runEnd) { runStart = start; runEnd = end } else { runEnd = Math.max(runEnd, end) }; return runEnd - runStart <= 90 })
   })
 
   const families: ConstraintFamily[] = [
@@ -249,7 +260,16 @@ export const runCrewClock = ({
   const originalVerification = verifySchedule(original, tasks, crews, original)
   const beforeCrewHours = peakWindowCrewHoursFor(original, tasks, crews)
   const emptyStats = { candidatesConsidered: 0, feasibleCandidates: 0, rejectedCandidates: 0 }
-  const base = { original, investigation, originalVerification, beforeCrewHours, deterministicId: 'CC-PHX-0716-v1' }
+  const stableHash = (value: unknown) => {
+    const text = JSON.stringify(value)
+    let hash = 2166136261
+    for (let index = 0; index < text.length; index += 1) hash = Math.imul(hash ^ text.charCodeAt(index), 16777619)
+    return (hash >>> 0).toString(16)
+  }
+  const evidenceHash = stableHash(THERMAL_EVIDENCE)
+  const taskStateHash = stableHash({ tasks, crews })
+  const policyVersion = String(EMPLOYER_POLICY.name)
+  const base = { original, investigation, originalVerification, beforeCrewHours, deterministicId: 'CC-PHX-0716-v1', candidateHash: null, evidenceHash, policyVersion, taskStateHash, tasks, crews }
 
   if (!originalVerification.families.filter(family => family.id !== 'employer-policy').every(family => family.passed)) {
     return { ...base, status: 'infeasible-original', recommendation: null, recommendationVerification: null, afterCrewHours: null, shiftedCrewHours: 0, stats: emptyStats, message: 'The upcoming-shift source plan is infeasible. Resolve operational constraints before optimization.' }
@@ -294,6 +314,7 @@ export const runCrewClock = ({
     afterCrewHours,
     shiftedCrewHours,
     stats,
+    candidateHash: stableHash(recommendation),
     message: `${shiftedCrewHours} scheduled high-heat crew-hours can be removed from the employer trigger overlap.`,
   }
 }
@@ -301,11 +322,21 @@ export const runCrewClock = ({
 export const CANONICAL_RUN = runCrewClock()
 
 export const approveRecommendation = (run: CrewClockRun) => {
-  if (run.status !== 'recommended' || !run.recommendation || !run.recommendationVerification?.passed) {
-    return { approved: false, plan: run.original, verification: run.originalVerification, auditAction: 'Approval blocked; no verified recommendation exists' }
+  const stableHash = (value: unknown) => {
+    const text = JSON.stringify(value); let hash = 2166136261
+    for (let index = 0; index < text.length; index += 1) hash = Math.imul(hash ^ text.charCodeAt(index), 16777619)
+    return (hash >>> 0).toString(16)
   }
-  const verification = verifySchedule(run.recommendation)
+  if (run.status !== 'recommended' || !run.recommendation || !run.recommendationVerification?.passed) {
+    return { state: 'FINAL_VERIFICATION_FAILED' as const, approved: false, plan: run.original, verification: run.originalVerification, auditAction: 'Approval blocked; no verified recommendation exists' }
+  }
+  const received = { state: 'APPROVAL_RECEIVED' as const, candidateHash: stableHash(run.recommendation) }
+  if (received.candidateHash !== run.candidateHash || run.evidenceHash !== stableHash(THERMAL_EVIDENCE) || run.taskStateHash !== stableHash({ tasks: run.tasks, crews: run.crews }) || run.policyVersion !== String(EMPLOYER_POLICY.name)) {
+    return { ...received, state: 'FINAL_VERIFICATION_FAILED' as const, approved: false, plan: run.original, verification: run.originalVerification, auditAction: 'Approval blocked; recommendation context is stale' }
+  }
+  const verification = verifySchedule(run.recommendation, run.tasks, run.crews, run.original)
   return {
+    state: verification.passed ? 'APPROVED' as const : 'FINAL_VERIFICATION_FAILED' as const,
     approved: verification.passed,
     plan: verification.passed ? run.recommendation : run.original,
     verification,
@@ -322,22 +353,26 @@ export const resetDemoState = (run: CrewClockRun = CANONICAL_RUN) => ({
 })
 
 export const agentAudit = (run: CrewClockRun, approved: boolean) => {
+  const evidenceSource = run.status === 'tool-failure' ? 'PROVIDER_ERROR' : run.status === 'recommended' ? 'CACHED_LIVE_FORTYGUARD' : 'EVIDENCE_UNAVAILABLE'
   const entries = [
-    { time: '06:42', action: `Loaded the upcoming shift: ${TASKS.length} tasks across ${CREWS.length} crews`, source: 'DEMO INPUT' },
-    { time: '06:42', action: `Selected ${run.investigation.investigatedTaskIds.length} movable outdoor tasks; skipped ${run.investigation.skippedIndoorTaskIds.length} shaded tasks and held ${run.investigation.retainedFixedTaskIds.length} fixed commitments`, source: 'AGENT' },
-    { time: '06:43', action: `Loaded approved cached-live Phoenix evidence for ${run.investigation.workfaceIds.length} affected workfaces`, source: 'FORTYGUARD · CACHED LIVE' },
+    { time: '06:42', action: `Loaded the upcoming shift: ${TASKS.length} tasks across ${CREWS.length} crews`, source: 'SYNTHETIC' },
+    { time: '06:42', action: `Selected ${run.investigation.investigatedTaskIds.length} movable outdoor tasks; skipped ${run.investigation.skippedIndoorTaskIds.length} shaded tasks and held ${run.investigation.retainedFixedTaskIds.length} fixed commitments`, source: 'DERIVED' },
+    { time: '06:43', action: evidenceSource === 'CACHED_LIVE_FORTYGUARD' ? `Loaded compatible cached-live evidence for ${run.investigation.workfaceIds.length} affected workfaces` : 'Thermal evidence is unavailable; no recommendation may be issued', source: evidenceSource },
   ]
   if (run.stats.candidatesConsidered > 0) {
     entries.push(
-      { time: '06:43', action: `Evaluated ${run.stats.candidatesConsidered.toLocaleString()} deterministic crew schedules`, source: 'SCHEDULER' },
-      { time: '06:43', action: `Rejected ${run.stats.rejectedCandidates.toLocaleString()} schedules that failed modeled constraints`, source: 'VERIFIER' },
+      { time: '06:43', action: `Evaluated ${run.stats.candidatesConsidered.toLocaleString()} deterministic crew schedules`, source: 'DERIVED' },
+      { time: '06:43', action: `Rejected ${run.stats.rejectedCandidates.toLocaleString()} schedules that failed modeled constraints`, source: 'DERIVED' },
     )
   }
-  entries.push({ time: '06:44', action: run.message, source: run.status === 'recommended' ? 'DERIVED' : 'GUARDRAIL' })
+  entries.push({ time: '06:44', action: run.message, source: run.status === 'recommended' ? 'DERIVED' : 'EVIDENCE_UNAVAILABLE' })
   if (run.status === 'recommended') {
-    entries.push({ time: '06:44', action: approved ? 'Superintendent approved plan; final verification passed' : 'Awaiting superintendent approval', source: approved ? 'HUMAN + VERIFIER' : 'APPROVAL' })
+    entries.push({ time: '06:44', action: approved ? 'Superintendent approval received; final verification passed' : 'Awaiting superintendent approval', source: approved ? 'HUMAN + VERIFIER' : 'APPROVAL' })
   }
   return entries
 }
+
+export const RECHECK_THERMAL_EVIDENCE = 'RECHECK_THERMAL_EVIDENCE' as const
+export const recheckThermalEvidence = (run: CrewClockRun): CrewClockRun => ({ ...run, recommendation: null, candidateHash: null, status: run.status === 'tool-failure' ? 'tool-failure' : 'missing-evidence', message: 'Thermal evidence remains unavailable. Current schedule preserved; invoke recheck when the provider is available.' })
 
 export const POLICY_LABEL = EMPLOYER_POLICY.name

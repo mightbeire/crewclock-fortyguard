@@ -6,7 +6,7 @@
 
 Metric type: **derived planning proxy**. The canonical Phoenix fixture currently has no schedule-aligned exceedance windows, so no Phoenix number is emitted.
 
-The calculation is `area-weighted exceedance duration over the task workface × temporal overlap with that task × crew size`, summed across outdoor tasks. `env_params` is contextual only; it is not a duration source.
+The calculation is `unique area-weighted qualifying duration over the task workface × task overlap × crew size`, summed across all outdoor tasks. `env_params` is contextual only; it is not a duration source. Overlapping evidence windows are normalized into a union before multiplication.
 
 It measures schedule allocation. It does not measure safety, injury probability, physiological strain, compliance, productivity actually delivered, or money saved.
 
@@ -42,13 +42,11 @@ contribute zero. Fixed tasks remain fixed in the scheduler but are not silently
 relabelled as movable.
 
 The current Phoenix fixture has no schedule-aligned exceedance windows, so its
-SHHCH result is `EVIDENCE_UNAVAILABLE` and no `22 → 6` number is presented.
-The prior trigger-only 22/6 illustration is retained only as historical
-context and is not current Phoenix exceedance evidence.
+SHHCH result is `EVIDENCE_UNAVAILABLE`; no Phoenix metric is presented.
 
-## Why fixed work is excluded
+## Fixed work is included
 
-The metric answers whether CrewClock found better timing for work the superintendent was allowed to move. Including a fixed concrete delivery or inspection would reward or punish CrewClock for obligations it could not change. The UI still shows fixed work, locks its time, and verifies its associated policy controls.
+SHHCH measures the thermal placement of the whole scheduled plan. Fixed outdoor work therefore contributes to `TOTAL_SHHCH`, even though the optimizer cannot move it. The deterministic result exposes `MOVABLE_SHHCH` and `FIXED_SHHCH` separately so optimization impact is not confused with unavoidable fixed work.
 
 ## Constraint denominator
 

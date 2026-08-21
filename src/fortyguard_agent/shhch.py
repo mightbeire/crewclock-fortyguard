@@ -1,12 +1,9 @@
 from __future__ import annotations
 
-"""Deterministic Scheduled High-Heat Crew-Hours (SHHCH) calculation.
+"""Deterministic Scheduled High-Heat Crew-Hours (SHHCH).
 
-The input signal is a FortyGuard ``analytic_type=exceedance`` heatmap.  The
-heatmap's per-tile duration is first aggregated over the task workface and is
-then intersected with the task's actual scheduled interval.  No environmental
-parameter range, heat-index value, or LLM-produced arithmetic is accepted as
-the duration source.
+Evidence coverage and qualifying intervals are separate concepts: a covered
+cool interval contributes zero; an uncovered interval is unavailable.
 """
 
 from dataclasses import dataclass
@@ -18,7 +15,7 @@ from .thermal import ThermalContractError, area_weighted_tile_value
 
 
 class ShhchContractError(ThermalContractError):
-    """The evidence or schedule cannot support a safe SHHCH calculation."""
+    pass
 
 
 @dataclass(frozen=True)
@@ -26,6 +23,8 @@ class ProjectThermalTrigger:
     threshold_c: float
     quantity: str = "fortyguard_modeled_temperature"
     provenance: str = ""
+    threshold_units: str = "celsius"
+    direction: str = "above"
 
     def __post_init__(self) -> None:
         if isinstance(self.threshold_c, bool) or not isfinite(float(self.threshold_c)):
@@ -34,8 +33,8 @@ class ProjectThermalTrigger:
             raise ShhchContractError("project_thermal_trigger_must_not_be_heat_index")
         if self.quantity not in {"fortyguard_modeled_temperature", "fortyguard_tcm_temperature"}:
             raise ShhchContractError("unsupported_project_thermal_trigger_quantity")
-        if not self.provenance.strip():
-            raise ShhchContractError("project_thermal_trigger_provenance_required")
+        if not self.provenance.strip() or self.threshold_units.lower() != "celsius" or self.direction != "above":
+            raise ShhchContractError("project_thermal_trigger_binding_required")
 
 
 @dataclass(frozen=True)
@@ -48,6 +47,7 @@ class ShhchTaskContribution:
     overlapping_exceedance_hours: float
     crew_hours: float
     provenance: tuple[str, ...]
+    fixed: bool = False
 
 
 @dataclass(frozen=True)
@@ -58,29 +58,19 @@ class ShhchResult:
     contributions: tuple[ShhchTaskContribution, ...]
     provenance: tuple[str, ...]
     errors: tuple[str, ...] = ()
+    movable_crew_hours: float = 0.0
+    fixed_crew_hours: float = 0.0
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "status": self.status,
-            "valid": self.valid,
+            "status": self.status, "valid": self.valid,
             "decision_relevant_result": "SHHCH_READY" if self.valid else "KEEP_CURRENT_PLAN_AND_RECHECK",
             "total_scheduled_high_heat_crew_hours": self.total_crew_hours if self.valid else None,
-            "contributions": [
-                {
-                    "task_id": item.task_id,
-                    "workface_id": item.workface_id,
-                    "scheduled_start": item.scheduled_start,
-                    "scheduled_end": item.scheduled_end,
-                    "crew_size": item.crew_size,
-                    "overlapping_exceedance_hours": item.overlapping_exceedance_hours,
-                    "crew_hours": item.crew_hours,
-                    "provenance": list(item.provenance),
-                }
-                for item in self.contributions
-            ],
-            "provenance": list(self.provenance),
-            "next_allowed_actions": ["COMPARE_SCHEDULE_METRICS"] if self.valid else ["KEEP_CURRENT_PLAN_AND_RECHECK"],
-            "errors": list(self.errors),
+            "TOTAL_SHHCH": self.total_crew_hours if self.valid else None,
+            "MOVABLE_SHHCH": self.movable_crew_hours if self.valid else None,
+            "FIXED_SHHCH": self.fixed_crew_hours if self.valid else None,
+            "contributions": [{"task_id": item.task_id, "workface_id": item.workface_id, "scheduled_start": item.scheduled_start, "scheduled_end": item.scheduled_end, "crew_size": item.crew_size, "overlapping_exceedance_hours": item.overlapping_exceedance_hours, "crew_hours": item.crew_hours, "fixed": item.fixed, "provenance": list(item.provenance)} for item in self.contributions],
+            "provenance": list(self.provenance), "next_allowed_actions": ["COMPARE_SCHEDULE_METRICS"] if self.valid else ["KEEP_CURRENT_PLAN_AND_RECHECK"], "errors": list(self.errors),
         }
 
 
@@ -88,7 +78,10 @@ def _as_datetime(value: Any, field: str) -> datetime:
     if isinstance(value, datetime):
         parsed = value
     elif isinstance(value, str):
-        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        try:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise ShhchContractError(f"{field}_timestamp_invalid") from exc
     else:
         raise ShhchContractError(f"{field}_timestamp_required")
     if parsed.tzinfo is None:
@@ -100,7 +93,7 @@ def _polygon(value: Any, field: str) -> list[tuple[float, float]]:
     if isinstance(value, dict):
         geometry = value.get("geometry", value)
         coordinates = geometry.get("coordinates") if isinstance(geometry, dict) else None
-        if geometry.get("type") == "Polygon" and coordinates:
+        if isinstance(geometry, dict) and geometry.get("type") == "Polygon" and coordinates:
             value = coordinates[0]
     if not isinstance(value, (list, tuple)) or len(value) < 3:
         raise ShhchContractError(f"{field}_polygon_required")
@@ -113,30 +106,22 @@ def _polygon(value: Any, field: str) -> list[tuple[float, float]]:
 def _items(value: Any, key: str) -> list[dict[str, Any]]:
     if isinstance(value, dict):
         value = value.get(key, value.get("items", []))
-    if not isinstance(value, list):
+    if not isinstance(value, list) or not all(isinstance(item, dict) for item in value):
         raise ShhchContractError(f"{key}_array_required")
-    return [item for item in value if isinstance(item, dict)]
+    return value
 
 
 def _task_rows(schedule: Any) -> list[dict[str, Any]]:
-    if isinstance(schedule, dict):
-        tasks = schedule.get("tasks")
-        if isinstance(tasks, list):
-            return [item for item in tasks if isinstance(item, dict)]
-        rows = []
-        for task_id, interval in schedule.items():
-            if isinstance(interval, dict):
-                rows.append({"id": task_id, **interval})
-        return rows
+    if isinstance(schedule, dict) and isinstance(schedule.get("tasks"), list):
+        return _items(schedule, "tasks")
     if isinstance(schedule, list):
-        return [item for item in schedule if isinstance(item, dict)]
+        return _items(schedule, "tasks")
     raise ShhchContractError("schedule_tasks_required")
 
 
 def _workface_map(workfaces: Any) -> dict[str, list[tuple[float, float]]]:
-    rows = _items(workfaces, "workfaces")
     result: dict[str, list[tuple[float, float]]] = {}
-    for row in rows:
+    for row in _items(workfaces, "workfaces"):
         key = row.get("id", row.get("workface_id"))
         if not isinstance(key, str):
             raise ShhchContractError("workface_id_required")
@@ -149,67 +134,39 @@ def _trigger(value: ProjectThermalTrigger | dict[str, Any]) -> ProjectThermalTri
         return value
     if not isinstance(value, dict):
         raise ShhchContractError("project_thermal_trigger_required")
-    threshold = value.get("threshold_c", value.get("threshold"))
-    try:
-        threshold_value = float(threshold)
-    except (TypeError, ValueError) as exc:
-        raise ShhchContractError("project_thermal_trigger_threshold_required") from exc
-    return ProjectThermalTrigger(
-        threshold_c=threshold_value,
-        quantity=str(value.get("quantity", value.get("metric", "fortyguard_modeled_temperature"))),
-        provenance=str(value.get("provenance", value.get("source", ""))),
-    )
+    return ProjectThermalTrigger(float(value.get("threshold_c", value.get("threshold"))), str(value.get("quantity", value.get("metric", "fortyguard_modeled_temperature"))), str(value.get("provenance", value.get("source", ""))), str(value.get("threshold_units", value.get("units", "celsius"))), str(value.get("direction", "above")))
 
 
-def _window_tiles(window: dict[str, Any]) -> Iterable[dict[str, Any]]:
-    tiles = window.get("tiles", window.get("features"))
-    if not isinstance(tiles, list) or not tiles:
-        raise ShhchContractError("exceedance_window_tiles_required")
-    return tiles
+def _validate_binding(window: dict[str, Any], trigger: ProjectThermalTrigger, index: int) -> None:
+    required = ("aoi", "date", "timezone", "analytic_source", "project_thermal_trigger", "result_hash", "version")
+    if any(not window.get(key) for key in required) or not window.get("provenance"):
+        raise ShhchContractError(f"exceedance_window_{index}_binding_required")
+    binding = window["project_thermal_trigger"]
+    if not isinstance(binding, dict) or float(binding.get("threshold_c", binding.get("threshold"))) != float(trigger.threshold_c) or str(binding.get("threshold_units", binding.get("units", ""))).lower() != trigger.threshold_units.lower() or str(binding.get("direction", "")) != trigger.direction or str(binding.get("quantity", "")) != trigger.quantity:
+        raise ShhchContractError("exceedance_threshold_does_not_match_project_trigger")
 
 
-def calculate_scheduled_high_heat_crew_hours(
-    schedule: Any,
-    workfaces: Any,
-    exceedance_windows: Any,
-    project_thermal_trigger: ProjectThermalTrigger | dict[str, Any],
-) -> ShhchResult:
-    """Calculate SHHCH with spatial and temporal overlap, or fail closed.
-
-    Each exceedance window's tile value is an exceedance duration in hours for
-    that exact window.  If a task overlaps only part of the window, only that
-    fraction of the tile duration is counted.
-    """
+def calculate_scheduled_high_heat_crew_hours(schedule: Any, workfaces: Any, exceedance_windows: Any, project_thermal_trigger: ProjectThermalTrigger | dict[str, Any]) -> ShhchResult:
     trigger = _trigger(project_thermal_trigger)
-    tasks = _task_rows(schedule)
-    face_map = _workface_map(workfaces)
-    windows = _items(exceedance_windows, "exceedance_windows")
+    tasks, face_map, windows = _task_rows(schedule), _workface_map(workfaces), _items(exceedance_windows, "exceedance_windows")
     if not windows:
         return ShhchResult("EVIDENCE_UNAVAILABLE", False, 0.0, (), ("FORTYGUARD_EXCEEDANCE", trigger.provenance), ("schedule_aligned_exceedance_windows_required",))
-
-    normalized_windows: list[tuple[datetime, datetime, dict[str, Any], str]] = []
+    normalized: list[tuple[datetime, datetime, dict[str, Any], str]] = []
     for index, window in enumerate(windows):
-        if window.get("analytic_type") != "exceedance":
-            raise ShhchContractError("exceedance_window_analytic_type_required")
-        if window.get("valid") is False or str(window.get("status", "VALID")).upper() in {"STALE", "INVALID", "UNAVAILABLE", "NOT_DEMONSTRATED", "COMPLETED_BUT_EMPTY"}:
+        if window.get("analytic_type") != "exceedance" or str(window.get("units", "")).lower() not in {"hour", "hours"} or window.get("valid") is False or str(window.get("status", "VALID")).upper() != "VALID":
             raise ShhchContractError("invalid_or_stale_exceedance_evidence")
-        units = str(window.get("units", "")).lower()
-        if units not in {"hour", "hours"}:
-            raise ShhchContractError("exceedance_duration_units_must_be_hours")
+        _validate_binding(window, trigger, index)
         start, end = _as_datetime(window.get("start"), f"exceedance_window_{index}_start"), _as_datetime(window.get("end"), f"exceedance_window_{index}_end")
         if end <= start:
             raise ShhchContractError("exceedance_window_end_must_follow_start")
-        provenance = str(window.get("provenance", "")).strip()
-        if not provenance:
-            raise ShhchContractError("exceedance_provenance_required")
-        normalized_windows.append((start, end, window, provenance))
+        normalized.append((start, end, window, str(window["provenance"])))
 
     contributions: list[ShhchTaskContribution] = []
     errors: list[str] = []
-    total = 0.0
+    total = movable = fixed = 0.0
     for row in tasks:
-        task_id = str(row.get("id", ""))
-        if not task_id:
+        task_id = row.get("id")
+        if not isinstance(task_id, str) or not task_id:
             errors.append("task_id_required")
             continue
         if not bool(row.get("outdoor", row.get("environment") not in {"indoor", "shaded-support"})):
@@ -219,35 +176,46 @@ def calculate_scheduled_high_heat_crew_hours(
             errors.append(f"missing_workface:{task_id}")
             continue
         try:
-            start = _as_datetime(row.get("start", row.get("scheduled_start")), f"task:{task_id}:start")
-            end = _as_datetime(row.get("end", row.get("scheduled_end")), f"task:{task_id}:end")
+            start, end = _as_datetime(row.get("start", row.get("scheduled_start")), f"task:{task_id}:start"), _as_datetime(row.get("end", row.get("scheduled_end")), f"task:{task_id}:end")
             crew_size = int(row.get("crew_size", row.get("crewSize")))
             if crew_size <= 0 or end <= start:
-                raise ShhchContractError(f"invalid_task_interval_or_crew_size:{task_id}")
+                raise ShhchContractError("invalid_task_interval_or_crew_size")
         except (TypeError, ValueError, ShhchContractError) as exc:
-            errors.append(str(exc))
+            errors.append(f"{task_id}:{exc}")
             continue
-
-        task_exceedance = 0.0
-        task_sources: list[str] = []
-        for window_start, window_end, window, provenance in normalized_windows:
-            overlap_start, overlap_end = max(start, window_start), min(end, window_end)
-            if overlap_end <= overlap_start:
-                continue
-            window_hours = (window_end - window_start).total_seconds() / 3600
-            weighted_hours = area_weighted_tile_value(face_map[face_id], _window_tiles(window), "value")
-            if weighted_hours < 0 or not isfinite(weighted_hours):
-                raise ShhchContractError("exceedance_duration_must_be_nonnegative_finite")
-            overlap_fraction = (overlap_end - overlap_start).total_seconds() / (window_end - window_start).total_seconds()
-            task_exceedance += weighted_hours * overlap_fraction
-            task_sources.append(provenance)
-        if not task_sources:
+        # Full schedule coverage is required.  Qualifying windows are then
+        # normalized as a union; overlapping windows cannot double count.
+        boundaries = {start, end}
+        for window_start, window_end, _, _ in normalized:
+            boundaries.add(max(start, window_start)); boundaries.add(min(end, window_end))
+        points = sorted(point for point in boundaries if start <= point <= end)
+        if any(not any(window_start <= left and right <= window_end for window_start, window_end, _, _ in normalized) for left, right in zip(points, points[1:]) if right > left):
             errors.append(f"uncovered_task_interval:{task_id}")
             continue
-        crew_hours = round(task_exceedance * crew_size, 6)
+        exceedance = 0.0
+        sources: set[str] = set()
+        for left, right in zip(points, points[1:]):
+            if right <= left:
+                continue
+            rates: list[tuple[float, str]] = []
+            for window_start, window_end, window, provenance in normalized:
+                if window_start <= left and right <= window_end:
+                    window_duration = (window_end - window_start).total_seconds() / 3600
+                    weighted = area_weighted_tile_value(face_map[face_id], window.get("tiles", window.get("features", [])), "value")
+                    rate = max(0.0, min(1.0, weighted / window_duration))
+                    if window.get("qualifying") is False:
+                        rate = 0.0
+                    rates.append((rate, provenance))
+            if rates:
+                rate, _ = max(rates, key=lambda item: item[0])
+                exceedance += (right - left).total_seconds() / 3600 * rate
+                sources.update(provenance for _, provenance in rates)
+        crew_hours = round(exceedance * crew_size, 6)
+        is_fixed = bool(row.get("fixed", False))
         total += crew_hours
-        contributions.append(ShhchTaskContribution(task_id, face_id, start.isoformat(), end.isoformat(), crew_size, round(task_exceedance, 6), crew_hours, tuple(sorted(set(task_sources)))))
-
+        fixed += crew_hours if is_fixed else 0.0
+        movable += 0.0 if is_fixed else crew_hours
+        contributions.append(ShhchTaskContribution(task_id, face_id, start.isoformat(), end.isoformat(), crew_size, round(exceedance, 6), crew_hours, tuple(sorted(sources)), is_fixed))
     if errors:
-        return ShhchResult("EVIDENCE_UNAVAILABLE", False, 0.0, tuple(contributions), ("FORTYGUARD_EXCEEDANCE", trigger.provenance), tuple(errors))
-    return ShhchResult("SHHCH_READY", True, round(total, 6), tuple(contributions), ("FORTYGUARD_EXCEEDANCE", trigger.provenance), ())
+        return ShhchResult("EVIDENCE_UNAVAILABLE", False, 0.0, tuple(contributions), ("FORTYGUARD_EXCEEDANCE", trigger.provenance), tuple(errors), 0.0, 0.0)
+    return ShhchResult("SHHCH_READY", True, round(total, 6), tuple(contributions), ("FORTYGUARD_EXCEEDANCE", trigger.provenance), (), round(movable, 6), round(fixed, 6))

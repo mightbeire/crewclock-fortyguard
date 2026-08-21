@@ -127,8 +127,8 @@ export const TASKS: Task[] = [
   },
   {
     id: 'C5', name: 'Finish & protect concrete', crewId: 'concrete', zoneId: 'south', durationMinutes: 90,
-    originalStart: '11:30', proposedStart: '11:30', fixed: true, environment: 'outdoor-moderate',
-    qualification: 'finishing', dependencies: ['C4'], deadline: '13:00', weatherSensitivity: { precipitation: true },
+    originalStart: '13:00', proposedStart: '13:00', fixed: true, environment: 'outdoor-moderate',
+    qualification: 'finishing', dependencies: ['C4'], deadline: '14:30', weatherSensitivity: { precipitation: true },
   },
   {
     id: 'E1', name: 'Cabinet pre-wire', crewId: 'electrical', zoneId: 'laydown', durationMinutes: 120,
@@ -161,11 +161,11 @@ export const WORKFACES: Workface[] = [
 
 export const THERMAL_EVIDENCE = {
   source: 'FortyGuard /v1/heatmap analytic_type=exceedance · /v1/env_params (optional context)',
-  status: 'cached-live-context-only',
+  status: 'EVIDENCE_UNAVAILABLE',
   exceedanceEvidenceStatus: 'none' as 'none' | 'partial' | 'complete',
   exceedanceWindows: [],
   forecastStatus: 'NOT_DEMONSTRATED',
-  projectThermalTrigger: { thresholdC: 32, quantity: 'fortyguard_modeled_temperature', provenance: 'synthetic employer project trigger; FortyGuard threshold quantity is modeled temperature, not heat index' },
+  projectThermalTrigger: { thresholdC: 32, quantity: 'fortyguard_modeled_temperature', provenance: 'synthetic employer project trigger; FortyGuard threshold quantity is modeled temperature, not heat index', thresholdUnits: 'celsius' as const, direction: 'above' as const },
   location: 'Phoenix planning AOI · 33.434° N, 112.018° W',
   aoi: PHOENIX_PROJECT_AOI,
   observationDate: '2025-07-15',
@@ -173,6 +173,8 @@ export const THERMAL_EVIDENCE = {
   grid: '100 m requested analysis grid',
   primarySignal: 'No Phoenix schedule-aligned exceedance windows currently cached; TCM/time_of_measure/persistence are contextual evidence only',
   environmentalContextRole: 'Selective context only; never the SHHCH duration source, forecast, or spatial ranking engine.',
+  evidenceClass: 'CONTEXTUAL_ENVIRONMENTAL_EVIDENCE' as const,
+  decisionGradeThermalEvidence: false,
   maxTemperatureC: 40.1505,
   averageTemperatureC: 37.0796,
   apparentTemperatureC: [32.0,31.0,30.3,30.0,29.5,28.9,30.6,31.4,33.3,35.1,37.0,39.6,41.3,42.5,40.7,39.3,34.8,37.3,38.6,38.0,36.9,36.1,35.3,32.7],
@@ -284,7 +286,7 @@ export const validateScenario = () =>
   validatePlan('proposed') &&
   !validatePolicy('original') &&
   validatePolicy('proposed') &&
-  THERMAL_EVIDENCE.status === 'cached-live-context-only' &&
+  THERMAL_EVIDENCE.status === 'EVIDENCE_UNAVAILABLE' &&
   THERMAL_EVIDENCE.exceedanceEvidenceStatus === 'none' &&
   EMPLOYER_POLICY.status === 'synthetic employer policy'
 
