@@ -1,0 +1,272 @@
+{
+  "activity_id": "863c9186-d228-40e3-9922-bbaaa490c2e2",
+  "aoi_validation": {
+    "area_mi2": 0.003226282,
+    "closed": true,
+    "coordinate_order": "longitude,latitude",
+    "crs_assumption": "WGS84 GeoJSON; no crs member",
+    "us_coverage": true,
+    "winding_shoelace": 8.09999619377777e-07
+  },
+  "credits_after": {
+    "cycle_credits_used": 217160,
+    "cycle_remaining_credits": 1782840,
+    "cycle_usage_percentage": 10.9,
+    "total_available_credits": 2000000,
+    "total_credits_used": 217160,
+    "total_remaining_credits": 1782840
+  },
+  "credits_before": {
+    "cycle_credits_used": 212940,
+    "cycle_remaining_credits": 1787060,
+    "cycle_usage_percentage": 10.6,
+    "total_available_credits": 2000000,
+    "total_credits_used": 212940,
+    "total_remaining_credits": 1787060
+  },
+  "credits_consumed": 4220,
+  "endpoint": "/v1/heatmap",
+  "error": null,
+  "execution_started_phoenix": "2026-08-20T17:23:34.115654-07:00",
+  "execution_started_utc": "2026-08-21T00:23:34.115654Z",
+  "forecast_lead_hours": 1.6067672644444444,
+  "http_events": [
+    {
+      "finished_at": "2026-08-21T00:23:35.637740Z",
+      "method": "POST",
+      "path": "/v1/system/fetch-api-key-usage",
+      "started_at": "2026-08-21T00:23:34.123871Z",
+      "status_code": 200
+    },
+    {
+      "finished_at": "2026-08-21T00:23:36.809964Z",
+      "method": "POST",
+      "path": "/v1/heatmap",
+      "started_at": "2026-08-21T00:23:35.637848Z",
+      "status_code": 200
+    },
+    {
+      "finished_at": "2026-08-21T00:23:38.513962Z",
+      "method": "GET",
+      "path": "/v1/status/863c9186-d228-40e3-9922-bbaaa490c2e2",
+      "started_at": "2026-08-21T00:23:36.810082Z",
+      "status_code": 200
+    },
+    {
+      "finished_at": "2026-08-21T00:23:42.394091Z",
+      "method": "GET",
+      "path": "/v1/status/863c9186-d228-40e3-9922-bbaaa490c2e2",
+      "started_at": "2026-08-21T00:23:41.514533Z",
+      "status_code": 200
+    },
+    {
+      "finished_at": "2026-08-21T00:23:46.285175Z",
+      "method": "GET",
+      "path": "/v1/status/863c9186-d228-40e3-9922-bbaaa490c2e2",
+      "started_at": "2026-08-21T00:23:45.394560Z",
+      "status_code": 200
+    },
+    {
+      "finished_at": "2026-08-21T00:23:50.176028Z",
+      "method": "GET",
+      "path": "/v1/status/863c9186-d228-40e3-9922-bbaaa490c2e2",
+      "started_at": "2026-08-21T00:23:49.285627Z",
+      "status_code": 200
+    },
+    {
+      "finished_at": "2026-08-21T00:23:53.786830Z",
+      "method": "GET",
+      "path": "/v1/status/863c9186-d228-40e3-9922-bbaaa490c2e2",
+      "started_at": "2026-08-21T00:23:53.176399Z",
+      "status_code": 200
+    },
+    {
+      "finished_at": "2026-08-21T00:23:57.858438Z",
+      "method": "GET",
+      "path": "/v1/status/863c9186-d228-40e3-9922-bbaaa490c2e2",
+      "started_at": "2026-08-21T00:23:56.787357Z",
+      "status_code": 200
+    },
+    {
+      "finished_at": "2026-08-21T00:23:58.485953Z",
+      "method": "POST",
+      "path": "/v1/system/fetch-api-key-usage",
+      "started_at": "2026-08-21T00:23:57.858561Z",
+      "status_code": 200
+    }
+  ],
+  "live_call_made": true,
+  "post_finished_utc": "2026-08-21T00:23:36.809964Z",
+  "post_timestamp_phoenix": "2026-08-20T17:23:35.637848-07:00",
+  "post_timestamp_utc": "2026-08-21T00:23:35.637848Z",
+  "probe": "single_forecast_probe",
+  "provenance": "LIVE FORTYGUARD",
+  "raw_result": {
+    "map_data": {
+      "features": [],
+      "type": "FeatureCollection"
+    },
+    "stats_data": {
+      "activity_id": "863c9186-d228-40e3-9922-bbaaa490c2e2",
+      "n_cells": 0
+    }
+  },
+  "request": {
+    "analytic_type": "tcm",
+    "date_time": {
+      "filter_type": 1,
+      "start_date": "2026-08-20",
+      "start_time": "19:00"
+    },
+    "granularity": 100,
+    "polygon_aoi": {
+      "features": [
+        {
+          "geometry": {
+            "coordinates": [
+              [
+                [
+                  -112.01845,
+                  33.43355
+                ],
+                [
+                  -112.01755,
+                  33.43355
+                ],
+                [
+                  -112.01755,
+                  33.43445
+                ],
+                [
+                  -112.01845,
+                  33.43445
+                ],
+                [
+                  -112.01845,
+                  33.43355
+                ]
+              ]
+            ],
+            "type": "Polygon"
+          },
+          "properties": {},
+          "type": "Feature"
+        }
+      ],
+      "type": "FeatureCollection"
+    }
+  },
+  "request_hash": "4e7f6e4e7035bdb3a2de272a3fc25efc9cc2ff3601cec81fd554c82565b001b0",
+  "request_validation": "PASS",
+  "result_evaluation": {
+    "aoi_intersection_valid": false,
+    "feature_count": 0,
+    "n_cells": 0,
+    "pass_condition": false,
+    "returned_units": null,
+    "schema_error": "heatmap_empty_feature_collection",
+    "tcm_schema_valid": false,
+    "temperature_summary": {
+      "average_temperature_range_c": 0.0,
+      "coolest_tile": null,
+      "hottest_tile": null
+    },
+    "units_interpreted_as": "celsius_by_current_tcm_contract",
+    "units_valid": true
+  },
+  "result_hash": "205bd6e16e96ad4d832c468c6de074ee0e4a54456f1e2e99289069d7b7c84371",
+  "status": "FAIL",
+  "status_transitions": [
+    {
+      "envelope": {
+        "activity_id": "863c9186-d228-40e3-9922-bbaaa490c2e2",
+        "status": "Processing"
+      },
+      "http_status": 200,
+      "observed_at_utc": "2026-08-21T00:23:38.513962Z",
+      "status": "Processing"
+    },
+    {
+      "envelope": {
+        "activity_id": "863c9186-d228-40e3-9922-bbaaa490c2e2",
+        "status": "Processing"
+      },
+      "http_status": 200,
+      "observed_at_utc": "2026-08-21T00:23:42.394091Z",
+      "status": "Processing"
+    },
+    {
+      "envelope": {
+        "activity_id": "863c9186-d228-40e3-9922-bbaaa490c2e2",
+        "status": "Processing"
+      },
+      "http_status": 200,
+      "observed_at_utc": "2026-08-21T00:23:46.285175Z",
+      "status": "Processing"
+    },
+    {
+      "envelope": {
+        "activity_id": "863c9186-d228-40e3-9922-bbaaa490c2e2",
+        "status": "Processing"
+      },
+      "http_status": 200,
+      "observed_at_utc": "2026-08-21T00:23:50.176028Z",
+      "status": "Processing"
+    },
+    {
+      "envelope": {
+        "activity_id": "863c9186-d228-40e3-9922-bbaaa490c2e2",
+        "status": "Processing"
+      },
+      "http_status": 200,
+      "observed_at_utc": "2026-08-21T00:23:53.786830Z",
+      "status": "Processing"
+    },
+    {
+      "envelope": {
+        "activity_id": "863c9186-d228-40e3-9922-bbaaa490c2e2",
+        "result": {
+          "map_data": {
+            "features": [],
+            "type": "FeatureCollection"
+          },
+          "stats_data": {
+            "activity_id": "863c9186-d228-40e3-9922-bbaaa490c2e2",
+            "n_cells": 0
+          }
+        },
+        "status": "Completed"
+      },
+      "http_status": 200,
+      "observed_at_utc": "2026-08-21T00:23:57.858438Z",
+      "status": "Completed"
+    }
+  ],
+  "submission_response": {
+    "data": {
+      "activity_id": "863c9186-d228-40e3-9922-bbaaa490c2e2"
+    },
+    "error": false,
+    "message": "Heatmap Submitted Successfully",
+    "status_code": 200
+  },
+  "target_phoenix_hour": "2026-08-20T19:00:00-07:00",
+  "target_utc_hour": "2026-08-21T02:00:00Z",
+  "terminal_envelope": {
+    "activity_id": "863c9186-d228-40e3-9922-bbaaa490c2e2",
+    "result": {
+      "map_data": {
+        "features": [],
+        "type": "FeatureCollection"
+      },
+      "stats_data": {
+        "activity_id": "863c9186-d228-40e3-9922-bbaaa490c2e2",
+        "n_cells": 0
+      }
+    },
+    "status": "Completed"
+  },
+  "terminal_status": "Completed",
+  "workface_decision_signal": "NOT_TESTABLE",
+  "workface_finding": "The canonical project scenario has zone IDs but no GeoJSON workface coordinates, so returned live tiles cannot be attributed to synthetic workfaces without inventing geometry."
+}
