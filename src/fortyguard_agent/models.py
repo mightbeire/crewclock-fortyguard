@@ -83,6 +83,11 @@ class AgentState:
     iteration: int = 0
     terminated: bool = False
     termination_reason: str | None = None
+    # ``termination_reason`` remains human/audit compatible.  This field is
+    # the machine-owned operational state and must be set by deterministic
+    # runtime transitions, never inferred from model prose.
+    operational_state: str | None = None
+    authoritative_result: dict[str, Any] | None = None
 
 
 @dataclass

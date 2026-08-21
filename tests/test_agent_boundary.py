@@ -60,7 +60,7 @@ def test_provider_can_drive_tools_then_stop_at_approval() -> None:
     ])
     runner = AgentRunner(registry, provider, budget=Budget(max_iterations=4, max_tool_calls=3, max_api_credits=3), policy=SafetyPolicy(allowed_tools=registry.names()))
     state, _ = runner.run(AgentState(Goal("adjust the upcoming shift", "superintendent")))
-    assert state.termination_reason == "approval_requested"
+    assert state.termination_reason == "awaiting_human_approval"
 
 
 def test_future_horizon_request_is_rejected_before_handler() -> None:

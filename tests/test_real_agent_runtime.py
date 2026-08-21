@@ -220,10 +220,10 @@ def test_protocol_evaluations_are_materially_different() -> None:
     assert "get_workface_thermal_evidence" in results["A"].tool_names
     assert "get_workface_thermal_evidence" not in results["B"].tool_names
     assert "generate_feasible_schedule_alternatives" not in results["C"].tool_names
-    assert results["D"].termination.startswith("Insufficient thermal evidence")
+    assert results["D"].termination == "EVIDENCE_UNAVAILABLE"
     assert "generate_feasible_schedule_alternatives" in results["E"].tool_names
-    assert results["E"].termination.startswith("No feasible improvement")
-    assert results["H"].termination.startswith("Task text was treated")
+    assert results["E"].termination == "NO_FEASIBLE_IMPROVEMENT"
+    assert results["H"].termination == "awaiting_human_approval"
 
 
 def test_existing_deterministic_fallback_remains_available() -> None:

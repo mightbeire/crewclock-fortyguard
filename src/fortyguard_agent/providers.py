@@ -482,6 +482,8 @@ def compact_continuation_state(state: AgentState, *, max_observations: int = 6) 
             "iteration": state.iteration,
             "terminated": state.terminated,
             "termination_reason": state.termination_reason,
+            "operational_state": state.operational_state,
+            "authoritative_result": _compact_value(state.authoritative_result),
             "evidence_status": _compact_value(constraints.get("evidence_status")),
             "scheduler_outcome": _compact_value(constraints.get("scheduler_outcome")),
             "policy_summary": _compact_value(constraints.get("policy_summary")),

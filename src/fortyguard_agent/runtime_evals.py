@@ -131,9 +131,9 @@ def _run(name: str, decisions: list[ProviderDecision], *, goal: str) -> RuntimeS
     elif name.startswith("C_"):
         passed = passed and "generate_feasible_schedule_alternatives" not in tool_names and "verify_schedule" not in tool_names
     elif name.startswith("D_") or name.startswith("F_"):
-        passed = passed and "abstain" in (state.termination_reason or "").lower()
+        passed = passed and (state.operational_state == "EVIDENCE_UNAVAILABLE" or "abstain" in (state.termination_reason or "").lower())
     elif name.startswith("E_"):
-        passed = passed and "generate_feasible_schedule_alternatives" in tool_names and "abstain" in (state.termination_reason or "").lower()
+        passed = passed and "generate_feasible_schedule_alternatives" in tool_names and state.operational_state == "NO_FEASIBLE_IMPROVEMENT"
     elif name.startswith("H_"):
         passed = passed and not state.approvals
     elif name.startswith("I_") or name.startswith("J_"):

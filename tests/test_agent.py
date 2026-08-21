@@ -63,7 +63,7 @@ def test_handler_failure_becomes_observation_and_provider_can_finish() -> None:
     provider = MockProvider([ProviderDecision.call_tool("inspect", {}), ProviderDecision.finish("insufficient_evidence")])
     runner = AgentRunner(registry, provider, budget=Budget(max_iterations=3, max_tool_calls=2, max_api_credits=2), policy=SafetyPolicy(allowed_tools={"inspect"}))
     state, trace = runner.run(AgentState(Goal("inspect", "operator")))
-    assert state.termination_reason == "insufficient_evidence"
+    assert state.termination_reason == "ERROR_SAFE"
     assert state.observations[0].kind == "error"
     assert state.observations[0].content["error"] == "tool_execution_error:RuntimeError"
     assert any(event.event == "tool_call_finished" and event.payload["ok"] is False for event in trace.events)
