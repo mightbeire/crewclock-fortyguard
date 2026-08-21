@@ -114,8 +114,18 @@ class AgentRunner:
                 }, sort_keys=True, default=str))
                 self.budget.before_model_call(input_chars)
                 try:
-                    decision = self.provider.next_decision(state)
+                    complete = getattr(self.provider, "complete", self.provider.next_decision)
+                    decision = complete(state)
                 except Exception as exc:
+                    safe_mode_factory = getattr(self.provider, "safe_mode_result", None)
+                    if callable(safe_mode_factory):
+                        safe_result = safe_mode_factory(state)
+                        state.terminated = True
+                        state.termination_reason = "AI_ANALYSIS_UNAVAILABLE"
+                        state.observations.append(Observation(kind="error", content=safe_result.to_dict()))
+                        trace.record("provider_error", error=_redact(str(exc)[:240]))
+                        trace.record("safe_mode", status="AI_ANALYSIS_UNAVAILABLE", current_plan_preserved=True, retry_available=True, fabrication_count=0)
+                        break
                     state.terminated = True
                     state.termination_reason = f"provider_error:{type(exc).__name__}"
                     trace.record("provider_error", error=_redact(str(exc)[:240]))
@@ -166,6 +176,12 @@ class AgentRunner:
                     # Preserve compatibility with older provider implementations.
                     self.provider.observe(result, state)
                 trace.record("tool_call_finished", tool_name=name, ok=result.ok, provenance=result.provenance.source, error=_redact(result.error or ""))
+                if getattr(self.provider, "supports_deterministic_terminal_shortcuts", False):
+                    terminal = self._deterministic_terminal(result)
+                    if terminal is not None:
+                        state.terminated = True
+                        state.termination_reason = terminal
+                        trace.record("deterministic_terminal", status=terminal)
             except GuardrailError as exc:
                 state.terminated = True
                 reason = str(exc)
@@ -175,7 +191,23 @@ class AgentRunner:
                 state.observations.append(Observation(kind="error", content={"error": str(exc)}))
                 trace.record("guardrail_stop", reason=str(exc))
         trace.record("goal_finished", reason=state.termination_reason, iterations=state.iteration, model_calls=self.budget.model_calls, tool_calls=self.budget.tool_calls, reserved_credits=self.budget.api_credits_reserved)
+        telemetry = getattr(self.provider, "telemetry", None)
+        if callable(telemetry):
+            trace.record("provider_telemetry", **telemetry())
         return state, trace
+
+    @staticmethod
+    def _deterministic_terminal(result: ToolResult) -> str | None:
+        status = result.data.get("status") or result.data.get("state") or result.data.get("evidence_status")
+        if status in {"EVIDENCE_UNAVAILABLE", "INVALID_EVIDENCE", "COMPLETED_BUT_EMPTY"}:
+            return "EVIDENCE_UNAVAILABLE"
+        if status in {"NO_FEASIBLE_IMPROVEMENT", "KEEP_CURRENT_PLAN", "KEEP_CURRENT_PLAN_AND_RECHECK", "NO_ACTION_REQUIRED", "REJECTED_FIXED_COMMITMENT"}:
+            return str(status)
+        if status == "PENDING_SUPERINTENDENT_APPROVAL":
+            return "awaiting_human_approval"
+        if status == "AI_ANALYSIS_UNAVAILABLE":
+            return "AI_ANALYSIS_UNAVAILABLE"
+        return None
 
     @staticmethod
     def _finish_reason(state: AgentState, message: str | None) -> str:

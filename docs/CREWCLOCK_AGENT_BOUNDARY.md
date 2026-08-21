@@ -31,7 +31,7 @@ Task descriptions, imported notes, policy text and external evidence are data. T
 
 ## Limits and failure handling
 
-The bounded runner enforces maximum iterations, model calls, tool calls, input characters, estimated credits and repeated tool calls. The Groq adapter enforces a request timeout and retry ceiling. Provider outage, timeout, rate limit, invalid JSON, malformed tool calls, unknown tools and invalid arguments produce a safe stop or bounded observation. Iteration/model-limit exhaustion returns a safe incomplete abstention.
+The bounded runner enforces maximum iterations, model calls, tool calls, input characters, estimated credits and repeated tool calls. The production provider route is Groq → TokenRouter Qwen → deterministic safe mode with a one-way failover ceiling, configurable per-turn/total interactive budgets, and zero interactive provider retries. Provider outage, timeout, rate limit, invalid JSON, malformed tool calls, unknown tools and invalid arguments produce a safe stop or bounded observation. Iteration/model-limit exhaustion returns a safe incomplete abstention.
 
 The connection gate now passes: the target model returned usable content, the production adapter parsed it, and a harmless local tool-call smoke test completed. Real evaluation transport failures are classified separately from agent behavior, paced from returned Groq headers, retried within a bounded ceiling, and checkpointed for resume. No provider interruption is reported as a behavioral scenario failure. The deterministic demo provider remains the fallback when real evidence is incomplete.
 
