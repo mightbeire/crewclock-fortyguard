@@ -147,3 +147,10 @@ The second research pass used only cached-live responses, fixtures, primary sour
 - `env_params` is never used as a range-based shift forecast. The controlled future Phoenix probe made two heatmap calls (8,440 credits) and returned zero cells both times; no env_params call was submitted. `FUTURE_SINGLE_HOUR_ENV_PARAMS = AMBIGUOUS`.
 - Product language is “upcoming shift”, and the hero metric is `scheduled high-heat crew-hours`. Heatmap is the primary spatial signal; polygon workfaces are area-weighted over the shared AOI.
 - Mandatory policy breaks are real scheduling constraints. The agent may choose evidence windows and tools; deterministic code owns overlap, feasibility, verification, metrics, budgets and approval recheck.
+
+## Real-agent runtime amendment — 2026-08-21
+
+- Use Groq `openai/gpt-oss-120b` through the OpenAI-compatible Chat Completions local-tool-calling interface. CrewClock, not Groq, owns tool execution and orchestration.
+- Keep the provider-neutral `LLMProvider` boundary. Groq-specific HTTP and response translation stays in the provider adapter.
+- Treat the absence of `GROQ_API_KEY` as “real model not connected,” not as a reason to fabricate a model evaluation. The deterministic provider and offline A–J protocol suite remain the demo fallback.
+- Keep the future Phoenix forecast path closed. The real runtime reads only explicit cached-live fixtures in this run; it makes zero FortyGuard calls.

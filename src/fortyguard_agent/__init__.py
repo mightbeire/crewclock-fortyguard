@@ -2,7 +2,7 @@
 
 from .agent import AgentRunner
 from .models import Goal, AgentState, ActionProposal, ToolResult
-from .providers import MockProvider, ProviderDecision
+from .providers import GroqProvider, MockProvider, ProviderDecision, build_configured_provider
 from .registry import build_tool_registry
 
 __all__ = [
@@ -11,7 +11,9 @@ __all__ = [
     "AgentState",
     "Goal",
     "MockProvider",
+    "GroqProvider",
     "ProviderDecision",
     "ToolResult",
+    "build_configured_provider",
     "build_tool_registry",
 ]

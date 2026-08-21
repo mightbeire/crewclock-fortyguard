@@ -15,10 +15,13 @@ class GuardrailError(RuntimeError):
 @dataclass
 class Budget:
     max_iterations: int = 8
+    max_model_calls: int = 8
     max_tool_calls: int = 12
+    max_input_chars: int = 12_000
     max_api_credits: int = 25_000
     estimated_costs: dict[str, int] = field(default_factory=dict)
     iterations: int = 0
+    model_calls: int = 0
     tool_calls: int = 0
     api_credits_reserved: int = 0
 
@@ -36,6 +39,13 @@ class Budget:
         self.tool_calls += 1
         self.api_credits_reserved += cost
         return cost
+
+    def before_model_call(self, input_chars: int) -> None:
+        if self.model_calls >= self.max_model_calls:
+            raise GuardrailError("model_call_limit_reached")
+        if input_chars > self.max_input_chars:
+            raise GuardrailError("model_input_limit_reached")
+        self.model_calls += 1
 
 
 @dataclass

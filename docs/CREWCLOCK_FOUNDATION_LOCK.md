@@ -29,3 +29,11 @@ The LLM selects investigations, evidence windows, and tool calls; explains struc
 ## Current validation truth
 
 `FUTURE_SINGLE_HOUR_ENV_PARAMS = AMBIGUOUS`: two valid future Phoenix heatmap calls completed but returned zero features, so no matching temperature anchor existed for an env_params call. This is an abstention state, not a threshold or fixture adjustment.
+
+## Real-agent runtime amendment — 2026-08-21
+
+- The frozen agent boundary is implemented as a provider-neutral bounded loop with a Groq `openai/gpt-oss-120b` adapter and deterministic local function tools.
+- `GROQ_API_KEY` is not configured in this workspace, so real-model evaluation is not claimed. Offline deterministic-provider protocol traces cover A–J and retain the deterministic demo fallback.
+- Cached-live thermal evidence is explicit and compact. Empty completed heatmap responses are `COMPLETED_BUT_EMPTY = INVALID_EVIDENCE` and fail closed.
+- No new FortyGuard request was made during this runtime work. The future Phoenix forecast path remains `NOT_DEMONSTRATED`.
+- The current task ledger records `1,782,840` FortyGuard credits remaining; this runtime consumes `0`.

@@ -84,6 +84,51 @@ class FortyGuardToolkit:
             return ToolResult({}, Provenance(source="derived", endpoint="/v1/heatmap"), error=str(exc))
         return self._cached_or_live("/v1/heatmap", payload, lambda: self.client.create_heatmap(**payload, verbose=False), request_at=request_at)
 
+    def get_workface_thermal_evidence(self, arguments: dict[str, Any]) -> ToolResult:
+        """Return compact cached-live evidence; this tool cannot submit a request."""
+        fixture = arguments.get("fixture")
+        endpoint = "/v1/heatmap"
+        if not fixture:
+            return ToolResult({}, Provenance(source="cached", endpoint=endpoint, assumptions=("CACHED_LIVE_FORTYGUARD",)), error="cached_live_fixture_required")
+        loaded = self.load_fixture(fixture, endpoint=endpoint)
+        if not loaded.ok:
+            return ToolResult({}, Provenance(source="cached", endpoint=endpoint, assumptions=("CACHED_LIVE_FORTYGUARD",)), error=loaded.error)
+        wrapper = loaded.data
+        raw_result = wrapper.get("heatmap", {}).get("result", wrapper.get("result", wrapper)) if isinstance(wrapper, dict) else {}
+        analytic_type = str(arguments.get("analytic_type", "tcm"))
+        provenance = Provenance(
+            source="cached",
+            endpoint=endpoint,
+            request_hash=request_hash(endpoint, {key: value for key, value in arguments.items() if key != "fixture"}),
+            activity_id=(wrapper.get("heatmap", {}).get("activity_id") if isinstance(wrapper, dict) else None) or (wrapper.get("activity_id") if isinstance(wrapper, dict) else None),
+            assumptions=("CACHED_LIVE_FORTYGUARD", "raw tile arrays omitted from model context"),
+        )
+        try:
+            assert_heatmap_schema(raw_result, analytic_type)
+        except ThermalContractError as exc:
+            # A completed upstream activity with no usable cells is evidence failure,
+            # never a successful empty result.
+            return ToolResult({"state": "COMPLETED_BUT_EMPTY", "evidence_status": "INVALID_EVIDENCE"}, provenance, error=f"COMPLETED_BUT_EMPTY:{exc}")
+        features = raw_result.get("map_data", {}).get("features", [])
+        properties = [feature.get("properties", {}) for feature in features]
+        compact: dict[str, Any] = {
+            "workfaces": arguments.get("workfaces", []),
+            "window": arguments.get("window"),
+            "analytic_type": analytic_type,
+            "feature_count": len(features),
+            "n_cells": (raw_result.get("stats_data") or {}).get("n_cells", len(features)),
+            "source": "CACHED_LIVE_FORTYGUARD",
+            "coverage": "VALID",
+            "evidence_id": provenance.request_hash,
+        }
+        if analytic_type == "tcm":
+            values = [float(item["average_temperature"]) for item in properties]
+            compact.update({"average_temperature_c": round(mean(values), 4), "max_temperature_c": max(float(item["max_temperature"]) for item in properties), "min_temperature_c": min(float(item["min_temperature"]) for item in properties)})
+        else:
+            values = [float(item["value"]) for item in properties]
+            compact.update({"min_value": min(values), "max_value": max(values), "mean_value": round(mean(values), 4), "units": (raw_result.get("stats_data") or {}).get("units")})
+        return ToolResult(compact, provenance)
+
     def get_environmental_parameters(self, arguments: dict[str, Any]) -> ToolResult:
         payload = dict(arguments)
         fixture = payload.pop("fixture", None)
@@ -96,6 +141,24 @@ class FortyGuardToolkit:
         except GuardrailError as exc:
             return ToolResult({}, Provenance(source="derived", endpoint="/v1/env_params"), error=str(exc))
         return self._cached_or_live("/v1/env_params", payload, lambda: self.client.environmental_parameters(**payload, verbose=False))
+
+    def get_environmental_context(self, arguments: dict[str, Any]) -> ToolResult:
+        """Cached-only optional context for the real agent runtime."""
+        fixture = arguments.get("fixture")
+        if not fixture:
+            return ToolResult({}, Provenance(source="cached", endpoint="/v1/env_params", assumptions=("CACHED_LIVE_FORTYGUARD",)), error="cached_live_fixture_required")
+        loaded = self.load_fixture(fixture, endpoint="/v1/env_params")
+        if not loaded.ok:
+            return ToolResult({}, Provenance(source="cached", endpoint="/v1/env_params", assumptions=("CACHED_LIVE_FORTYGUARD",)), error=loaded.error)
+        raw = loaded.data.get("result", loaded.data) if isinstance(loaded.data, dict) else {}
+        try:
+            assert_env_params_schema(raw)
+        except ThermalContractError as exc:
+            return ToolResult({"state": "INVALID_EVIDENCE"}, Provenance(source="cached", endpoint="/v1/env_params", assumptions=("CACHED_LIVE_FORTYGUARD",)), error=str(exc))
+        locations = raw.get("locations", [])
+        first = locations[0] if locations else {}
+        params = first.get("parameters", {})
+        return ToolResult({"location_count": len(locations), "parameter_names": sorted(params)[:12], "timestamp_count": len((raw.get("metadata") or {}).get("timestamps", [])), "source": "CACHED_LIVE_FORTYGUARD", "coverage": "VALID"}, Provenance(source="cached", endpoint="/v1/env_params", assumptions=("CACHED_LIVE_FORTYGUARD", "range arrays omitted from model context")))
 
     def get_activity_status(self, arguments: dict[str, Any]) -> ToolResult:
         activity_id = str(arguments["activity_id"])
@@ -171,7 +234,18 @@ class FortyGuardToolkit:
     @staticmethod
     def inspect_shift_plan(arguments: dict[str, Any]) -> ToolResult:
         tasks = arguments.get("tasks", [])
-        return ToolResult({"task_count": len(tasks), "outdoor_task_ids": [t.get("id") for t in tasks if t.get("outdoor", t.get("environment") != "indoor")], "source": "SYNTHETIC OPERATIONAL INPUT"}, Provenance(source="derived", endpoint="local:inspect_shift_plan"))
+        outdoor = [t for t in tasks if bool(t.get("outdoor", t.get("environment") != "indoor"))]
+        fixed = [t for t in tasks if bool(t.get("fixed", False))]
+        crew_ids = sorted({str(t.get("crew_id", t.get("crewId", t.get("crew")))) for t in tasks if t.get("crew_id", t.get("crewId", t.get("crew"))) is not None})
+        workfaces = sorted({str(t.get("workface", t.get("workface_id", t.get("zoneId", t.get("zone_id"))))) for t in tasks if t.get("workface", t.get("workface_id", t.get("zoneId", t.get("zone_id")))) is not None})
+        dependencies = sum(len(t.get("dependencies", [])) for t in tasks if isinstance(t.get("dependencies", []), list))
+        return ToolResult({
+            "task_count": len(tasks), "indoor_tasks": len(tasks) - len(outdoor), "outdoor_tasks": len(outdoor),
+            "fixed_tasks": len(fixed), "movable_tasks": len(tasks) - len(fixed),
+            "outdoor_task_ids": [t.get("id") for t in outdoor], "crews": crew_ids, "workfaces": workfaces,
+            "shift_bounds": {"start": arguments.get("shift_start"), "end": arguments.get("shift_end")},
+            "major_dependencies": dependencies, "source": "SHIFT_PLAN",
+        }, Provenance(source="derived", endpoint="local:inspect_shift_plan"))
 
     @staticmethod
     def identify_thermal_candidates(arguments: dict[str, Any]) -> ToolResult:
@@ -189,7 +263,16 @@ class FortyGuardToolkit:
 
     @staticmethod
     def generate_feasible_schedule_alternatives(arguments: dict[str, Any]) -> ToolResult:
-        return ToolResult({"status": "DETERMINISTIC_SCHEDULER_REQUIRED", "requested_task_ids": arguments.get("task_ids", []), "thermal_objective_subordinate_to_hard_constraints": True}, Provenance(source="derived", endpoint="local:generate_feasible_schedule_alternatives"))
+        requested = arguments.get("task_ids", [])
+        known = arguments.get("known_task_ids")
+        if not isinstance(requested, list) or not all(isinstance(task_id, str) for task_id in requested):
+            return ToolResult({}, Provenance(source="derived", endpoint="local:generate_feasible_schedule_alternatives"), error="task_ids_must_be_string_array")
+        if not isinstance(known, list) or not all(isinstance(task_id, str) for task_id in known):
+            return ToolResult({}, Provenance(source="derived", endpoint="local:generate_feasible_schedule_alternatives"), error="known_task_ids_required")
+        unknown = sorted(set(requested) - set(known))
+        if unknown:
+            return ToolResult({"unknown_task_ids": unknown}, Provenance(source="derived", endpoint="local:generate_feasible_schedule_alternatives"), error="unknown_task_id")
+        return ToolResult({"status": "DETERMINISTIC_SCHEDULER_REQUIRED", "requested_task_ids": requested, "known_task_count": len(known), "thermal_objective_subordinate_to_hard_constraints": True}, Provenance(source="derived", endpoint="local:generate_feasible_schedule_alternatives"))
 
     @staticmethod
     def verify_schedule(arguments: dict[str, Any]) -> ToolResult:

@@ -30,7 +30,13 @@ CrewClock is now a submission-grade, single-screen React/Vite mission-control wo
 - fail-closed states for missing/stale evidence, tool failure, ambiguous policy, infeasible input and no better plan;
 - deterministic reset and query-addressable QA fixtures with no network dependency.
 
-The UI contains no live FortyGuard request path. Current reserve remains approximately `1,795,500` credits.
+The UI contains no live FortyGuard request path. The current recorded reserve for this task is `1,782,840` credits; this runtime made no FortyGuard request.
+
+## Real agent runtime status
+
+The provider-neutral orchestration layer now has a bounded Groq Chat Completions adapter for `openai/gpt-oss-120b` with local CrewClock tool calling. The model can select evidence, deterministic calculations, alternatives, verification and approval; deterministic code remains authoritative for every factual calculation and hard constraint. The adapter is ready for `LLM_PROVIDER=groq`, `GROQ_API_KEY`, and `GROQ_MODEL=openai/gpt-oss-120b`, but no key is configured and no real-model evaluation is claimed. The deterministic provider remains the submission fallback.
+
+See `docs/CREWCLOCK_REAL_AGENT_EVAL.md` for offline A–J protocol traces and measured counts.
 
 ## Locked architecture
 

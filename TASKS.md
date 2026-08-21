@@ -16,7 +16,7 @@
 - [x] Add tests for metric arithmetic, fixed work, dependencies, qualifications, deadlines and provenance.
 - [x] Write the MVP spec, data model, measurement contract and exact three-minute demo script.
 - [x] Complete desktop browser QA of opening, proposal, approval and verified states.
-- [x] Preserve zero new live FortyGuard requests and the 1,795,500-credit reserve.
+- [x] Preserve zero new live FortyGuard requests and the current 1,782,840-credit reserve.
 - [x] Replace fixture-driven proposal timing with the deterministic crew scheduler.
 - [x] Add candidate rejection and six-family hard-constraint verification.
 - [x] Add fail-closed missing/stale evidence, tool failure, ambiguous-policy, infeasible-input and no-improvement states.
@@ -54,3 +54,7 @@
 - [ ] No full CPM replacement or BIM authoring.
 - [ ] No health-outcome, “percent safer,” lives-saved or invented dollar metrics.
 - [x] Run one bounded authorized future-hour capability probe; stop on ambiguous empty forecast evidence.
+- [x] Implement provider-neutral bounded real-agent runtime with isolated Groq GPT-OSS 120B adapter.
+- [x] Enforce compact cached-live evidence, typed model-output validation, prompt-injection boundary, limits and deterministic verification gate.
+- [x] Add offline A–J agent protocol evaluations and A–E differentiation traces.
+- [ ] Configure a non-committed GROQ_API_KEY and run the real Groq A–J evaluation suite.

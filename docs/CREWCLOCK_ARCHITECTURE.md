@@ -125,3 +125,11 @@ No interface state uses a live badge. `LIVE CALLS 0` remains visible in the head
 ## External boundary
 
 The 2026-08-21 controlled capability probe made two heatmap calls (8,440 credits total) and no env_params or premium calls. Both future Phoenix results were empty, so the probe is recorded as ambiguous and the live decision delta is `FAIL` rather than forced. The deterministic UI replay remains network-free and uses cached-live historical evidence.
+
+## Real provider runtime
+
+The provider-neutral Python boundary now supports `MockProvider`, the existing OpenAI adapter, and `GroqChatCompletionsProvider`. Groq-specific HTTP translation is isolated to `src/fortyguard_agent/providers.py`; the runner sees only `ProviderDecision` and `ToolResult`. Groq local function calls are parsed and returned to `AgentRunner`, which validates and executes the allowlisted local tool.
+
+Runtime limits are deterministic: max iterations, model calls, tool calls, model input characters, estimated tool credits, request timeout, retry ceiling and repeated-call protection. Tool outputs sent to the model are compact summaries. The real runtime is cached-live-only for FortyGuard, and the UI remains network-free.
+
+The real-model path is implemented but not connected in this workspace because `GROQ_API_KEY` is absent. The deterministic demo provider and offline A–J protocol evaluations remain the rehearsal path. See `docs/CREWCLOCK_REAL_AGENT_EVAL.md` and `docs/CREWCLOCK_AGENT_BOUNDARY.md`.
