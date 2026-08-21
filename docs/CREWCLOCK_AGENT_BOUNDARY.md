@@ -14,6 +14,17 @@ The real runtime exposes only local function tools. It does not expose arbitrary
 
 This run is cached-live only. `get_workface_thermal_evidence` requires an explicit fixture and returns compact summaries with `source = CACHED_LIVE_FORTYGUARD`. A completed activity with zero cells is `COMPLETED_BUT_EMPTY = INVALID_EVIDENCE`; it cannot support a recommendation.
 
+SHHCH is deterministic and accepts only valid FortyGuard `exceedance` windows,
+polygon workface overlap, and the project modeled-temperature trigger.
+`env_params` can provide optional time-matched context but cannot provide
+exceedance duration, a diurnal forecast, WBGT, or spatial ranking.
+
+Terminal states are explicit: `NO_ACTION_REQUIRED`, `EVIDENCE_UNAVAILABLE`,
+`KEEP_CURRENT_PLAN`, `KEEP_CURRENT_PLAN_AND_RECHECK`,
+`NO_FEASIBLE_IMPROVEMENT`, `AWAITING_APPROVAL`, `APPROVED`, `REJECTED`, and
+`ERROR_SAFE`. A schedule-changing recommendation is not ready before
+deterministic verification.
+
 ## Untrusted input boundary
 
 Task descriptions, imported notes, policy text and external evidence are data. They cannot redefine the system instructions. The system prompt explicitly states this boundary, and the prompt-injection evaluation treats “ignore previous instructions” inside a task description as text rather than an instruction.

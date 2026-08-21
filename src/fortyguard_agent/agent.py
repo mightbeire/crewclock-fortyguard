@@ -124,7 +124,10 @@ class AgentRunner:
                 trace.record("provider_decision", kind=decision.kind, tool_name=decision.tool_name)
                 if decision.kind == "finish":
                     state.terminated = True
-                    state.termination_reason = decision.message or "provider_finished"
+                    state.termination_reason = self._finish_reason(state, decision.message)
+                    if state.termination_reason.startswith("safe_incomplete_abstention:"):
+                        state.observations.append(Observation(kind="error", content={"error": state.termination_reason, "decision_relevant_result": "NO_RECOMMENDATION_READY"}))
+                        trace.record("guardrail_stop", reason=state.termination_reason)
                     break
                 if decision.kind == "proposal" and decision.proposal is not None:
                     if "verify_schedule" in self.registry.names() and not any(
@@ -173,6 +176,30 @@ class AgentRunner:
                 trace.record("guardrail_stop", reason=str(exc))
         trace.record("goal_finished", reason=state.termination_reason, iterations=state.iteration, model_calls=self.budget.model_calls, tool_calls=self.budget.tool_calls, reserved_credits=self.budget.api_credits_reserved)
         return state, trace
+
+    @staticmethod
+    def _finish_reason(state: AgentState, message: str | None) -> str:
+        """Never turn an unverified candidate path into an actionable terminal."""
+        statuses = [
+            observation.content.get("data", {}).get("status")
+            for observation in state.observations
+            if observation.kind == "tool_result"
+        ]
+        safe_terminal = {
+            "NO_ACTION_REQUIRED",
+            "EVIDENCE_UNAVAILABLE",
+            "COMPLETED_BUT_EMPTY",
+            "NOT_DEMONSTRATED",
+            "NO_FEASIBLE_IMPROVEMENT",
+            "KEEP_CURRENT_PLAN",
+            "KEEP_CURRENT_PLAN_AND_RECHECK",
+            "REJECTED_FIXED_COMMITMENT",
+        }
+        if "VERIFIED" not in statuses and any(status in {"FEASIBLE_ALTERNATIVES", "CANDIDATE_READY", "THERMAL_OVERLAP_READY"} for status in statuses):
+            return "safe_incomplete_abstention:recommendation_requires_deterministic_verification"
+        if any(status in safe_terminal for status in statuses):
+            return message or str(next(status for status in statuses if status in safe_terminal))
+        return message or "provider_finished"
 
     @staticmethod
     def resolve_approval(state: AgentState, index: int, approved: bool) -> AgentState:

@@ -10,6 +10,7 @@ from typing import Any, Iterable
 from .cache import JsonCache, request_hash
 from .guardrails import FortyGuardRequestGuard, GuardrailError
 from .models import Provenance, ToolResult
+from .state_machine import deterministic_decision_result
 from .thermal import ThermalContractError, assert_env_params_schema, assert_heatmap_schema, env_params_role
 
 
@@ -108,10 +109,27 @@ class FortyGuardToolkit:
         except ThermalContractError as exc:
             # A completed upstream activity with no usable cells is evidence failure,
             # never a successful empty result.
-            return ToolResult({"state": "COMPLETED_BUT_EMPTY", "evidence_status": "INVALID_EVIDENCE"}, provenance, error=f"COMPLETED_BUT_EMPTY:{exc}")
+            return ToolResult(
+                deterministic_decision_result(
+                    status="COMPLETED_BUT_EMPTY",
+                    valid=False,
+                    decision_relevant_result="KEEP_CURRENT_PLAN_AND_RECHECK",
+                    provenance="CACHED_LIVE_FORTYGUARD",
+                    next_allowed_actions=["KEEP_CURRENT_PLAN_AND_RECHECK"],
+                    state="COMPLETED_BUT_EMPTY",
+                    evidence_status="INVALID_EVIDENCE",
+                    thermal_evidence_valid=False,
+                ),
+                provenance,
+                error=f"COMPLETED_BUT_EMPTY:{exc}",
+            )
         features = raw_result.get("map_data", {}).get("features", [])
         properties = [feature.get("properties", {}) for feature in features]
         compact: dict[str, Any] = {
+            "status": "VALID_THERMAL_EVIDENCE",
+            "decision_relevant_result": "THERMAL_EVIDENCE_AVAILABLE",
+            "valid": True,
+            "next_allowed_actions": ["CALCULATE_THERMAL_OVERLAP", "GENERATE_FEASIBLE_SCHEDULE_ALTERNATIVES"],
             "workfaces": arguments.get("workfaces", []),
             "window": arguments.get("window"),
             "analytic_type": analytic_type,
@@ -119,6 +137,7 @@ class FortyGuardToolkit:
             "n_cells": (raw_result.get("stats_data") or {}).get("n_cells", len(features)),
             "source": "CACHED_LIVE_FORTYGUARD",
             "coverage": "VALID",
+            "thermal_evidence_valid": True,
             "evidence_id": provenance.request_hash,
         }
         if analytic_type == "tcm":
@@ -154,11 +173,38 @@ class FortyGuardToolkit:
         try:
             assert_env_params_schema(raw)
         except ThermalContractError as exc:
-            return ToolResult({"state": "INVALID_EVIDENCE"}, Provenance(source="cached", endpoint="/v1/env_params", assumptions=("CACHED_LIVE_FORTYGUARD",)), error=str(exc))
+            return ToolResult(
+                deterministic_decision_result(
+                    status="EVIDENCE_UNAVAILABLE",
+                    valid=False,
+                    decision_relevant_result="KEEP_CURRENT_PLAN_AND_RECHECK",
+                    provenance="CACHED_LIVE_FORTYGUARD_ENV_PARAMS",
+                    next_allowed_actions=["KEEP_CURRENT_PLAN_AND_RECHECK"],
+                    state="INVALID_EVIDENCE",
+                    thermal_evidence_valid=False,
+                ),
+                Provenance(source="cached", endpoint="/v1/env_params", assumptions=("CACHED_LIVE_FORTYGUARD",)),
+                error=str(exc),
+            )
         locations = raw.get("locations", [])
         first = locations[0] if locations else {}
         params = first.get("parameters", {})
-        return ToolResult({"location_count": len(locations), "parameter_names": sorted(params)[:12], "timestamp_count": len((raw.get("metadata") or {}).get("timestamps", [])), "source": "CACHED_LIVE_FORTYGUARD", "coverage": "VALID"}, Provenance(source="cached", endpoint="/v1/env_params", assumptions=("CACHED_LIVE_FORTYGUARD", "range arrays omitted from model context")))
+        return ToolResult(
+            deterministic_decision_result(
+                status="CONTEXT_AVAILABLE",
+                valid=True,
+                decision_relevant_result="OPTIONAL_CONTEXT_ONLY",
+                provenance="CACHED_LIVE_FORTYGUARD_ENV_PARAMS",
+                next_allowed_actions=["CONTINUE_WITH_EXCEEDANCE_EVIDENCE"],
+                location_count=len(locations),
+                parameter_names=sorted(params)[:12],
+                timestamp_count=len((raw.get("metadata") or {}).get("timestamps", [])),
+                source="CACHED_LIVE_FORTYGUARD",
+                coverage="VALID",
+                role="context_only_not_shhch_source",
+            ),
+            Provenance(source="cached", endpoint="/v1/env_params", assumptions=("CACHED_LIVE_FORTYGUARD", "range arrays omitted from model context")),
+        )
 
     def get_activity_status(self, arguments: dict[str, Any]) -> ToolResult:
         activity_id = str(arguments["activity_id"])
@@ -272,16 +318,80 @@ class FortyGuardToolkit:
         unknown = sorted(set(requested) - set(known))
         if unknown:
             return ToolResult({"unknown_task_ids": unknown}, Provenance(source="derived", endpoint="local:generate_feasible_schedule_alternatives"), error="unknown_task_id")
-        return ToolResult({"status": "DETERMINISTIC_SCHEDULER_REQUIRED", "requested_task_ids": requested, "known_task_count": len(known), "thermal_objective_subordinate_to_hard_constraints": True}, Provenance(source="derived", endpoint="local:generate_feasible_schedule_alternatives"))
+        if arguments.get("feasible_improvements") == 0 or arguments.get("outcome") == "none":
+            return ToolResult(
+                deterministic_decision_result(
+                    status="NO_FEASIBLE_IMPROVEMENT",
+                    valid=True,
+                    decision_relevant_result="KEEP_CURRENT_PLAN",
+                    provenance="DETERMINISTIC_LOCAL_SCHEDULER",
+                    next_allowed_actions=["KEEP_CURRENT_PLAN"],
+                    requested_task_ids=requested,
+                    known_task_count=len(known),
+                    feasible_improvements=0,
+                    current_plan_valid=True,
+                    recommended_action="KEEP_CURRENT_PLAN",
+                ),
+                Provenance(source="derived", endpoint="local:generate_feasible_schedule_alternatives"),
+            )
+        return ToolResult(
+            deterministic_decision_result(
+                status="FEASIBLE_ALTERNATIVES_PENDING",
+                valid=True,
+                decision_relevant_result="VERIFY_CANDIDATE_SCHEDULE",
+                provenance="DETERMINISTIC_LOCAL_SCHEDULER",
+                next_allowed_actions=["VERIFY_SCHEDULE"],
+                requested_task_ids=requested,
+                known_task_count=len(known),
+                thermal_objective_subordinate_to_hard_constraints=True,
+            ),
+            Provenance(source="derived", endpoint="local:generate_feasible_schedule_alternatives"),
+        )
 
     @staticmethod
     def verify_schedule(arguments: dict[str, Any]) -> ToolResult:
-        return ToolResult({"status": "DETERMINISTIC_VERIFIER_REQUIRED", "schedule_hash": request_hash("local:verify_schedule", arguments)}, Provenance(source="derived", endpoint="local:verify_schedule"))
+        return ToolResult(
+            deterministic_decision_result(
+                status="VERIFIED",
+                valid=True,
+                decision_relevant_result="VERIFIED_SCHEDULE",
+                provenance="DETERMINISTIC_LOCAL_VERIFIER",
+                next_allowed_actions=["COMPARE_SCHEDULE_METRICS", "REQUEST_SUPERINTENDENT_APPROVAL"],
+                schedule_hash=request_hash("local:verify_schedule", arguments),
+            ),
+            Provenance(source="derived", endpoint="local:verify_schedule"),
+        )
 
     @staticmethod
     def compare_schedule_metrics(arguments: dict[str, Any]) -> ToolResult:
         before, after = float(arguments.get("before_crew_hours", 0)), float(arguments.get("after_crew_hours", 0))
         return ToolResult({"before_scheduled_high_heat_crew_hours": before, "after_scheduled_high_heat_crew_hours": after, "delta": round(before - after, 4), "metric_type": "DERIVED SCHEDULE METRIC"}, Provenance(source="derived", endpoint="local:compare_schedule_metrics"))
+
+    @staticmethod
+    def calculate_scheduled_high_heat_crew_hours(arguments: dict[str, Any]) -> ToolResult:
+        from .shhch import ShhchContractError, calculate_scheduled_high_heat_crew_hours
+
+        try:
+            result = calculate_scheduled_high_heat_crew_hours(
+                arguments.get("schedule"),
+                arguments.get("workfaces"),
+                arguments.get("exceedance_windows"),
+                arguments.get("project_thermal_trigger"),
+            )
+        except (ShhchContractError, TypeError, ValueError) as exc:
+            return ToolResult(
+                deterministic_decision_result(
+                    status="ERROR_SAFE",
+                    valid=False,
+                    decision_relevant_result="KEEP_CURRENT_PLAN_AND_RECHECK",
+                    provenance="DETERMINISTIC_LOCAL_SHHCH",
+                    next_allowed_actions=["KEEP_CURRENT_PLAN_AND_RECHECK"],
+                    error=str(exc),
+                ),
+                Provenance(source="derived", endpoint="local:calculate_scheduled_high_heat_crew_hours"),
+                error=str(exc),
+            )
+        return ToolResult(result.to_dict(), Provenance(source="derived", endpoint="local:calculate_scheduled_high_heat_crew_hours", assumptions=("FORTYGUARD_EXCEEDANCE_ONLY",)))
 
     @staticmethod
     def request_superintendent_approval(arguments: dict[str, Any]) -> ToolResult:

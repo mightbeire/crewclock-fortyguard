@@ -2,6 +2,16 @@
 
 ## Completed in MVP preflight
 
+## Offline repair and exceedance migration — 2026-08-21
+
+- [x] Forensically separate A/E/F/H behavioral, deterministic, and provider failures.
+- [x] Add deterministic SHHCH with polygon area weighting, temporal overlap, provenance, and fail-closed validation.
+- [x] Remove `env_params` from the SHHCH path and preserve heat-index separation.
+- [x] Add explicit no-improvement, unavailable-evidence, recheck, verification, and approval states.
+- [x] Add Phoenix four-workface fixture schema and precipitation sensitivity extension.
+- [x] Add offline SHHCH and A/E/F/H regression coverage without live calls.
+- [ ] Insert validated Phoenix schedule-aligned exceedance windows; do not fabricate them.
+
 - [x] Verify that construction employers already reschedule work, change work/rest periods, rotate tasks, add crews and apply other controls because of heat.
 - [x] Select Construction Superintendent as the primary user using O*NET, BLS and OSHA role evidence.
 - [x] Separate pre-shift planning evidence from onsite authoritative measurement and judgment.

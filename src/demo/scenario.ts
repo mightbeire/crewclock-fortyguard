@@ -1,5 +1,7 @@
+import { calculateScheduledHighHeatCrewHours } from './shhch'
+
 export type CrewId = 'ground' | 'concrete' | 'electrical'
-export type ZoneId = 'north' | 'south' | 'laydown'
+export type ZoneId = 'north' | 'south' | 'laydown' | 'access'
 export type TaskEnvironment = 'outdoor-heavy' | 'outdoor-moderate' | 'shaded-support'
 
 export type Crew = {
@@ -24,7 +26,10 @@ export type Task = {
   qualification: string
   dependencies: string[]
   deadline: string
+  weatherSensitivity: { precipitation: boolean }
 }
+
+export type Workface = { id: ZoneId; label: string; polygon: Array<[number, number]> }
 
 export type AgentStep = {
   label: string
@@ -62,85 +67,96 @@ export const CREWS: Crew[] = [
 export const TASKS: Task[] = [
   {
     id: 'G0', name: 'Traffic-control handoff', crewId: 'ground', zoneId: 'north', durationMinutes: 30,
-    originalStart: '05:30', proposedStart: '05:30', fixed: true, environment: 'outdoor-moderate',
-    qualification: 'competent-person', dependencies: [], deadline: '06:00',
+    originalStart: '06:00', proposedStart: '06:00', fixed: true, environment: 'outdoor-moderate',
+    qualification: 'competent-person', dependencies: [], deadline: '06:30', weatherSensitivity: { precipitation: false },
   },
   {
     id: 'G1', name: 'Equipment service & staging', crewId: 'ground', zoneId: 'laydown', durationMinutes: 120,
-    originalStart: '06:00', proposedStart: '12:00', fixed: false, environment: 'shaded-support',
-    qualification: 'equipment', dependencies: ['G0'], deadline: '14:00',
+    originalStart: '06:30', proposedStart: '13:00', fixed: false, environment: 'shaded-support',
+    qualification: 'equipment', dependencies: ['G0'], deadline: '16:00', weatherSensitivity: { precipitation: false },
   },
   {
     id: 'G2', name: 'Signal trench excavation', crewId: 'ground', zoneId: 'north', durationMinutes: 120,
-    originalStart: '08:00', proposedStart: '06:00', fixed: false, environment: 'outdoor-heavy',
-    qualification: 'excavation', dependencies: ['G0'], deadline: '10:00',
+    originalStart: '08:30', proposedStart: '06:30', fixed: false, environment: 'outdoor-heavy',
+    qualification: 'excavation', dependencies: ['G0'], deadline: '12:00', weatherSensitivity: { precipitation: true },
   },
   {
     id: 'G3', name: 'Fine grade & compact', crewId: 'ground', zoneId: 'north', durationMinutes: 120,
-    originalStart: '10:00', proposedStart: '08:00', fixed: false, environment: 'outdoor-heavy',
-    qualification: 'equipment', dependencies: ['G2'], deadline: '12:00',
+    originalStart: '10:30', proposedStart: '08:30', fixed: false, environment: 'outdoor-heavy',
+    qualification: 'equipment', dependencies: ['G2'], deadline: '14:00', weatherSensitivity: { precipitation: true },
   },
   {
     id: 'G4', name: 'Conduit bedding', crewId: 'ground', zoneId: 'north', durationMinutes: 120,
-    originalStart: '12:00', proposedStart: '10:00', fixed: false, environment: 'outdoor-heavy',
-    qualification: 'excavation', dependencies: ['G3'], deadline: '14:00',
+    originalStart: '12:30', proposedStart: '10:30', fixed: false, environment: 'outdoor-heavy',
+    qualification: 'excavation', dependencies: ['G3'], deadline: '16:00', weatherSensitivity: { precipitation: true },
   },
   {
     id: 'C1', name: 'Foundation formwork', crewId: 'concrete', zoneId: 'south', durationMinutes: 120,
     originalStart: '06:00', proposedStart: '06:00', fixed: false, environment: 'outdoor-moderate',
-    qualification: 'concrete-placement', dependencies: [], deadline: '08:00',
+    qualification: 'concrete-placement', dependencies: [], deadline: '08:00', weatherSensitivity: { precipitation: true },
   },
   {
     id: 'C2', name: 'Rebar & anchor bolts', crewId: 'concrete', zoneId: 'south', durationMinutes: 60,
     originalStart: '08:00', proposedStart: '08:00', fixed: false, environment: 'outdoor-heavy',
-    qualification: 'concrete-placement', dependencies: ['C1'], deadline: '09:00',
+    qualification: 'concrete-placement', dependencies: ['C1'], deadline: '09:00', weatherSensitivity: { precipitation: true },
   },
   {
     id: 'C3', name: 'City inspection hold', crewId: 'concrete', zoneId: 'south', durationMinutes: 30,
     originalStart: '09:00', proposedStart: '09:00', fixed: true, environment: 'shaded-support',
-    qualification: 'concrete-placement', dependencies: ['C2'], deadline: '09:30',
+    qualification: 'concrete-placement', dependencies: ['C2'], deadline: '09:30', weatherSensitivity: { precipitation: false },
   },
   {
     id: 'C4', name: 'Foundation concrete pour', crewId: 'concrete', zoneId: 'south', durationMinutes: 120,
     originalStart: '09:30', proposedStart: '09:30', fixed: true, environment: 'outdoor-heavy',
-    qualification: 'concrete-placement', dependencies: ['C3'], deadline: '11:30',
+    qualification: 'concrete-placement', dependencies: ['C3'], deadline: '11:30', weatherSensitivity: { precipitation: true },
   },
   {
     id: 'C5', name: 'Finish & protect concrete', crewId: 'concrete', zoneId: 'south', durationMinutes: 90,
     originalStart: '11:30', proposedStart: '11:30', fixed: true, environment: 'outdoor-moderate',
-    qualification: 'finishing', dependencies: ['C4'], deadline: '13:00',
+    qualification: 'finishing', dependencies: ['C4'], deadline: '13:00', weatherSensitivity: { precipitation: true },
   },
   {
     id: 'E1', name: 'Cabinet pre-wire', crewId: 'electrical', zoneId: 'laydown', durationMinutes: 120,
     originalStart: '06:00', proposedStart: '10:00', fixed: false, environment: 'shaded-support',
-    qualification: 'signal-systems', dependencies: [], deadline: '12:00',
+    qualification: 'signal-systems', dependencies: [], deadline: '12:00', weatherSensitivity: { precipitation: false },
   },
   {
     id: 'E2', name: 'Proof duct & pull line', crewId: 'electrical', zoneId: 'south', durationMinutes: 120,
     originalStart: '08:00', proposedStart: '06:00', fixed: false, environment: 'outdoor-moderate',
-    qualification: 'journey-electrician', dependencies: [], deadline: '10:00',
+    qualification: 'journey-electrician', dependencies: [], deadline: '10:00', weatherSensitivity: { precipitation: false },
   },
   {
     id: 'E3', name: 'Pull signal conductors', crewId: 'electrical', zoneId: 'south', durationMinutes: 120,
     originalStart: '10:00', proposedStart: '08:00', fixed: false, environment: 'outdoor-heavy',
-    qualification: 'journey-electrician', dependencies: ['E2'], deadline: '12:00',
+    qualification: 'journey-electrician', dependencies: ['E2'], deadline: '12:00', weatherSensitivity: { precipitation: false },
   },
   {
     id: 'E4', name: 'Inspector test window', crewId: 'electrical', zoneId: 'south', durationMinutes: 60,
     originalStart: '13:00', proposedStart: '13:00', fixed: true, environment: 'outdoor-moderate',
-    qualification: 'signal-systems', dependencies: ['E1', 'E3'], deadline: '14:00',
+    qualification: 'signal-systems', dependencies: ['E1', 'E3'], deadline: '14:00', weatherSensitivity: { precipitation: false },
   },
 ]
 
+export const WORKFACES: Workface[] = [
+  { id: 'north', label: 'North workface', polygon: [[0, 0], [10, 0], [10, 10], [0, 10]] },
+  { id: 'south', label: 'South workface', polygon: [[20, 0], [30, 0], [30, 10], [20, 10]] },
+  { id: 'laydown', label: 'Laydown / shaded support', polygon: [[0, 20], [10, 20], [10, 30], [0, 30]] },
+  { id: 'access', label: 'Access / traffic control', polygon: [[20, 20], [30, 20], [30, 30], [20, 30]] },
+]
+
 export const THERMAL_EVIDENCE = {
-  source: 'FortyGuard /v1/heatmap (primary) · /v1/env_params (selective context)',
-  status: 'cached-live',
+  source: 'FortyGuard /v1/heatmap analytic_type=exceedance · /v1/env_params (optional context)',
+  status: 'cached-live-context-only',
+  exceedanceEvidenceStatus: 'none' as 'none' | 'partial' | 'complete',
+  exceedanceWindows: [],
+  forecastStatus: 'NOT_DEMONSTRATED',
+  projectThermalTrigger: { thresholdC: 32, quantity: 'fortyguard_modeled_temperature', provenance: 'synthetic employer project trigger; FortyGuard threshold quantity is modeled temperature, not heat index' },
   location: 'Phoenix planning AOI · 33.434° N, 112.018° W',
   observationDate: '2025-07-15',
   timezone: 'America/Phoenix · UTC−07:00',
   grid: '100 m requested analysis grid',
-  primarySignal: 'TCM tile temperatures + time_of_measure + persistence',
-  environmentalContextRole: 'Selective context only; not a diurnal exposure forecast or spatial ranking engine.',
+  primarySignal: 'No Phoenix schedule-aligned exceedance windows currently cached; TCM/time_of_measure/persistence are contextual evidence only',
+  environmentalContextRole: 'Selective context only; never the SHHCH duration source, forecast, or spatial ranking engine.',
   maxTemperatureC: 40.1505,
   averageTemperatureC: 37.0796,
   apparentTemperatureC: [32.0,31.0,30.3,30.0,29.5,28.9,30.6,31.4,33.3,35.1,37.0,39.6,41.3,42.5,40.7,39.3,34.8,37.3,38.6,38.0,36.9,36.1,35.3,32.7],
@@ -167,8 +183,22 @@ export const EMPLOYER_POLICY = {
   authorityBoundary: 'Onsite supervisor applies the employer plan using current onsite WBGT, workload, PPE, worker condition, and professional judgment.',
 } as const
 
+export const CANONICAL_SAMPLE_PROJECT = {
+  name: 'PHOENIX INDUSTRIAL PROJECT',
+  label: 'Sample Project',
+  shift: { start: '06:00', end: '16:00', timezone: 'America/Phoenix' },
+  tasks: TASKS,
+  crews: CREWS,
+  workfaces: WORKFACES,
+  employerPolicy: EMPLOYER_POLICY,
+  projectThermalTrigger: THERMAL_EVIDENCE.projectThermalTrigger,
+  fortyguardEvidence: { status: THERMAL_EVIDENCE.exceedanceEvidenceStatus, forecastStatus: THERMAL_EVIDENCE.forecastStatus },
+  operationalInputs: 'SYNTHETIC',
+  calculations: 'DERIVED',
+} as const
+
 export const AGENT_STEPS: AgentStep[] = [
-  { label: 'Read the upcoming shift plan', detail: '14 tasks · 3 crews · 2 field zones', tool: 'inspect_shift_plan' },
+  { label: 'Read the upcoming shift plan', detail: '14 tasks · 3 crews · 4 polygon workfaces', tool: 'inspect_shift_plan' },
   { label: 'Select work needing investigation', detail: '7 flexible outdoor tasks; 5 fixed commitments retained', tool: 'work.classify' },
   { label: 'Load selective thermal evidence', detail: 'Cached Phoenix heatmap cells · shared AOI · 100 m grid', tool: 'get_workface_heatmap' },
   { label: 'Generate feasible alternatives', detail: 'Deterministic scheduler tests crew-safe sequences', tool: 'schedule.optimize' },
@@ -187,14 +217,10 @@ const overlaps = (start: number, duration: number, windowStart: number, windowEn
 
 export const isMetricEligible = (task: Task) => !task.fixed && task.environment !== 'shaded-support'
 
-export const peakWindowCrewHours = (plan: 'original' | 'proposed') => {
-  const windowStart = toMinutes(THERMAL_EVIDENCE.highWindow.start)
-  const windowEnd = toMinutes(THERMAL_EVIDENCE.highWindow.end)
-  return TASKS.filter(isMetricEligible).reduce((total, task) => {
-    const crew = CREWS.find(item => item.id === task.crewId)!
-    const start = toMinutes(plan === 'original' ? task.originalStart : task.proposedStart)
-    return total + overlaps(start, task.durationMinutes, windowStart, windowEnd) / 60 * crew.headcount
-  }, 0)
+export const peakWindowCrewHours = (plan: 'original' | 'proposed'): number | null => {
+  const schedule = Object.fromEntries(TASKS.map(task => [task.id, plan === 'original' ? task.originalStart : task.proposedStart]))
+  const result = calculateScheduledHighHeatCrewHours(schedule, TASKS, CREWS, WORKFACES, THERMAL_EVIDENCE.exceedanceWindows, THERMAL_EVIDENCE.projectThermalTrigger)
+  return result.valid ? result.totalCrewHours : null
 }
 
 export const validatePolicy = (plan: 'original' | 'proposed') => {
@@ -209,9 +235,10 @@ export const validatePolicy = (plan: 'original' | 'proposed') => {
 export const HERO_METRIC = {
   before: peakWindowCrewHours('original'),
   after: peakWindowCrewHours('proposed'),
-  moved: peakWindowCrewHours('original') - peakWindowCrewHours('proposed'),
-  type: 'derived schedule metric',
+  moved: null,
+  type: 'FortyGuard exceedance-derived schedule metric',
   label: 'scheduled high-heat crew-hours',
+  status: THERMAL_EVIDENCE.exceedanceEvidenceStatus,
 } as const
 
 const taskEnd = (task: Task, plan: 'original' | 'proposed') =>
@@ -233,17 +260,19 @@ export const validatePlan = (plan: 'original' | 'proposed') => TASKS.every(task 
 export const validateScenario = () =>
   TASKS.length === 14 &&
   CREWS.length === 3 &&
-  HERO_METRIC.before === 22 &&
-  HERO_METRIC.after === 6 &&
-  HERO_METRIC.moved === 16 &&
+  WORKFACES.length === 4 &&
+  TASKS.every(task => typeof task.weatherSensitivity.precipitation === 'boolean') &&
+  HERO_METRIC.before === null &&
+  HERO_METRIC.after === null &&
   validatePlan('original') &&
   validatePlan('proposed') &&
   !validatePolicy('original') &&
   validatePolicy('proposed') &&
-  THERMAL_EVIDENCE.status === 'cached-live' &&
+  THERMAL_EVIDENCE.status === 'cached-live-context-only' &&
+  THERMAL_EVIDENCE.exceedanceEvidenceStatus === 'none' &&
   EMPLOYER_POLICY.status === 'synthetic employer policy'
 
-export const MINUTE_START = 5 * 60 + 30
-export const MINUTE_END = 14 * 60 + 30
+export const MINUTE_START = 6 * 60
+export const MINUTE_END = 16 * 60
 export const timelinePosition = (time: string) => ((toMinutes(time) - MINUTE_START) / (MINUTE_END - MINUTE_START)) * 100
 export const timelineWidth = (durationMinutes: number) => (durationMinutes / (MINUTE_END - MINUTE_START)) * 100

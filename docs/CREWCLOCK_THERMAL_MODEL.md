@@ -16,4 +16,4 @@ One shared project AOI is requested for relevant workfaces. Local spatial joinin
 
 ## Hero metric
 
-For each movable outdoor task, `crew size × interval overlap with the employer-configured high-heat trigger` is summed. The result is `scheduled high-heat crew-hours`. It is direct interval arithmetic over a schedule and a trigger, so its type is `DERIVED`; it is not physiological exposure, dose, injuries prevented, or a safety percentage.
+For each outdoor task, FortyGuard `analytic_type=exceedance` duration is area-weighted over its polygon workface, intersected with that task's scheduled interval, and multiplied by crew size. The result is `scheduled high-heat crew-hours (SHHCH)`. A project thermal trigger names FortyGuard's modeled temperature quantity; it is not heat index or WBGT. The deterministic engine fails closed when schedule-aligned exceedance evidence is missing. `env_params` remains optional context and cannot supply duration.

@@ -1,5 +1,13 @@
 # CrewClock implemented architecture
 
+## Reliability and metric amendment
+
+Rate-aware Groq pacing is infrastructure reliability, not product policy. The
+agent chooses evidence and tools; deterministic state, SHHCH geometry/time
+intersection, scheduler, verifier, break constraints, and approval boundary
+own truth. SHHCH consumes only valid schedule-aligned FortyGuard exceedance
+windows over polygon workfaces. Optional `env_params` context cannot feed it.
+
 ## Runtime boundary
 
 CrewClock is a deterministic, offline-capable demonstration of an agent-guided construction planning workflow. The React interface never calls FortyGuard or any external service. Approved cached-live Phoenix evidence is imported from the canonical fixture; operational data and employer policy are labelled demo inputs.

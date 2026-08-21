@@ -2,60 +2,47 @@
 
 ## Hero metric
 
-> **Scheduled high-heat crew-hours above the employer-configured trigger while preserving every modeled hard constraint.**
+> **Scheduled High-Heat Crew-Hours (SHHCH) from schedule-aligned FortyGuard exceedance windows while preserving every modeled hard constraint.**
 
-Metric type: **derived planning proxy**.
+Metric type: **derived planning proxy**. The canonical Phoenix fixture currently has no schedule-aligned exceedance windows, so no Phoenix number is emitted.
+
+The calculation is `area-weighted exceedance duration over the task workface × temporal overlap with that task × crew size`, summed across outdoor tasks. `env_params` is contextual only; it is not a duration source.
 
 It measures schedule allocation. It does not measure safety, injury probability, physiological strain, compliance, productivity actually delivered, or money saved.
 
 ## Formal definition
 
-Let:
-
-- `T` be the upcoming-shift tasks;
-- `E(t)` be true when task `t` is movable and classified by the employer as outdoor moderate/heavy;
-- `H(t)` be assigned crew headcount;
-- `I(t, p)` be the scheduled interval for task `t` under plan `p`;
-- `W` be the employer-configured high-heat trigger interval;
-- `overlap(a, b)` be interval overlap in hours.
+Let `D(t, w)` be the area-weighted FortyGuard exceedance duration for task
+workface `t` in exact evidence window `w`, `I(t, p)` be the scheduled task
+interval, `H(t)` be assigned crew headcount, and `overlap` be temporal overlap
+in hours.
 
 ```text
-peak_window_crew_hours(p)
-  = Σ over t in T where E(t)
-      H(t) × overlap(I(t, p), W)
+SHHCH(p)
+  = Σ over outdoor t,w
+      H(t) × D(t, w) × overlap(I(t, p), w) / duration(w)
 
 crew_hours_shifted
-  = peak_window_crew_hours(original)
-    − peak_window_crew_hours(proposed)
+  = SHHCH(original) − SHHCH(proposed)
 ```
 
-The MVP window is `11:00–15:00`, selected from the cached Phoenix hourly apparent-temperature profile for 2025-07-15. The window is a demo investigation choice, not an OSHA threshold.
+Evidence windows are supplied by FortyGuard `analytic_type=exceedance`; a
+project thermal trigger names its modeled-temperature quantity and is not a
+heat-index or WBGT threshold. The current Phoenix window set is absent.
 
 ## Deterministic recomputation
 
-### Original eligible overlap
+The engine first checks that every outdoor task has a polygon workface and a
+covering valid `analytic_type=exceedance` window in hours. It area-weights the
+tiles intersecting that workface, scales the window duration by the exact
+task/window overlap, and multiplies by assigned crew size. Indoor tasks
+contribute zero. Fixed tasks remain fixed in the scheduler but are not silently
+relabelled as movable.
 
-| Task | Crew | Headcount | Overlap with 11:00–15:00 | Crew-hours |
-|---|---|---:|---:|---:|
-| Fine grade & compact | A | 6 | 1.0h | 6 |
-| Conduit bedding | A | 6 | 2.0h | 12 |
-| Pull signal conductors | C | 4 | 1.0h | 4 |
-| **Total** | | | | **22** |
-
-### Proposed eligible overlap
-
-| Task | Crew | Headcount | Overlap with 11:00–15:00 | Crew-hours |
-|---|---|---:|---:|---:|
-| Conduit bedding | A | 6 | 1.0h | 6 |
-| **Total** | | | | **6** |
-
-### Result
-
-```text
-22 − 6 = 16 scheduled high-heat crew-hours reduced
-```
-
-Sheltered/support tasks do not enter the metric. Fixed work does not enter the “movable” metric even if it overlaps the window; it remains visible as work requiring the employer’s planned controls and onsite authority.
+The current Phoenix fixture has no schedule-aligned exceedance windows, so its
+SHHCH result is `EVIDENCE_UNAVAILABLE` and no `22 → 6` number is presented.
+The prior trigger-only 22/6 illustration is retained only as historical
+context and is not current Phoenix exceedance evidence.
 
 ## Why fixed work is excluded
 
@@ -86,7 +73,7 @@ An alternative with a lower thermal overlap but any hard failure is rejected. Re
 | 11:00–15:00 investigated window | Derived | Selected from cached hourly profile |
 | Tasks, times, crews and zones | Synthetic | CrewClock demo fixture |
 | Employer rule pack | Synthetic employer policy | CrewClock demo fixture |
-| 22, 6 and 16 crew-hours | Derived deterministic | `src/demo/engine.ts` with fixture regression in `src/demo/scenario.ts` |
+| Phoenix SHHCH | Not demonstrated | Schedule-aligned Phoenix exceedance windows are not cached |
 
 ## UI wording contract
 
@@ -112,7 +99,7 @@ Prohibited:
 
 Automated tests must:
 
-1. recompute `22`, `6`, and `16` from task intervals and crew headcount;
+1. recompute SHHCH from exceedance tile area, exact temporal overlap and crew headcount;
 2. verify fixed tasks do not move;
 3. verify dependencies, qualifications and deadlines in both plans;
 4. verify all evidence/policy provenance labels exist;
@@ -151,4 +138,4 @@ No health-outcome or dollar conversion is authorized by the MVP evidence.
 
 ## Locked primary metric
 
-`scheduled high-heat crew-hours = Σ(crew size × scheduled interval overlap with the employer-configured high-heat trigger)` for movable outdoor tasks. It is a derived schedule metric, not exposure, dose, WBGT, injuries prevented, or a safety percentage. FortyGuard `exceedance` remains a count of hours and is never substituted for degree-hours.
+`scheduled high-heat crew-hours = Σ(area-weighted FortyGuard exceedance duration × exact task/window overlap × crew size)` for outdoor tasks with valid polygon evidence. It is a derived schedule metric, not exposure, dose, WBGT, injuries prevented, or a safety percentage. `env_params` is never substituted for exceedance duration.

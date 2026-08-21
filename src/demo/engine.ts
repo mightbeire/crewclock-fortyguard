@@ -5,10 +5,12 @@ import {
   MINUTE_START,
   TASKS,
   THERMAL_EVIDENCE,
+  WORKFACES,
   type Crew,
   type CrewId,
   type Task,
 } from './scenario'
+import { calculateScheduledHighHeatCrewHours } from './shhch'
 
 export type Schedule = Record<string, string>
 export type EvidenceState = 'ready' | 'missing' | 'stale' | 'tool-failure'
@@ -58,7 +60,7 @@ export type CrewClockRun = {
   investigation: Investigation
   originalVerification: Verification
   recommendationVerification: Verification | null
-  beforeCrewHours: number
+  beforeCrewHours: number | null
   afterCrewHours: number | null
   shiftedCrewHours: number
   stats: SchedulerStats
@@ -100,16 +102,15 @@ export const peakWindowCrewHoursFor = (
   tasks: Task[] = TASKS,
   crews: Crew[] = CREWS,
 ) => {
-  const windowStart = timeToMinutes(THERMAL_EVIDENCE.highWindow.start)
-  const windowEnd = timeToMinutes(THERMAL_EVIDENCE.highWindow.end)
-  return tasks
-    .filter(task => !task.fixed && task.environment !== 'shaded-support')
-    .reduce((total, task) => {
-      const crew = crews.find(item => item.id === task.crewId)
-      const start = schedule[task.id]
-      if (!crew || !start) return Number.POSITIVE_INFINITY
-      return total + overlapMinutes(timeToMinutes(start), task.durationMinutes, windowStart, windowEnd) / 60 * crew.headcount
-    }, 0)
+  const result = calculateScheduledHighHeatCrewHours(
+    schedule,
+    tasks,
+    crews,
+    WORKFACES,
+    THERMAL_EVIDENCE.exceedanceWindows,
+    THERMAL_EVIDENCE.projectThermalTrigger,
+  )
+  return result.valid ? result.totalCrewHours ?? Number.NaN : null
 }
 
 export const verifySchedule = (
@@ -199,7 +200,7 @@ const enumerateCrew = (
       if (crewRelevant.every(family => family.passed)) {
         candidates.push({
           schedule: full,
-          heat: peakWindowCrewHoursFor({ ...baseline, ...full }, crewTasks, crews),
+          heat: peakWindowCrewHoursFor({ ...baseline, ...full }, crewTasks, crews) ?? Number.POSITIVE_INFINITY,
           movement: movementMinutes(full, baseline, movable),
         })
       }
@@ -256,6 +257,9 @@ export const runCrewClock = ({
   if (policyState === 'ambiguous') {
     return { ...base, status: 'ambiguous-policy', recommendation: null, recommendationVerification: null, afterCrewHours: null, shiftedCrewHours: 0, stats: emptyStats, message: 'Employer controls are ambiguous. Superintendent clarification is required.' }
   }
+  if (investigation.investigatedTaskIds.length === 0) {
+    return { ...base, status: 'no-improvement', recommendation: null, recommendationVerification: null, afterCrewHours: beforeCrewHours, shiftedCrewHours: 0, stats: emptyStats, message: 'No movable outdoor work requires a schedule change. The current plan remains the operational plan.' }
+  }
   if (evidenceState !== 'ready') {
     const status: RecommendationStatus = evidenceState === 'missing' ? 'missing-evidence' : evidenceState === 'stale' ? 'stale-evidence' : 'tool-failure'
     const messages = {
@@ -264,6 +268,9 @@ export const runCrewClock = ({
       'tool-failure': 'The evidence tool failed. The original plan remains unchanged.',
     }
     return { ...base, status, recommendation: null, recommendationVerification: null, afterCrewHours: null, shiftedCrewHours: 0, stats: emptyStats, message: messages[status] }
+  }
+  if (THERMAL_EVIDENCE.exceedanceEvidenceStatus !== 'complete') {
+    return { ...base, status: 'missing-evidence', recommendation: null, recommendationVerification: null, afterCrewHours: null, shiftedCrewHours: 0, stats: emptyStats, message: 'Phoenix schedule-aligned FortyGuard exceedance evidence is not demonstrated. No recommendation issued.' }
   }
 
   const enumerations = crews.map(crew => enumerateCrew(crew.id, tasks, crews, original))
@@ -274,9 +281,9 @@ export const runCrewClock = ({
   const feasibleCandidates = enumerations.reduce((sum, item) => sum + item.candidates.length, 0)
   const candidatesConsidered = enumerations.reduce((sum, item) => sum + item.considered, 0)
   const stats = { candidatesConsidered, feasibleCandidates, rejectedCandidates: candidatesConsidered - feasibleCandidates }
-  const shiftedCrewHours = beforeCrewHours - afterCrewHours
+  const shiftedCrewHours = beforeCrewHours !== null && afterCrewHours !== null ? beforeCrewHours - afterCrewHours : 0
 
-  if (!recommendationVerification.passed || shiftedCrewHours <= 0) {
+  if (!recommendationVerification.passed || shiftedCrewHours <= 0 || beforeCrewHours === null || afterCrewHours === null) {
     return { ...base, status: 'no-improvement', recommendation: null, recommendationVerification, afterCrewHours: beforeCrewHours, shiftedCrewHours: 0, stats, message: 'No defensible improvement found. The original plan remains the operational plan.' }
   }
   return {

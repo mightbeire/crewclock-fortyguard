@@ -24,6 +24,7 @@ from fortyguard_agent.agent import AgentRunner, ToolRegistry, ToolSpec
 from fortyguard_agent.guardrails import Budget, SafetyPolicy
 from fortyguard_agent.models import AgentState, Goal, Provenance, ToolResult
 from fortyguard_agent.providers import GroqRateGovernor, build_groq_provider, load_project_env
+from fortyguard_agent.state_machine import deterministic_decision_result
 from fortyguard_agent.toolkit import FortyGuardToolkit
 
 
@@ -151,7 +152,20 @@ def _compact_result(case: Case, tool: str, arguments: dict[str, Any]) -> ToolRes
         if case.evidence == "available":
             return FortyGuardToolkit().get_workface_thermal_evidence({"fixture": FIXTURE, "workfaces": workfaces, "window": arguments.get("window", "11:00-15:00")})
         status = "COMPLETED_BUT_EMPTY" if case.evidence == "completed_but_empty" else "EVIDENCE_UNAVAILABLE"
-        return ToolResult({"state": status, "evidence_status": "INVALID_EVIDENCE"}, Provenance(source="cached", endpoint="/v1/heatmap", assumptions=("CACHED_LIVE_FORTYGUARD",)), error="invalid_or_unavailable_thermal_evidence")
+        return ToolResult(
+            deterministic_decision_result(
+                status=status,
+                valid=False,
+                decision_relevant_result="KEEP_CURRENT_PLAN_AND_RECHECK",
+                provenance="CACHED_LIVE_FORTYGUARD",
+                next_allowed_actions=["KEEP_CURRENT_PLAN_AND_RECHECK"],
+                state=status,
+                evidence_status="INVALID_EVIDENCE",
+                thermal_evidence_valid=False,
+            ),
+            Provenance(source="cached", endpoint="/v1/heatmap", assumptions=("CACHED_LIVE_FORTYGUARD",)),
+            error="invalid_or_unavailable_thermal_evidence",
+        )
     if tool == "calculate_thermal_overlap":
         task_id = arguments.get("task_id")
         if task_id not in known_tasks:
@@ -164,17 +178,17 @@ def _compact_result(case: Case, tool: str, arguments: dict[str, Any]) -> ToolRes
         if any(task.get("fixed") for task in case.tasks if task.get("id") in task_ids):
             return ToolResult({"status": "REJECTED_FIXED_COMMITMENT", "fixed_task_moves": 0}, Provenance(source="derived", endpoint="local:scheduler"), error="fixed_task_schedule_change_forbidden")
         if case.scheduler == "no_feasible_improvement":
-            return ToolResult({"status": "NO_FEASIBLE_IMPROVEMENT", "candidates_generated": 12, "feasible": 0, "fixed_task_moves": 0}, Provenance(source="derived", endpoint="local:scheduler"))
+            return ToolResult(deterministic_decision_result(status="NO_FEASIBLE_IMPROVEMENT", valid=True, decision_relevant_result="KEEP_CURRENT_PLAN", provenance="DETERMINISTIC_LOCAL_SCHEDULER", next_allowed_actions=["KEEP_CURRENT_PLAN"], candidates_generated=12, feasible_improvements=0, current_plan_valid=True, recommended_action="KEEP_CURRENT_PLAN", fixed_task_moves=0), Provenance(source="derived", endpoint="local:scheduler"))
         if case.scheduler == "break_rule_rejection":
-            return ToolResult({"status": "NO_FEASIBLE_IMPROVEMENT", "reason": "REQUIRED_BREAK_RULE", "break_rule_preserved": True, "feasible": 0, "fixed_task_moves": 0}, Provenance(source="derived", endpoint="local:scheduler"))
-        return ToolResult({"status": "FEASIBLE_ALTERNATIVES", "candidates_generated": 4, "feasible": 2, "best_candidate_id": "schedule_a1", "fixed_task_moves": 0, "thermal_objective_subordinate_to_hard_constraints": True}, Provenance(source="derived", endpoint="local:scheduler"))
+            return ToolResult(deterministic_decision_result(status="NO_FEASIBLE_IMPROVEMENT", valid=True, decision_relevant_result="KEEP_CURRENT_PLAN", provenance="DETERMINISTIC_LOCAL_SCHEDULER", next_allowed_actions=["KEEP_CURRENT_PLAN"], reason="REQUIRED_BREAK_RULE", break_rule_preserved=True, feasible_improvements=0, current_plan_valid=True, recommended_action="KEEP_CURRENT_PLAN", fixed_task_moves=0), Provenance(source="derived", endpoint="local:scheduler"))
+        return ToolResult(deterministic_decision_result(status="FEASIBLE_ALTERNATIVES", valid=True, decision_relevant_result="VERIFY_CANDIDATE_SCHEDULE", provenance="DETERMINISTIC_LOCAL_SCHEDULER", next_allowed_actions=["VERIFY_SCHEDULE"], candidates_generated=4, feasible_improvements=2, best_candidate_id="schedule_a1", fixed_task_moves=0, thermal_objective_subordinate_to_hard_constraints=True), Provenance(source="derived", endpoint="local:scheduler"))
     if tool == "verify_schedule":
         if case.scheduler == "feasible_alternatives" and arguments.get("candidate_id") == "schedule_a1":
-            return ToolResult({"status": "VERIFIED", "valid": True, "checks_passed": 82, "checks_total": 82, "fixed_task_moves": 0}, Provenance(source="derived", endpoint="local:verifier"))
+            return ToolResult(deterministic_decision_result(status="VERIFIED", valid=True, decision_relevant_result="VERIFIED_SCHEDULE", provenance="DETERMINISTIC_LOCAL_VERIFIER", next_allowed_actions=["REQUEST_SUPERINTENDENT_APPROVAL"], checks_passed=82, checks_total=82, fixed_task_moves=0), Provenance(source="derived", endpoint="local:verifier"))
         return ToolResult({"status": "NO_VERIFIABLE_CANDIDATE", "valid": False, "fixed_task_moves": 0}, Provenance(source="derived", endpoint="local:verifier"), error="no_feasible_candidate_to_verify")
     if tool == "request_superintendent_approval":
-        if case.key == "A" and arguments.get("recommendation_id"):
-            return ToolResult({"status": "PENDING_SUPERINTENDENT_APPROVAL", "approved": False, "publish_blocked_until_approval": True}, Provenance(source="derived", endpoint="local:approval"))
+        if case.scheduler == "feasible_alternatives" and arguments.get("recommendation_id"):
+            return ToolResult(deterministic_decision_result(status="AWAITING_APPROVAL", valid=True, decision_relevant_result="AWAITING_SUPERINTENDENT_APPROVAL", provenance="DETERMINISTIC_LOCAL_APPROVAL_GATE", next_allowed_actions=["WAIT_FOR_HUMAN_APPROVAL"], approved=False, publish_blocked_until_approval=True), Provenance(source="derived", endpoint="local:approval"))
         return ToolResult({}, Provenance(source="derived", endpoint="local:approval"), error="approval_not_warranted")
     if tool == "get_environmental_context":
         return ToolResult({}, Provenance(source="derived", endpoint="local:get_environmental_context"), error="unnecessary_enrichment_not_required")

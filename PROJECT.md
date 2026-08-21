@@ -18,6 +18,13 @@ CrewClock is now a submission-grade, single-screen React/Vite mission-control wo
 - a 14-task Phoenix construction-day fixture;
 - three crews and fifteen workers with trade qualifications;
 - two field workfaces and one shaded laydown zone;
+
+Metric lock amendment: the canonical fixture now declares four polygon
+workfaces and a Phoenix evidence status of `CACHED_EXCEEDANCE_EVIDENCE = NONE`.
+SHHCH is emitted only from schedule-aligned FortyGuard `exceedance` windows;
+TCM, heat index, and `env_params` cannot supply its duration. The deterministic
+engine and offline repair are complete, while Phoenix exceedance evidence
+remains the blocker before a numeric canonical replay.
 - fixed inspections, traffic-control and concrete commitments;
 - cached-live Phoenix FortyGuard TCM, hourly environmental parameters and time-of-measure evidence;
 - a seven-step high-level agent run;
@@ -25,7 +32,7 @@ CrewClock is now a submission-grade, single-screen React/Vite mission-control wo
 - six modeled hard-constraint families with candidate rejection and post-approval verification;
 - selective investigation that queries seven movable outdoor tasks while skipping shaded and fixed work;
 - superintendent approval;
-- a recomputed `22 → 6 = 16` crew-hour planning metric;
+- an SHHCH engine that emits a number only when Phoenix schedule-aligned exceedance windows are validated;
 - evidence and audit inspectors that separate cached-live, derived, employer and synthetic inputs;
 - fail-closed states for missing/stale evidence, tool failure, ambiguous policy, infeasible input and no better plan;
 - deterministic reset and query-addressable QA fixtures with no network dependency.
@@ -51,7 +58,7 @@ The LLM never performs schedule mathematics directly. Required evidence resolves
 
 ## Locked hero metric
 
-**Scheduled high-heat crew-hours, derived from outdoor movable task overlap with the employer-configured trigger while all modeled hard constraints remain satisfied.**
+**Scheduled High-Heat Crew-Hours (SHHCH), derived from area-weighted FortyGuard exceedance duration intersected with outdoor task intervals and multiplied by crew size while all modeled hard constraints remain satisfied.**
 
 This is a derived planning proxy. It is not a safety, health, compliance, productivity or dollar outcome.
 

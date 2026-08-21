@@ -1,5 +1,15 @@
 # CrewClock MVP data model
 
+## Locked thermal evidence fields
+
+Tasks include `weather_sensitivity.precipitation` as a future feasibility
+constraint; missing precipitation evidence is `UNKNOWN` and cannot reject a
+task. Workfaces are polygons with stable IDs. Exceedance evidence is a list of
+`{analytic_type, start, end, units: hours, status, provenance, tiles}` windows.
+Each tile carries a duration value for that exact window. The project trigger
+stores `threshold_c`, a modeled-temperature `quantity`, and provenance. No
+`env_params` field is permitted as an SHHCH duration input.
+
 ## Design principles
 
 1. Every datum carries a provenance class: `public`, `cached_live`, `employer`, `synthetic`, `derived`, or `onsite_authoritative`.

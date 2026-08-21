@@ -20,12 +20,14 @@ import {
   selectThermalInvestigation,
   verifySchedule,
 } from './engine'
+import { calculateScheduledHighHeatCrewHours, type ExceedanceWindow } from './shhch'
 
 describe('CrewClock deterministic demo', () => {
   it('recomputes the hero metric from tasks and crew sizes', () => {
-    expect(peakWindowCrewHours('original')).toBe(22)
-    expect(peakWindowCrewHours('proposed')).toBe(6)
-    expect(HERO_METRIC.moved).toBe(16)
+    expect(peakWindowCrewHours('original')).toBeNull()
+    expect(peakWindowCrewHours('proposed')).toBeNull()
+    expect(HERO_METRIC.moved).toBeNull()
+    expect(HERO_METRIC.status).toBe('none')
     expect(validateScenario()).toBe(true)
   })
 
@@ -40,24 +42,22 @@ describe('CrewClock deterministic demo', () => {
   })
 
   it('keeps evidence and policy provenance explicit', () => {
-    expect(THERMAL_EVIDENCE.status).toBe('cached-live')
+    expect(THERMAL_EVIDENCE.status).toBe('cached-live-context-only')
     expect(THERMAL_EVIDENCE.cachePaths).toHaveLength(3)
     expect(EMPLOYER_POLICY.status).toBe('synthetic employer policy')
     expect(EMPLOYER_POLICY.authorityBoundary).toContain('Onsite')
   })
 
   it('derives the locked recommendation instead of trusting fixture timestamps', () => {
-    expect(CANONICAL_RUN.status).toBe('recommended')
-    expect(CANONICAL_RUN.recommendation).toEqual(fixtureRecommendation())
-    expect(CANONICAL_RUN.beforeCrewHours).toBe(22)
-    expect(CANONICAL_RUN.afterCrewHours).toBe(6)
-    expect(CANONICAL_RUN.shiftedCrewHours).toBe(16)
-    expect(CANONICAL_RUN.stats.candidatesConsidered).toBeGreaterThan(0)
-    expect(CANONICAL_RUN.stats.rejectedCandidates).toBeGreaterThan(0)
+    expect(CANONICAL_RUN.status).toBe('missing-evidence')
+    expect(CANONICAL_RUN.recommendation).toBeNull()
+    expect(CANONICAL_RUN.beforeCrewHours).toBeNull()
+    expect(CANONICAL_RUN.afterCrewHours).toBeNull()
+    expect(CANONICAL_RUN.message).toContain('schedule-aligned')
   })
 
   it('verifies every hard-constraint family for the recommendation', () => {
-    const verification = verifySchedule(CANONICAL_RUN.recommendation!)
+    const verification = verifySchedule(fixtureRecommendation())
     expect(verification.passed).toBe(true)
     expect(verification.passedFamilies).toBe(verification.totalFamilies)
     expect(verification.families.find(item => item.id === 'fixed')?.passed).toBe(true)
@@ -78,9 +78,9 @@ describe('CrewClock deterministic demo', () => {
 
   it('preserves fixed times, dependency order, qualifications, and deadlines', () => {
     const baseline = originalSchedule()
-    const proposal = CANONICAL_RUN.recommendation!
+    const proposal = fixtureRecommendation()
     expect(TASKS.filter(task => task.fixed).every(task => proposal[task.id] === baseline[task.id])).toBe(true)
-    expect(CANONICAL_RUN.recommendationVerification?.passed).toBe(true)
+    expect(verifySchedule(fixtureRecommendation()).passed).toBe(true)
   })
 
   it('fails closed when evidence is missing', () => {
@@ -120,9 +120,9 @@ describe('CrewClock deterministic demo', () => {
 
   it('records approval only for a verified recommendation', () => {
     const approved = approveRecommendation(CANONICAL_RUN)
-    expect(approved.approved).toBe(true)
-    expect(approved.plan).toEqual(CANONICAL_RUN.recommendation)
-    expect(approved.verification.passed).toBe(true)
+    expect(approved.approved).toBe(false)
+    expect(approved.plan).toEqual(CANONICAL_RUN.original)
+    expect(approved.verification.passed).toBe(false)
     expect(approveRecommendation(runCrewClock({ evidenceState: 'missing' })).approved).toBe(false)
   })
 
@@ -134,5 +134,28 @@ describe('CrewClock deterministic demo', () => {
       schedule: originalSchedule(),
       deterministicId: 'CC-PHX-0716-v1',
     })
+  })
+
+  it('uses the same evidence window for temporal and area-weighted SHHCH', () => {
+    const window: ExceedanceWindow = {
+      analyticType: 'exceedance', start: '12:00', end: '14:00', units: 'hours', status: 'VALID', provenance: 'CACHED_LIVE_FORTYGUARD:test',
+      tiles: [
+        { polygon: [[0, 0], [5, 0], [5, 10], [0, 10]], valueHours: 2 },
+        { polygon: [[5, 0], [10, 0], [10, 10], [5, 10]], valueHours: 0 },
+      ],
+    }
+    const result = calculateScheduledHighHeatCrewHours(
+      { full: '12:00', partial: '13:00' },
+      [
+        { id: 'full', durationMinutes: 120, crewId: 'ground', zoneId: 'north', environment: 'outdoor-heavy', fixed: false },
+        { id: 'partial', durationMinutes: 120, crewId: 'ground', zoneId: 'north', environment: 'outdoor-heavy', fixed: false },
+      ],
+      [{ id: 'ground', headcount: 5 }],
+      [{ id: 'north', polygon: [[0, 0], [10, 0], [10, 10], [0, 10]] }],
+      [window],
+      { thresholdC: 32, quantity: 'fortyguard_modeled_temperature', provenance: 'PROJECT_THERMAL_TRIGGER:test' },
+    )
+    expect(result.valid).toBe(true)
+    expect(result.totalCrewHours).toBe(7.5)
   })
 })

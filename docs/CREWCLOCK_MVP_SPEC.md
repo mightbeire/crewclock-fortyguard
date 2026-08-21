@@ -6,6 +6,16 @@ Decision date: 2026-08-20
 
 Decision: **`CREWCLOCK_MVP_READY = YES`**
 
+## Metric lock amendment
+
+The hero metric is SHHCH from FortyGuard `analytic_type=exceedance`: area-weight
+tiles over polygon workfaces, intersect their duration with each task's
+scheduled interval, multiply by crew size, and sum outdoor tasks. The project
+thermal trigger is a separately provenance-labelled FortyGuard modeled
+temperature threshold. `env_params` is optional context only. Missing Phoenix
+exceedance windows are an honest evidence blocker, not a reason to use TCM,
+heat-index, or synthetic duration.
+
 Product state: CrewClock is locked as the hackathon MVP. This is a product decision, not a claim of field efficacy or safety certification.
 FortyGuard boundary: **zero new live requests**; only sanitized cached-live evidence is used.
 
@@ -107,7 +117,7 @@ The MVP’s hero metric is:
 
 > **Scheduled high-heat crew-hours above the employer-configured project trigger while all modeled hard constraints remain satisfied.**
 
-In the deterministic demo: **22 before → 6 proposed = 16 crew-hours shifted**. This is a derived schedule metric, recomputed from task durations, headcount, eligibility and time overlap. It is not a health or safety outcome.
+The deterministic demo currently reports no Phoenix number because schedule-aligned exceedance evidence is not cached. When validated windows are present, the value is recomputed from tile area weighting, exact task/window overlap and headcount. It is not a health or safety outcome.
 
 ### 9. Real and public demo data
 
@@ -268,4 +278,4 @@ CrewClock should be formally locked as the hackathon MVP. The locked claim is na
 
 ## Foundation lock amendment (2026-08-21)
 
-The product is an upcoming-shift adjustment agent, not a day-ahead “tomorrow planner”. Heatmap is the primary FortyGuard signal; `env_params` is selective time-matched context only. The hero metric is exactly `scheduled high-heat crew-hours`, calculated from outdoor movable task interval overlap with the employer-configured trigger. The live future capability probe was ambiguous and the current replay is labelled cached-live historical evidence.
+The product is an upcoming-shift adjustment agent, not a day-ahead “tomorrow planner”. FortyGuard `exceedance` is the SHHCH duration source; `env_params` is selective time-matched context only. The live future capability probe was ambiguous and the current Phoenix replay is labelled cached-live context with no demonstrated schedule-aligned exceedance windows.

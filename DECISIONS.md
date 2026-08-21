@@ -1,5 +1,24 @@
 # Decisions
 
+## 2026-08-21 — Lock SHHCH to schedule-aligned exceedance
+
+CrewClock now treats FortyGuard `analytic_type=exceedance` as the sole
+duration signal for Scheduled High-Heat Crew-Hours: tiles are area-weighted
+over polygon workfaces, intersected with the exact scheduled task interval, and
+multiplied by crew size. `env_params` is optional contextual evidence only.
+The project trigger is a separately named FortyGuard modeled-temperature
+threshold, never a silent heat-index mapping. Phoenix currently has no cached
+schedule-aligned exceedance windows, so the canonical demo fails closed and
+reports `CACHED_EXCEEDANCE_EVIDENCE = NONE`.
+
+## 2026-08-21 — Repair offline agent terminal boundaries
+
+Forensics distinguish A/E/F behavioral stopping, E provider interruption, and
+H's scenario-gated deterministic approval bug. Deterministic result envelopes
+now expose validity, decision relevance, provenance, and next allowed actions.
+Untrusted prompt text remains inert data; verified feasible schedules can enter
+the human approval gate without scenario-name logic.
+
 ## 2026-08-19 — Preserve the vendored quickstart
 
 The existing FortyGuard quickstart contains the most valuable local research, client wrapper, notebooks, and sanitized fixtures. It is retained as a vendor/reference layer rather than rewritten.
@@ -124,7 +143,7 @@ The second research pass used only cached-live responses, fixtures, primary sour
 - CrewClock is a pre-shift operations planner, not a heat-safety or compliance system. FortyGuard is not WBGT. Onsite measurement, employer policy, workload, PPE, acclimatization, symptoms and authorized judgment remain controlling.
 - The federal OSHA heat-specific rule is still proposed as of the decision date. The product imports employer rules and must never present the proposal as binding federal law.
 - The agent selects evidence, orchestrates, explains, verifies and escalates. Deterministic code performs schedule and metric mathematics. The Construction Superintendent approves; the MVP performs no external action.
-- The locked hero metric is **scheduled high-heat crew-hours: crew size multiplied by scheduled overlap with the employer-configured high-heat trigger for movable outdoor tasks**. The fixture recomputes `22 before → 6 proposed = 16 shifted`.
+- The locked hero metric is **SHHCH: area-weighted FortyGuard exceedance duration intersected with the exact outdoor task interval and multiplied by crew size**. The Phoenix fixture emits no number until schedule-aligned exceedance evidence is validated.
 - The 14 tasks, three crews, qualifications, dependencies, deadlines, fixed commitments, workface geometry and employer rule pack are explicitly synthetic. Phoenix FortyGuard evidence is cached-live; ADOT/OSHA/NIOSH inputs are public context.
 - Ordinary forecast plus a spreadsheet is the hostile baseline. CrewClock survives only as an evidence-selection, multi-constraint scheduling, verification and approval workflow. A final real multi-zone test must show whether FortyGuard changes the operational decision.
 - The reusable finalist shell is converted into CrewClock mission control with schedule, thermal profile, workface map, agent activity, before/after, approval, hero metric and evidence boundary.
@@ -134,7 +153,7 @@ The second research pass used only cached-live responses, fixtures, primary sour
 # 2026-08-20 — Ship the deterministic CrewClock production MVP
 
 - The canonical recommendation is no longer accepted from fixture timestamps. `src/demo/engine.ts` enumerates 30-minute crew assignments, applies feasibility first, minimizes eligible peak-window crew-hours second, and minimizes schedule movement third.
-- The solver independently reproduces all seven canonical task moves and the `22 → 6 = 16` result. Fixture proposal times remain only as a regression oracle.
+- The solver remains deterministic and fixture proposal times remain only operational inputs; SHHCH is now independently recomputed from exceedance windows rather than TCM or env_params.
 - Verification is grouped into fixed commitments, dependencies, qualifications, deadlines/bounds, crew availability, and employer policy. Approval triggers a final recomputation; it does not publish externally.
 - Conditional investigation is explicit: seven movable outdoor tasks across two workfaces are investigated, two movable shaded tasks are skipped, and five fixed commitments are retained without unnecessary thermal queries.
 - Missing/stale evidence, tool failure, ambiguous policy, infeasible source input, and no-improvement outcomes fail closed and issue no proposal.
