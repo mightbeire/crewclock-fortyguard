@@ -31,6 +31,21 @@ export type Task = {
 
 export type Workface = { id: ZoneId; label: string; polygon: Array<[number, number]> }
 
+export const PHOENIX_PROJECT_AOI = {
+  type: 'FeatureCollection' as const,
+  features: [{
+    type: 'Feature' as const,
+    properties: {},
+    geometry: {
+      type: 'Polygon' as const,
+      coordinates: [[
+        [-112.01845, 33.43355], [-112.01755, 33.43355], [-112.01755, 33.43445],
+        [-112.01845, 33.43445], [-112.01845, 33.43355],
+      ]],
+    },
+  }],
+} as const
+
 export type AgentStep = {
   label: string
   detail: string
@@ -138,10 +153,10 @@ export const TASKS: Task[] = [
 ]
 
 export const WORKFACES: Workface[] = [
-  { id: 'north', label: 'North workface', polygon: [[0, 0], [10, 0], [10, 10], [0, 10]] },
-  { id: 'south', label: 'South workface', polygon: [[20, 0], [30, 0], [30, 10], [20, 10]] },
-  { id: 'laydown', label: 'Laydown / shaded support', polygon: [[0, 20], [10, 20], [10, 30], [0, 30]] },
-  { id: 'access', label: 'Access / traffic control', polygon: [[20, 20], [30, 20], [30, 30], [20, 30]] },
+  { id: 'north', label: 'North workface', polygon: [[-112.01840, 33.43400], [-112.01800, 33.43400], [-112.01800, 33.43440], [-112.01840, 33.43440]] },
+  { id: 'south', label: 'South workface', polygon: [[-112.01840, 33.43360], [-112.01800, 33.43360], [-112.01800, 33.43400], [-112.01840, 33.43400]] },
+  { id: 'laydown', label: 'Laydown / shaded support', polygon: [[-112.01795, 33.43360], [-112.01760, 33.43360], [-112.01760, 33.43395], [-112.01795, 33.43395]] },
+  { id: 'access', label: 'Access / traffic control', polygon: [[-112.01795, 33.43405], [-112.01760, 33.43405], [-112.01760, 33.43440], [-112.01795, 33.43440]] },
 ]
 
 export const THERMAL_EVIDENCE = {
@@ -152,6 +167,7 @@ export const THERMAL_EVIDENCE = {
   forecastStatus: 'NOT_DEMONSTRATED',
   projectThermalTrigger: { thresholdC: 32, quantity: 'fortyguard_modeled_temperature', provenance: 'synthetic employer project trigger; FortyGuard threshold quantity is modeled temperature, not heat index' },
   location: 'Phoenix planning AOI · 33.434° N, 112.018° W',
+  aoi: PHOENIX_PROJECT_AOI,
   observationDate: '2025-07-15',
   timezone: 'America/Phoenix · UTC−07:00',
   grid: '100 m requested analysis grid',

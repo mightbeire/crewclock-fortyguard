@@ -6,7 +6,7 @@
 - One user: Construction Superintendent.
 - One decision: approve the upcoming-shift revised field plan.
 - One transformation: 14 tasks visibly reorder across three crews.
-- One hero metric: **scheduled high-heat crew-hours, 22 before → 6 proposed in the deterministic historical replay**.
+- One hero metric: **scheduled high-heat crew-hours, shown only when validated schedule-aligned exceedance evidence is cached**.
 - No chain-of-thought. Show only high-level actions, inputs, constraints and results.
 - No safety certification claim. Say “planning evidence,” “modeled window,” and “employer policy.”
 
@@ -14,7 +14,7 @@
 
 1. Run `npm run dev` and open the CrewClock page.
 2. Click **Reset**.
-3. Confirm the status is `READY TO PLAN`, the schedule toggle is `Original 22h`, and the header says `FORTYGUARD CACHE READY · CACHED-LIVE REPLAY`.
+3. Confirm the status is `READY TO PLAN` and the header says `FORTYGUARD CACHE READY · CACHED-LIVE REPLAY`. If the evidence badge says `EVIDENCE UNAVAILABLE`, do not present a before/after SHHCH number.
 4. Confirm the inspector is closed.
 5. Do not use a live FortyGuard call during the demo.
 
@@ -28,7 +28,7 @@
 
 > “The upcoming-shift construction plan is valid on paper. Fourteen tasks, three qualified crews, every inspection and deadline accounted for. But the heaviest movable work is scheduled in Phoenix’s worst modeled heat window. CrewClock fixes the timing without blowing the day.”
 
-Point to `22h` on the Before toggle. Do not discuss regulation.
+Point to the evidence state and the original schedule. Do not discuss regulation or present an unvalidated SHHCH number.
 
 ### 0:20–0:40 — Original plan and evidence
 
@@ -50,13 +50,13 @@ Click **Run the upcoming-shift plan**.
 
 Do not narrate hidden reasoning. Let the seven high-level stages land.
 
-### 1:30–2:00 — Schedule transforms
+### 1:30–2:00 — Schedule transforms (only when evidence is valid)
 
-**Screen:** proposal automatically slides into view.
+**Screen:** proposal automatically slides into view only after valid exceedance evidence and deterministic verification.
 
 **Say:**
 
-> “The work moves, not the obligations. Groundworks and signal pulls shift earlier. Sheltered equipment service and cabinet pre-wire move into the peak period. The concrete delivery and inspection windows stay locked.”
+> “The work moves, not the obligations. Any proposed movement is derived from validated exceedance windows and deterministic feasibility checks. Fixed delivery and inspection commitments stay locked.”
 
 Toggle **Before** then **Proposed** once if the audience needs the contrast. End on Proposed.
 
@@ -68,7 +68,7 @@ Point to constraint strip and agent card.
 
 > “CrewClock retained all 14 tasks, all three crew qualification sets, every dependency, five fixed commitments, and every deadline. Missing or conflicting required evidence would stop here as unknown.”
 
-### 2:25–2:45 — Human approval
+### 2:25–2:45 — Human approval (only when a verified recommendation exists)
 
 Click **Approve the upcoming-shift plan**.
 
@@ -76,15 +76,15 @@ Click **Approve the upcoming-shift plan**.
 
 > “The construction superintendent—not the model—approves. CrewClock changes no external schedule in this MVP. Onsite WBGT, company policy and field judgment still control the shift.”
 
-### 2:45–3:00 — Hero metric
+### 2:45–3:00 — Hero metric (only when evidence is complete)
 
-Point to the verified result in the right rail; no scrolling is required at 1440×900.
+Point to the verified result in the right rail; if the evidence is incomplete, keep the run in its safe evidence-unavailable state.
 
 **Say:**
 
-> “Same jobs. Same crews. Same deadlines. Movable outdoor work in the highest modeled heat window drops from 22 crew-hours to 6: sixteen crew-hours better timed. That is a planning metric—not a claim that anyone is sixteen hours safer.”
+> “The metric is derived from the same jobs, crews, deadlines, workface geometry, validated exceedance duration, exact task overlap, and crew headcount. It is a planning metric—not a safety outcome.”
 
-End on the three numbers: **22 → 6 → 16**.
+End on the validated evidence state and the derived metric only if the complete window set is present.
 
 ## Judge answers
 
@@ -110,8 +110,8 @@ End on the three numbers: **22 → 6 → 16**.
 
 ## Failure-safe stage path
 
-- If animation stalls, click **CrewClock proposed plan**; the deterministic plan remains available.
-- If approval does not animate, open the Evidence drawer and state the already-computed `22 → 6` result.
+- If animation stalls, keep the evidence-unavailable state visible; do not substitute a placeholder metric.
+- If approval does not animate, open the Evidence drawer and state the exact evidence gap.
 - If asked for current weather, say this is an intentionally reproducible historical replay; do not imply it is a current forecast.
 - If asked to certify safety, refuse the premise and point to the onsite-authority boundary.
 

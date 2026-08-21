@@ -28,7 +28,9 @@ crew_hours_shifted
 
 Evidence windows are supplied by FortyGuard `analytic_type=exceedance`; a
 project thermal trigger names its modeled-temperature quantity and is not a
-heat-index or WBGT threshold. The current Phoenix window set is absent.
+heat-index or WBGT threshold. The current Phoenix window set is absent. Two
+exact attempts for the first historical window returned terminal failure with
+zero credit spend; this does not imply zero exceedance.
 
 ## Deterministic recomputation
 

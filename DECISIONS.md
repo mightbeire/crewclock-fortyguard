@@ -11,6 +11,17 @@ threshold, never a silent heat-index mapping. Phoenix currently has no cached
 schedule-aligned exceedance windows, so the canonical demo fails closed and
 reports `CACHED_EXCEEDANCE_EVIDENCE = NONE`.
 
+## 2026-08-21 — Stop canonical exceedance validation on repeated terminal failure
+
+The existing successful Phoenix control date/AOI and preconfigured 32.0 °C
+modeled-temperature trigger were retained. Two exact historical `exceedance`
+requests for the first `06:00–08:00` schedule window returned terminal
+`Failed`, consumed zero credits, and produced no tiles. The remaining four
+windows were not requested because incomplete schedule coverage cannot support
+SHHCH. The sanitized records are retained under
+`evidence/crewclock-canonical-exceedance/`; no metric or schedule change is
+claimed.
+
 ## 2026-08-21 — Repair offline agent terminal boundaries
 
 Forensics distinguish A/E/F behavioral stopping, E provider interruption, and

@@ -14,6 +14,11 @@ Primary signal: heatmap tiles at the requested granularity. `tcm` is a temperatu
 
 One shared project AOI is requested for relevant workfaces. Local spatial joining maps heatmap tiles to workface polygons. The value is area-weighted across every overlapping tile. A point-like area may use deterministic point-in-tile assignment and must be labelled as such.
 
+The canonical Phoenix fixture uses the previously successful historical AOI and
+four WGS84 workface polygons inside that shared AOI. On 2026-08-21 the first
+two-hour exceedance request failed twice; no tile geometry is treated as
+coverage unless the API returns a completed, non-empty response.
+
 ## Hero metric
 
 For each outdoor task, FortyGuard `analytic_type=exceedance` duration is area-weighted over its polygon workface, intersected with that task's scheduled interval, and multiplied by crew size. The result is `scheduled high-heat crew-hours (SHHCH)`. A project thermal trigger names FortyGuard's modeled temperature quantity; it is not heat index or WBGT. The deterministic engine fails closed when schedule-aligned exceedance evidence is missing. `env_params` remains optional context and cannot supply duration.

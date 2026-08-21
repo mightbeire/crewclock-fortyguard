@@ -197,7 +197,7 @@ Division of labor:
 | `opening` | Original plan, sites, cached evidence badge, no result | Run investigation |
 | `investigating` | High-level tool actions and evidence selection | Continue or fail closed |
 | `proposal` | Reordered schedule, preserved constraints, exceptions, approval gate | Approve, reject, revise |
-| `verified` | Approved plan and recomputed 22→6→16 result | Export/audit later; no external action in MVP |
+| `verified` | Approved plan and recomputed SHHCH result when valid exceedance evidence exists | Export/audit later; no external action in MVP |
 | `unknown` | Missing/stale/conflicting required evidence | Escalate; no recommendation |
 
 Primary information architecture:
@@ -255,7 +255,7 @@ Primary information architecture:
 6. **Why agent?** Investigation and orchestration span schedule, workface, policy, thermal, advisory and exception data; the agent selects tools and stops when evidence is sufficient.
 7. **Why FortyGuard?** It contributes spatial screening, hourly environmental timing, persistence/exceedance and context before onsite attention is available; it must prove a decision delta in final validation.
 8. **What is real?** Cached Phoenix FortyGuard data, public ADOT project context and official workflow guidance. Tasks, crews, policy and workface geometry are labelled synthetic.
-9. **What improves?** Movable outdoor crew-hours overlapping the modeled peak window fall from 22 to 6 while modeled hard constraints remain satisfied.
+9. **What improves?** When valid schedule-aligned exceedance evidence exists, the deterministic engine can compare feasible plans by derived SHHCH; no Phoenix reduction is currently demonstrated.
 10. **What if wrong?** No schedule is externally changed; stale/unknown evidence blocks recommendation; the superintendent can reject; onsite policy and measurements override; the original plan remains available.
 
 ## Lock decision

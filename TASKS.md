@@ -22,7 +22,8 @@
 - [x] Label cached-live, public, derived, employer and synthetic inputs.
 - [x] Convert the reusable shell into CrewClock mission control.
 - [x] Add original/proposed schedule visualization, workface map, thermal timing, agent activity, approval, result and evidence drawer.
-- [x] Recompute `22 → 6 = 16` from task intervals and crew headcount.
+- [ ] Recompute the canonical SHHCH delta from validated Phoenix exceedance windows, task intervals and crew headcount.
+- [x] Attempt bounded historical Phoenix exceedance acquisition; two exact `06:00–08:00` requests failed with zero credit spend and were recorded as a partial validation gap.
 - [x] Add tests for metric arithmetic, fixed work, dependencies, qualifications, deadlines and provenance.
 - [x] Write the MVP spec, data model, measurement contract and exact three-minute demo script.
 - [x] Complete desktop browser QA of opening, proposal, approval and verified states.

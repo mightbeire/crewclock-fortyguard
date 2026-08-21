@@ -80,7 +80,7 @@ This is a derived planning proxy. It is not a safety, health, compliance, produc
 3. Rehearse with `docs/CREWCLOCK_DEMO_SCRIPT.md`.
 4. Run `npm run dev`, `npm run test:ui`, `npm run typecheck`, `npm run lint`, `npm run build`, and `python -m pytest -q`.
 5. Read `docs/CREWCLOCK_ARCHITECTURE.md` for the implemented agent/scheduler boundary.
-6. Preserve the no-live-call rule until the team explicitly authorizes final decision-delta validation.
+6. Preserve the no-live-call rule during demos; historical evidence acquisition is a separately authorized, bounded validation step.
 
 ## Final validation gate
 

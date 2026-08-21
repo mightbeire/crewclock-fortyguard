@@ -1,0 +1,24 @@
+{
+  "aoi_control": "Existing successful Phoenix historical TCM AOI; shared WGS84 AOI containing all four canonical workfaces.",
+  "canonical_windows": [
+    "06:00-08:00",
+    "08:00-10:00",
+    "10:00-12:00",
+    "12:00-14:00",
+    "14:00-16:00"
+  ],
+  "credit_cap": 25000,
+  "credits_used_this_run": 0,
+  "failure_gap": "06:00-08:00 returned terminal Failed twice; no valid exceedance tiles were returned, so schedule coverage cannot be completed without retrying this interval.",
+  "historical_control_date": "2025-07-15",
+  "live_analysis_calls_this_run": 2,
+  "provenance": "LIVE_FORTYGUARD",
+  "project_thermal_trigger": {
+    "provenance": "CrewClock project_thermal_trigger configured before live retrieval; FortyGuard modeled-temperature/TCM quantity, not heat index.",
+    "quantity": "fortyguard_modeled_temperature",
+    "threshold_c": 32.0
+  },
+  "status": "PARTIAL",
+  "successful_windows": [],
+  "units": "hour"
+}

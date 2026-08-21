@@ -44,6 +44,14 @@ and is not substituted into the Phoenix sample. Therefore
 `CACHED_EXCEEDANCE_EVIDENCE = NONE` for the canonical Phoenix fixture and the
 demo emits no fabricated SHHCH number until valid windows are inserted.
 
+On 2026-08-21, two exact historical requests for the first canonical window
+(`2025-07-15`, Phoenix, `06:00–08:00`, `filter_type=2`) reached terminal
+`Failed` without a result and consumed zero credits. The sanitized activity
+records are in `evidence/crewclock-canonical-exceedance/`. The remaining four
+windows were not requested because a missing first window cannot support
+complete schedule coverage. This is a provider validation gap, not evidence
+that the interval had zero exceedance.
+
 Future forecast status remains `FORTYGUARD_FUTURE_FORECAST_STATUS =
 NOT_DEMONSTRATED` because the retained Phoenix future probes completed with
 zero cells.
