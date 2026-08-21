@@ -151,7 +151,16 @@ def _groq_http_post(payload: dict[str, Any], *, api_key: str, timeout: float) ->
         connection.close()
         raise GroqProviderError("groq_timeout_or_unavailable") from None
     if status < 200 or status >= 300:
-        raise GroqProviderError(f"groq_http_{status}")
+        detail = ""
+        try:
+            decoded_error = json.loads(response_body.decode("utf-8"))
+            error = decoded_error.get("error") if isinstance(decoded_error, dict) else None
+            if isinstance(error, dict):
+                values = [error.get(name) for name in ("type", "code", "message")]
+                detail = ":" + ":".join(re.sub(r"[^A-Za-z0-9_. -]", "", str(value))[:120] for value in values if value)
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            detail = ":non_json_error"
+        raise GroqProviderError(f"groq_http_{status}{detail}")
     try:
         decoded = json.loads(response_body.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError):
@@ -199,6 +208,7 @@ class GroqChatCompletionsProvider:
         self.transport = transport or (lambda payload, key, timeout: _groq_http_post(payload, api_key=key, timeout=timeout))
         self.messages: list[dict[str, Any]] = [{"role": "system", "content": self.SYSTEM_PROMPT}]
         self.model_calls = 0
+        self.retries = 0
         self.usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
 
     @staticmethod
@@ -222,7 +232,7 @@ class GroqChatCompletionsProvider:
             "model": self.model,
             "messages": self.messages,
             "temperature": 0.1,
-            "max_completion_tokens": 128,
+            "max_completion_tokens": 512,
         }
         if self.tool_schemas:
             payload["tools"] = [{"type": "function", "function": tool} for tool in self.tool_schemas]
@@ -236,6 +246,7 @@ class GroqChatCompletionsProvider:
                 last_error = exc
                 if attempt >= self.retry_ceiling or not any(token in str(exc) for token in ("408", "429", "500", "502", "503", "504", "timeout", "unavailable")):
                     raise
+                self.retries += 1
         else:  # pragma: no cover - loop always breaks or raises
             raise last_error or GroqProviderError("groq_request_failed")
         self.model_calls += 1

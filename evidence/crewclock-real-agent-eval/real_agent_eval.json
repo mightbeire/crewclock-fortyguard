@@ -1,0 +1,88 @@
+{
+  "provider": "GROQ",
+  "model": "openai/gpt-oss-120b",
+  "live_fortyguard_calls": 0,
+  "status": "PARTIAL_PROVIDER_RATE_LIMIT",
+  "evaluation_stopped_at": "A-1-retry",
+  "completed_real_runs": [
+    {
+      "run_id": "A-1-initial",
+      "scenario": "A",
+      "passed": false,
+      "tool_trace": [],
+      "provider_errors": ["groq_http_400"],
+      "termination": "safe_failure",
+      "model_calls": 0,
+      "tool_calls": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "total_tokens": 0,
+      "reasoning_content_persisted": false
+    },
+    {
+      "run_id": "B-1",
+      "scenario": "B",
+      "passed": false,
+      "tool_trace": [],
+      "provider_errors": [],
+      "termination": "completed_without_inspection",
+      "model_calls": 1,
+      "tool_calls": 0,
+      "input_tokens": 694,
+      "output_tokens": 128,
+      "total_tokens": 822,
+      "reasoning_content_persisted": false
+    },
+    {
+      "run_id": "D-1",
+      "scenario": "D",
+      "passed": false,
+      "tool_trace": [],
+      "provider_errors": [],
+      "termination": "completed_without_evidence_check",
+      "model_calls": 1,
+      "tool_calls": 0,
+      "input_tokens": 656,
+      "output_tokens": 128,
+      "total_tokens": 784,
+      "reasoning_content_persisted": false
+    },
+    {
+      "run_id": "H-1",
+      "scenario": "H",
+      "passed": false,
+      "tool_trace": [],
+      "provider_errors": [],
+      "termination": "completed_without_inspection",
+      "model_calls": 1,
+      "tool_calls": 0,
+      "input_tokens": 674,
+      "output_tokens": 128,
+      "total_tokens": 802,
+      "reasoning_content_persisted": false
+    },
+    {
+      "run_id": "A-1-retry",
+      "scenario": "A",
+      "passed": false,
+      "tool_trace": [
+        "inspect_shift_plan",
+        "identify_thermal_candidates",
+        "get_workface_thermal_evidence",
+        "calculate_thermal_overlap"
+      ],
+      "provider_errors": ["groq_http_429:rate_limit_exceeded"],
+      "termination": "safe_failure",
+      "model_calls": 4,
+      "tool_calls": 4,
+      "input_tokens": 7035,
+      "output_tokens": 598,
+      "total_tokens": 7633,
+      "reasoning_content_persisted": false
+    }
+  ],
+  "metrics_scope": "observed real smoke runs only; A-J suite and multiruns not completed",
+  "rate_limit_http_responses": 2,
+  "retry_count": 1,
+  "provider_failure_runs": 2
+}

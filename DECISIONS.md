@@ -162,3 +162,10 @@ The second research pass used only cached-live responses, fixtures, primary sour
 - The production adapter required a narrow transport/shape correction: omit empty tool fields for no-tool calls and use the fixed-host low-level HTTPS transport. The adapter then passed a real completion and a harmless local `echo_status` tool-call smoke test.
 - Reasoning-related response fields may be present; their contents are never persisted or displayed.
 - Full real A–J evaluation remains a separate next run. No FortyGuard call was made.
+
+## Groq evaluation stop amendment — 2026-08-21
+
+- The target model and production adapter passed the connection gate and a harmless local tool-call smoke test.
+- The real A–J evaluation was stopped immediately after a sanitized HTTP 429 `rate_limit_exceeded` response during the first A workflow. No further Groq requests were made.
+- The real evaluation is `PARTIAL`, not a model-behavior pass. Offline deterministic protocol tests remain useful, but cannot substitute for A–J evidence.
+- No FortyGuard calls were made; cached-live evidence remained the only evidence source.

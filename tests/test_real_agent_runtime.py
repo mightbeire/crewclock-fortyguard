@@ -60,6 +60,7 @@ def test_groq_provider_retries_transient_failures_but_not_auth_failures() -> Non
     with pytest.raises(GroqProviderError, match="groq_http_429"):
         provider.next_decision(AgentState(Goal("retry", "operator")))
     assert len(transient_calls) == 2
+    assert provider.retries == 1
 
     auth_calls = []
 
@@ -71,6 +72,7 @@ def test_groq_provider_retries_transient_failures_but_not_auth_failures() -> Non
     with pytest.raises(GroqProviderError, match="groq_http_403"):
         provider.next_decision(AgentState(Goal("auth", "operator")))
     assert len(auth_calls) == 1
+    assert provider.retries == 0
 
 
 def test_cached_live_thermal_tool_is_compact_and_never_live() -> None:

@@ -58,4 +58,4 @@
 - [x] Enforce compact cached-live evidence, typed model-output validation, prompt-injection boundary, limits and deterministic verification gate.
 - [x] Add offline A–J agent protocol evaluations and A–E differentiation traces.
 - [x] Pass the real Groq model/adapter connection gate and harmless local tool-call smoke test without exposing the key.
-- [ ] Run the full real Groq A–J evaluation suite in a separate controlled run.
+- [ ] Run the full real Groq A–J evaluation suite in a separate controlled run after the provider model rate limit clears.
