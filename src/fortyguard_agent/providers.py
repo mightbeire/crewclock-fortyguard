@@ -3,11 +3,41 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 import json
 import os
+from pathlib import Path
+import re
 from typing import Any, Callable, Protocol
 from urllib import error as urllib_error
 from urllib import request as urllib_request
 
 from .models import ActionProposal, AgentState, ToolResult
+
+
+def load_project_env(path: str | Path | None = None) -> bool:
+    """Load the project `.env` without logging or exposing secret values.
+
+    This keeps the runtime usable from the repository root without adding a
+    dependency solely for dotenv parsing. Existing process variables win.
+    """
+    env_path = Path(path) if path is not None else Path(__file__).resolve().parents[2] / ".env"
+    if not env_path.is_file():
+        return False
+    try:
+        lines = env_path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return False
+    for line in lines:
+        stripped = line.strip()
+        if not stripped or stripped.startswith(("#", ";")) or "=" not in stripped:
+            continue
+        name, raw_value = stripped.split("=", 1)
+        name = name.strip()
+        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name) or name in os.environ:
+            continue
+        value = raw_value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+            value = value[1:-1]
+        os.environ[name] = value
+    return True
 
 
 @dataclass
@@ -257,6 +287,7 @@ GroqProvider = GroqChatCompletionsProvider
 
 def build_groq_provider(tool_schemas: list[dict[str, Any]], *, timeout_seconds: float = 60.0, retry_ceiling: int = 1) -> GroqChatCompletionsProvider | None:
     """Return the configured Groq provider without exposing or logging its key."""
+    load_project_env()
     key = os.getenv("GROQ_API_KEY")
     if not key:
         return None
@@ -271,6 +302,7 @@ def build_groq_provider(tool_schemas: list[dict[str, Any]], *, timeout_seconds: 
 
 def build_configured_provider(tool_schemas: list[dict[str, Any]]) -> LLMProvider | None:
     """Select a provider by configuration while keeping the app provider-neutral."""
+    load_project_env()
     provider = (os.getenv("LLM_PROVIDER") or "").strip().lower()
     if provider == "groq":
         return build_groq_provider(tool_schemas)

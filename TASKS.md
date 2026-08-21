@@ -57,4 +57,4 @@
 - [x] Implement provider-neutral bounded real-agent runtime with isolated Groq GPT-OSS 120B adapter.
 - [x] Enforce compact cached-live evidence, typed model-output validation, prompt-injection boundary, limits and deterministic verification gate.
 - [x] Add offline A–J agent protocol evaluations and A–E differentiation traces.
-- [ ] Configure a non-committed GROQ_API_KEY and run the real Groq A–J evaluation suite.
+- [ ] Repair or replace the non-committed GROQ_API_KEY after the HTTP 403 preflight, then run the real Groq A–J evaluation suite.

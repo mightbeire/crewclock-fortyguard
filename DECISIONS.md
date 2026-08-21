@@ -154,3 +154,4 @@ The second research pass used only cached-live responses, fixtures, primary sour
 - Keep the provider-neutral `LLMProvider` boundary. Groq-specific HTTP and response translation stays in the provider adapter.
 - Treat the absence of `GROQ_API_KEY` as “real model not connected,” not as a reason to fabricate a model evaluation. The deterministic provider and offline A–J protocol suite remain the demo fallback.
 - Keep the future Phoenix forecast path closed. The real runtime reads only explicit cached-live fixtures in this run; it makes zero FortyGuard calls.
+- The project `.env` fields were found and loaded without exposing the key, but Groq returned HTTP 403 for both model listing and minimal chat completion. Do not label A–J offline protocol traces as real-model results; keep the deterministic fallback active until credential access is repaired.

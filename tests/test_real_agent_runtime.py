@@ -1,10 +1,12 @@
 import json
+import os
+import pytest
 
 from fortyguard_agent.agent import AgentRunner, ToolRegistry, ToolSpec
 from fortyguard_agent.evals import run_fixture_spikes
 from fortyguard_agent.guardrails import Budget, SafetyPolicy
 from fortyguard_agent.models import ActionProposal, AgentState, Goal, Provenance, ToolResult
-from fortyguard_agent.providers import GroqChatCompletionsProvider, MockProvider, ProviderDecision
+from fortyguard_agent.providers import GroqChatCompletionsProvider, GroqProviderError, MockProvider, ProviderDecision, load_project_env
 from fortyguard_agent.registry import build_tool_registry
 from fortyguard_agent.runtime_evals import run_runtime_protocol_evaluations
 from fortyguard_agent.toolkit import FortyGuardToolkit
@@ -33,6 +35,42 @@ def test_groq_adapter_parses_local_tool_calls_without_executing_them() -> None:
     assert requests[0][0]["tools"][0]["type"] == "function"
     assert provider.usage["total_tokens"] == 29
     assert "test-secret" not in json.dumps(provider.messages)
+
+
+def test_project_env_loader_sets_only_unset_variables(tmp_path, monkeypatch) -> None:
+    env_file = tmp_path / ".env"
+    env_file.write_text("LLM_PROVIDER=groq\nGROQ_MODEL='openai/gpt-oss-120b'\nGROQ_API_KEY=fixture-secret\n", encoding="utf-8")
+    monkeypatch.delenv("LLM_PROVIDER", raising=False)
+    monkeypatch.delenv("GROQ_MODEL", raising=False)
+    monkeypatch.delenv("GROQ_API_KEY", raising=False)
+    assert load_project_env(env_file)
+    assert os.environ["LLM_PROVIDER"] == "groq"
+    assert os.environ["GROQ_MODEL"] == "openai/gpt-oss-120b"
+    assert os.environ["GROQ_API_KEY"] == "fixture-secret"
+
+
+def test_groq_provider_retries_transient_failures_but_not_auth_failures() -> None:
+    transient_calls = []
+
+    def transient_transport(payload, key, timeout):
+        transient_calls.append(1)
+        raise GroqProviderError("groq_http_429")
+
+    provider = GroqChatCompletionsProvider("fixture-secret", transport=transient_transport, retry_ceiling=1)
+    with pytest.raises(GroqProviderError, match="groq_http_429"):
+        provider.next_decision(AgentState(Goal("retry", "operator")))
+    assert len(transient_calls) == 2
+
+    auth_calls = []
+
+    def auth_transport(payload, key, timeout):
+        auth_calls.append(1)
+        raise GroqProviderError("groq_http_403")
+
+    provider = GroqChatCompletionsProvider("fixture-secret", transport=auth_transport, retry_ceiling=1)
+    with pytest.raises(GroqProviderError, match="groq_http_403"):
+        provider.next_decision(AgentState(Goal("auth", "operator")))
+    assert len(auth_calls) == 1
 
 
 def test_cached_live_thermal_tool_is_compact_and_never_live() -> None:

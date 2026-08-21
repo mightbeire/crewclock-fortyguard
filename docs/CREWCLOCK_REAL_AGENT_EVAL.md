@@ -1,6 +1,6 @@
 # CrewClock real-agent evaluation
 
-Status: provider runtime implemented; real Groq evaluation not run because `GROQ_API_KEY` is not configured in this workspace. No key value is printed or persisted.
+Status: provider runtime implemented; real Groq evaluation is blocked by HTTP 403 from the loaded credential. No key value is printed or persisted.
 
 FortyGuard boundary for this run: `LIVE_FORTYGUARD_CALLS = 0`, credits consumed `0`, recorded remaining balance `1,782,840`.
 
@@ -14,7 +14,7 @@ Official references: [Groq OpenAI compatibility](https://console.groq.com/docs/o
 
 ## Evaluation status
 
-`REAL_MODEL_CONNECTED = NO` and `REAL_AGENT_EVALUATIONS = NOT_RUN`. The A–J protocol suite below is an offline deterministic-provider evaluation of the same runner, schemas, guardrails and tool boundary; it is not evidence of Groq model behavior.
+`REAL_MODEL_CONNECTED = NO`, `AUTHENTICATION = FAIL`, and `REAL_AGENT_EVALUATIONS = NOT_RUN`. Both the documented model-list endpoint and the minimal chat-completions request returned HTTP 403. The A–J protocol suite below is an offline deterministic-provider evaluation of the same runner, schemas, guardrails and tool boundary; it is not evidence of Groq model behavior.
 
 | Scenario | Offline protocol result | Compact trace |
 |---|---|---|
@@ -56,3 +56,7 @@ These are counts over the five A–E protocol paths, not accuracy claims about a
 ## Real Groq run procedure
 
 After a secret is configured outside version control, run the bounded evaluation command selected by the application harness. Record model connectivity, tool traces, usage totals, failures and A–J outcomes. Do not label the offline protocol suite as a real-model pass, and do not add a FortyGuard call to that evaluation.
+
+## Current blocked preflight
+
+The project `.env` was found and loaded in-process. Boolean checks passed for key presence, `LLM_PROVIDER=groq`, and `GROQ_MODEL=openai/gpt-oss-120b`. The credential was rejected with HTTP 403 by both `GET /openai/v1/models` and the minimal `POST /openai/v1/chat/completions`. No A–J scenario, multirun trial, or real-model metric was recorded. The credential must be repaired or replaced outside this repository; it was not printed, rotated, copied, hashed, or committed.
