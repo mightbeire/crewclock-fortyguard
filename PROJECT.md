@@ -34,7 +34,7 @@ The UI contains no live FortyGuard request path. The current recorded reserve fo
 
 ## Real agent runtime status
 
-The provider-neutral orchestration layer now has a bounded Groq Chat Completions adapter for `openai/gpt-oss-120b` with local CrewClock tool calling. The model can select evidence, deterministic calculations, alternatives, verification and approval; deterministic code remains authoritative for every factual calculation and hard constraint. The raw and adapter connection gates pass, including a harmless local tool-call smoke test. The real A–J attempt was stopped on a Groq model rate limit after a partial A trace; no full real-agent pass is claimed and the deterministic provider remains the submission fallback.
+The provider-neutral orchestration layer now has a bounded Groq Chat Completions adapter for `openai/gpt-oss-120b` with local CrewClock tool calling. The model can select evidence, deterministic calculations, alternatives, verification and approval; deterministic code remains authoritative for every factual calculation and hard constraint. The raw and adapter connection gates pass, including a harmless local tool-call smoke test. The real A–J harness is strictly sequential, rate-aware and checkpointed; provider capacity is classified separately from model behavior. Rate-aware execution is infrastructure reliability, not a product feature. The deterministic provider remains the submission fallback when real evidence is incomplete.
 
 See `docs/CREWCLOCK_REAL_AGENT_EVAL.md` for offline A–J protocol traces and measured counts.
 

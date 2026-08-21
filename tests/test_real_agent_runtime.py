@@ -1,15 +1,21 @@
 import json
 import os
+from importlib.util import module_from_spec, spec_from_file_location
+from pathlib import Path
 import pytest
 
 from fortyguard_agent.agent import AgentRunner, ToolRegistry, ToolSpec
 from fortyguard_agent.evals import run_fixture_spikes
 from fortyguard_agent.guardrails import Budget, SafetyPolicy
 from fortyguard_agent.models import ActionProposal, AgentState, Goal, Provenance, ToolResult
-from fortyguard_agent.providers import GroqChatCompletionsProvider, GroqProviderError, MockProvider, ProviderDecision, load_project_env
+from fortyguard_agent.providers import GroqChatCompletionsProvider, GroqProviderError, GroqRateGovernor, GroqTransportResponse, MockProvider, ProviderDecision, load_project_env, parse_groq_duration
 from fortyguard_agent.registry import build_tool_registry
 from fortyguard_agent.runtime_evals import run_runtime_protocol_evaluations
 from fortyguard_agent.toolkit import FortyGuardToolkit
+_eval_spec = spec_from_file_location("run_real_agent_eval", Path(__file__).resolve().parents[1] / "scripts" / "run_real_agent_eval.py")
+assert _eval_spec and _eval_spec.loader
+real_agent_eval = module_from_spec(_eval_spec)
+_eval_spec.loader.exec_module(real_agent_eval)
 
 
 def test_groq_adapter_parses_local_tool_calls_without_executing_them() -> None:
@@ -73,6 +79,93 @@ def test_groq_provider_retries_transient_failures_but_not_auth_failures() -> Non
         provider.next_decision(AgentState(Goal("auth", "operator")))
     assert len(auth_calls) == 1
     assert provider.retries == 0
+
+
+def test_groq_duration_parser_handles_composite_and_decimal_values() -> None:
+    assert parse_groq_duration("7.66s") == pytest.approx(7.66)
+    assert parse_groq_duration("1m23s") == pytest.approx(83)
+    assert parse_groq_duration("250ms") == pytest.approx(0.25)
+    assert parse_groq_duration("not-a-duration") is None
+
+
+def test_rate_governor_paces_from_runtime_headers() -> None:
+    sleeps: list[float] = []
+    governor = GroqRateGovernor(safety_reserve_tokens=10, safety_buffer_seconds=1, sleep=sleeps.append, random_source=lambda: 0)
+    governor.record_response({"x-ratelimit-remaining-tokens": "50", "x-ratelimit-reset-tokens": "7.66s", "x-ratelimit-remaining-requests": "2"}, {})
+    assert governor.before_request(45) == pytest.approx(8.66)
+    assert sleeps == [pytest.approx(8.66)]
+    assert governor.longest_wait_seconds == pytest.approx(8.66)
+
+
+def test_rate_governor_restores_checkpoint_capacity_without_non_rate_headers() -> None:
+    governor = GroqRateGovernor(sleep=lambda _: None)
+    governor.restore(
+        {"remaining_tokens": 42, "token_reset_seconds": 9, "last_headers": {"x-ratelimit-remaining-tokens": "42", "set-cookie": "must-not-persist"}},
+        {"actual_requests": 4, "total_tokens": 20},
+    )
+    assert governor.remaining_tokens == 42
+    assert governor.actual_requests == 4
+    assert governor.actual_total_tokens == 20
+    assert "set-cookie" not in governor.snapshot()["last_headers"]
+
+
+def test_rate_governor_retries_429_with_retry_after_and_accounts_requests() -> None:
+    sleeps: list[float] = []
+    governor = GroqRateGovernor(safety_buffer_seconds=1, sleep=sleeps.append, random_source=lambda: 0)
+    responses = iter([
+        GroqProviderError("groq_http_429", status_code=429, headers={"retry-after": "2s", "x-ratelimit-reset-tokens": "2s"}),
+        GroqTransportResponse({"usage": {"prompt_tokens": 4, "completion_tokens": 2, "total_tokens": 6}, "choices": [{"message": {"content": "done"}}]}, {"x-ratelimit-remaining-tokens": "100"}),
+    ])
+
+    def transport(payload, key, timeout):
+        item = next(responses)
+        if isinstance(item, Exception):
+            raise item
+        return item
+
+    provider = GroqChatCompletionsProvider("fixture-secret", transport=transport, retry_ceiling=3, rate_governor=governor)
+    assert provider.next_decision(AgentState(Goal("retry", "operator"))).kind == "finish"
+    assert provider.request_count == 2
+    assert provider.successful_request_count == 1
+    assert governor.http_429_events == 1
+    assert provider.retries == 1
+    assert sleeps[0] == pytest.approx(3)
+    assert governor.actual_total_tokens == 6
+
+
+def test_rate_governor_retries_5xx_with_bounded_backoff() -> None:
+    sleeps: list[float] = []
+    governor = GroqRateGovernor(safety_buffer_seconds=1, sleep=sleeps.append)
+    responses = iter([
+        GroqProviderError("groq_http_503", status_code=503),
+        {"usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2}, "choices": [{"message": {"content": "done"}}]},
+    ])
+
+    def transport(payload, key, timeout):
+        item = next(responses)
+        if isinstance(item, Exception):
+            raise item
+        return item
+
+    provider = GroqChatCompletionsProvider("fixture-secret", transport=transport, retry_ceiling=3, rate_governor=governor)
+    provider.next_decision(AgentState(Goal("retry", "operator")))
+    assert provider.retries == 1
+    assert sleeps == [pytest.approx(2)]
+
+
+def test_real_eval_checkpoint_round_trip_and_first_incomplete(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(real_agent_eval, "EVIDENCE_DIR", tmp_path)
+    monkeypatch.setattr(real_agent_eval, "CHECKPOINT_PATH", tmp_path / "checkpoint.json")
+    rows = {
+        ("A", 1): {"scenario": "A", "trial": 1, "status": "COMPLETED", "passed": True},
+        ("A", 2): {"scenario": "A", "trial": 2, "status": "INCOMPLETE", "passed": False},
+    }
+    real_agent_eval._write_checkpoint(rows, governor=GroqRateGovernor(sleep=lambda _: None), started_at="2026-08-21T00:00:00+00:00")
+    loaded = real_agent_eval._load_checkpoint()
+    assert loaded[("A", 1)]["status"] == "COMPLETED"
+    assert loaded[("A", 2)]["status"] == "INCOMPLETE"
+    payload = json.loads((tmp_path / "checkpoint.json").read_text(encoding="utf-8"))
+    assert payload["next_incomplete_trial"] == "A-2"
 
 
 def test_cached_live_thermal_tool_is_compact_and_never_live() -> None:
