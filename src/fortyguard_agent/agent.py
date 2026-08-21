@@ -203,7 +203,7 @@ class AgentRunner:
             return "EVIDENCE_UNAVAILABLE"
         if status in {"NO_FEASIBLE_IMPROVEMENT", "KEEP_CURRENT_PLAN", "KEEP_CURRENT_PLAN_AND_RECHECK", "NO_ACTION_REQUIRED", "REJECTED_FIXED_COMMITMENT"}:
             return str(status)
-        if status == "PENDING_SUPERINTENDENT_APPROVAL":
+        if status in {"PENDING_SUPERINTENDENT_APPROVAL", "AWAITING_APPROVAL"}:
             return "awaiting_human_approval"
         if status == "AI_ANALYSIS_UNAVAILABLE":
             return "AI_ANALYSIS_UNAVAILABLE"
