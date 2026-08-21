@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import http.client
 import json
 import os
 from pathlib import Path
 import re
 from typing import Any, Callable, Protocol
-from urllib import error as urllib_error
-from urllib import request as urllib_request
 
 from .models import ActionProposal, AgentState, ToolResult
 
@@ -136,25 +135,26 @@ class GroqProviderError(RuntimeError):
 
 
 def _groq_http_post(payload: dict[str, Any], *, api_key: str, timeout: float) -> dict[str, Any]:
-    request = urllib_request.Request(
-        "https://api.groq.com/openai/v1/chat/completions",
-        data=json.dumps(payload).encode("utf-8"),
-        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-        method="POST",
-    )
+    connection = http.client.HTTPSConnection("api.groq.com", 443, timeout=timeout)
     try:
-        with urllib_request.urlopen(request, timeout=timeout) as response:  # nosec B310 - fixed HTTPS endpoint
-            body = response.read().decode("utf-8")
-    except urllib_error.HTTPError as exc:
-        raise GroqProviderError(f"groq_http_{exc.code}") from None
-    except (urllib_error.URLError, TimeoutError) as exc:
-        reason = getattr(exc, "reason", None)
-        if isinstance(reason, TimeoutError) or isinstance(exc, TimeoutError):
-            raise GroqProviderError("groq_timeout") from None
-        raise GroqProviderError("groq_unavailable") from None
+        connection.request(
+            "POST",
+            "/openai/v1/chat/completions",
+            body=json.dumps(payload).encode("utf-8"),
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json", "Accept": "application/json"},
+        )
+        response = connection.getresponse()
+        response_body = response.read()
+        status = response.status
+        connection.close()
+    except (TimeoutError, http.client.HTTPException, OSError):
+        connection.close()
+        raise GroqProviderError("groq_timeout_or_unavailable") from None
+    if status < 200 or status >= 300:
+        raise GroqProviderError(f"groq_http_{status}")
     try:
-        decoded = json.loads(body)
-    except json.JSONDecodeError:
+        decoded = json.loads(response_body.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
         raise GroqProviderError("groq_invalid_json") from None
     if not isinstance(decoded, dict):
         raise GroqProviderError("groq_invalid_response")
@@ -221,11 +221,12 @@ class GroqChatCompletionsProvider:
         payload = {
             "model": self.model,
             "messages": self.messages,
-            "tools": [{"type": "function", "function": tool} for tool in self.tool_schemas],
-            "tool_choice": "auto",
             "temperature": 0.1,
-            "max_completion_tokens": 1200,
+            "max_completion_tokens": 128,
         }
+        if self.tool_schemas:
+            payload["tools"] = [{"type": "function", "function": tool} for tool in self.tool_schemas]
+            payload["tool_choice"] = "auto"
         last_error: GroqProviderError | None = None
         for attempt in range(self.retry_ceiling + 1):
             try:

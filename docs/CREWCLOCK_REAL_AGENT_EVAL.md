@@ -1,6 +1,6 @@
 # CrewClock real-agent evaluation
 
-Status: provider runtime implemented; real Groq evaluation is blocked by HTTP 403 from the loaded credential. No key value is printed or persisted.
+Status: connection gate PASS; full real A–J evaluation intentionally not run. No key value is printed or persisted.
 
 FortyGuard boundary for this run: `LIVE_FORTYGUARD_CALLS = 0`, credits consumed `0`, recorded remaining balance `1,782,840`.
 
@@ -14,7 +14,7 @@ Official references: [Groq OpenAI compatibility](https://console.groq.com/docs/o
 
 ## Evaluation status
 
-`REAL_MODEL_CONNECTED = NO`, `AUTHENTICATION = FAIL`, and `REAL_AGENT_EVALUATIONS = NOT_RUN`. Both the documented model-list endpoint and the minimal chat-completions request returned HTTP 403. The A–J protocol suite below is an offline deterministic-provider evaluation of the same runner, schemas, guardrails and tool boundary; it is not evidence of Groq model behavior.
+`REAL_MODEL_CONNECTED = YES`, `AUTHENTICATION = PASS`, and the target model is accessible. A bounded raw inference returned HTTP 200 from `openai/gpt-oss-120b`; a 96-token allowance returned usable assistant content and exposed a reasoning-related field, whose contents were not retained. The full real A–J evaluation remains intentionally not run. The A–J protocol suite below is an offline deterministic-provider evaluation of the same runner, schemas, guardrails and tool boundary; it is not evidence of Groq model behavior.
 
 | Scenario | Offline protocol result | Compact trace |
 |---|---|---|
@@ -42,7 +42,15 @@ These are counts over the five A–E protocol paths, not accuracy claims about a
 - deterministic verification compliance: `2/2` recommendation paths;
 - average model-decision turns across A–J: `3.8`;
 - average tool calls across A–J: `2.8`;
-- provider token usage: unavailable because no Groq request ran.
+- offline protocol provider token usage: unavailable; real connection-gate usage is recorded below.
+
+## Connection gate result
+
+The raw connection gate passed with `finish_reason = stop`, `message.content = CREWCLOCK_GROQ_OK`, model `openai/gpt-oss-120b`, and usage `97 input / 47 output / 144 total` tokens. The prior 16-token exact-match failure was an output-budget/response-completion issue: the prior response consumed the entire 16-token ceiling; the bounded 96-token retry returned the exact benign content.
+
+The production adapter initially received HTTP 403. Its no-tool request also sent an empty `tools` list and `tool_choice = auto`, and its transport differed from the successful low-level request. Omitting empty tool fields alone did not resolve the issue; switching to the same fixed-host `http.client.HTTPSConnection` transport did. The adapter now omits tool fields when no tools are configured and uses that transport. It then returned usable `CREWCLOCK_GROQ_OK.` content with one model call and captured usage.
+
+The real `echo_status` smoke test also passed: the model selected the local tool, schema validation passed, the local handler executed, the result returned to the model, and a final completion was produced. No arbitrary HTTP, shell or Python capability was exposed. No A–J scenario was run.
 
 ## Safety proofs
 
@@ -56,7 +64,3 @@ These are counts over the five A–E protocol paths, not accuracy claims about a
 ## Real Groq run procedure
 
 After a secret is configured outside version control, run the bounded evaluation command selected by the application harness. Record model connectivity, tool traces, usage totals, failures and A–J outcomes. Do not label the offline protocol suite as a real-model pass, and do not add a FortyGuard call to that evaluation.
-
-## Current blocked preflight
-
-The project `.env` was found and loaded in-process. Boolean checks passed for key presence, `LLM_PROVIDER=groq`, and `GROQ_MODEL=openai/gpt-oss-120b`. The credential was rejected with HTTP 403 by both `GET /openai/v1/models` and the minimal `POST /openai/v1/chat/completions`. No A–J scenario, multirun trial, or real-model metric was recorded. The credential must be repaired or replaced outside this repository; it was not printed, rotated, copied, hashed, or committed.

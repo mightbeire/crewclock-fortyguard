@@ -132,4 +132,4 @@ The provider-neutral Python boundary now supports `MockProvider`, the existing O
 
 Runtime limits are deterministic: max iterations, model calls, tool calls, model input characters, estimated tool credits, request timeout, retry ceiling and repeated-call protection. Tool outputs sent to the model are compact summaries. The real runtime is cached-live-only for FortyGuard, and the UI remains network-free.
 
-The real-model path is implemented but currently blocked by HTTP 403 from the loaded Groq credential. The deterministic demo provider and offline A–J protocol evaluations remain the rehearsal path. See `docs/CREWCLOCK_REAL_AGENT_EVAL.md` and `docs/CREWCLOCK_AGENT_BOUNDARY.md`.
+The real-model connection gate now passes: `openai/gpt-oss-120b` is reachable, the production adapter parses completions, and a local tool-call smoke test completed. Full A–J evaluation is intentionally pending; the deterministic demo provider remains the rehearsal fallback. See `docs/CREWCLOCK_REAL_AGENT_EVAL.md` and `docs/CREWCLOCK_AGENT_BOUNDARY.md`.

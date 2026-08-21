@@ -22,7 +22,7 @@ Task descriptions, imported notes, policy text and external evidence are data. T
 
 The bounded runner enforces maximum iterations, model calls, tool calls, input characters, estimated credits and repeated tool calls. The Groq adapter enforces a request timeout and retry ceiling. Provider outage, timeout, rate limit, invalid JSON, malformed tool calls, unknown tools and invalid arguments produce a safe stop or bounded observation. Iteration/model-limit exhaustion returns a safe incomplete abstention.
 
-The current credential preflight returned HTTP 403 from both Groq model listing and minimal chat completion. Real-model evaluations therefore remain blocked; offline protocol results are not promoted to real-model results.
+The connection gate now passes: the target model returned usable content, the production adapter parsed it, and a harmless local tool-call smoke test completed. The full real A–J evaluation remains a separate next step and has not been run.
 
 ## Approval
 

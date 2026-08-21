@@ -155,3 +155,10 @@ The second research pass used only cached-live responses, fixtures, primary sour
 - Treat the absence of `GROQ_API_KEY` as “real model not connected,” not as a reason to fabricate a model evaluation. The deterministic provider and offline A–J protocol suite remain the demo fallback.
 - Keep the future Phoenix forecast path closed. The real runtime reads only explicit cached-live fixtures in this run; it makes zero FortyGuard calls.
 - The project `.env` fields were found and loaded without exposing the key, but Groq returned HTTP 403 for both model listing and minimal chat completion. Do not label A–J offline protocol traces as real-model results; keep the deterministic fallback active until credential access is repaired.
+
+## Groq connection gate amendment — 2026-08-21
+
+- The target model `openai/gpt-oss-120b` is now visible and returned HTTP 200 with usable assistant content under a bounded raw request.
+- The production adapter required a narrow transport/shape correction: omit empty tool fields for no-tool calls and use the fixed-host low-level HTTPS transport. The adapter then passed a real completion and a harmless local `echo_status` tool-call smoke test.
+- Reasoning-related response fields may be present; their contents are never persisted or displayed.
+- Full real A–J evaluation remains a separate next run. No FortyGuard call was made.

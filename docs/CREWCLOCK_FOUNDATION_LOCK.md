@@ -33,7 +33,7 @@ The LLM selects investigations, evidence windows, and tool calls; explains struc
 ## Real-agent runtime amendment — 2026-08-21
 
 - The frozen agent boundary is implemented as a provider-neutral bounded loop with a Groq `openai/gpt-oss-120b` adapter and deterministic local function tools.
-- The Groq environment fields are present, but the loaded credential returned HTTP 403 during minimal authentication/model checks. Real-model evaluation is not claimed. Offline deterministic-provider protocol traces cover A–J and retain the deterministic demo fallback.
+- The Groq environment fields are present and the target model connection gate passes. A real local-tool smoke test passed; full A–J evaluation remains pending. Offline deterministic-provider protocol traces remain available as the deterministic fallback.
 - Cached-live thermal evidence is explicit and compact. Empty completed heatmap responses are `COMPLETED_BUT_EMPTY = INVALID_EVIDENCE` and fail closed.
 - No new FortyGuard request was made during this runtime work. The future Phoenix forecast path remains `NOT_DEMONSTRATED`.
 - The current task ledger records `1,782,840` FortyGuard credits remaining; this runtime consumes `0`.
