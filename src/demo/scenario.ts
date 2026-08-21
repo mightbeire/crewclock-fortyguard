@@ -225,6 +225,7 @@ export const CANONICAL_SAMPLE_PROJECT = {
   calculations: 'DERIVED',
 } as const
 
+// TEST/DEMO FIXTURE ONLY. The canonical UI consumes runtime.ts events.
 export const AGENT_STEPS: AgentStep[] = [
   { label: 'Read the upcoming shift plan', detail: '14 tasks · 3 crews · 4 polygon workfaces', tool: 'inspect_shift_plan' },
   { label: 'Select work needing investigation', detail: '7 flexible outdoor tasks; 5 fixed commitments retained', tool: 'work.classify' },

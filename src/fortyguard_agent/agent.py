@@ -242,7 +242,7 @@ class AgentRunner:
                 except TypeError:
                     # Preserve compatibility with older provider implementations.
                     self.provider.observe(result, state)
-                trace.record("tool_call_finished", tool_name=name, ok=result.ok, provenance=result.provenance.source, error=_redact(result.error or ""))
+                trace.record("tool_call_finished", tool_name=name, ok=result.ok, status=result.data.get("status"), provenance=result.provenance.source, error=_redact(result.error or ""))
                 terminal = self._deterministic_terminal(result)
                 if terminal is not None:
                     self._set_terminal(state, terminal, result.data)

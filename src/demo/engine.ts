@@ -11,7 +11,7 @@ import {
   type CrewId,
   type Task,
 } from './scenario'
-import { calculateScheduledHighHeatCrewHours } from './shhch'
+import { calculateScheduledHighHeatCrewHours, type ExceedanceWindow } from './shhch'
 import {
   ARTIFACT_VERSION,
   candidateHash as canonicalCandidateHash,
@@ -24,6 +24,15 @@ import {
 } from './integrity'
 
 export type Schedule = Record<string, string>
+export type ThermalEvidence = {
+  source: string
+  status: string
+  exceedanceEvidenceStatus: 'none' | 'partial' | 'complete'
+  exceedanceWindows: ReadonlyArray<ExceedanceWindow>
+  forecastStatus: string
+  projectThermalTrigger: typeof THERMAL_EVIDENCE.projectThermalTrigger
+  [key: string]: unknown
+}
 export type EvidenceState = 'ready' | 'missing' | 'stale' | 'tool-failure'
 export type PolicyState = 'ready' | 'ambiguous'
 export type RecommendationStatus =
@@ -80,6 +89,7 @@ export type CrewClockRun = {
   candidateHash: string | null
   recommendationId: string | null
   evidenceHash: string
+  thermalEvidence: ThermalEvidence
   sourceScheduleHash: string
   policyHash: string
   verificationHash: string | null
@@ -184,14 +194,15 @@ export const peakWindowCrewHoursFor = (
   schedule: Schedule,
   tasks: Task[] = TASKS,
   crews: Crew[] = CREWS,
+  thermalEvidence = THERMAL_EVIDENCE as ThermalEvidence,
 ) => {
   const result = calculateScheduledHighHeatCrewHours(
     schedule,
     tasks,
     crews,
     WORKFACES,
-    THERMAL_EVIDENCE.exceedanceWindows,
-    THERMAL_EVIDENCE.projectThermalTrigger,
+    thermalEvidence.exceedanceWindows,
+    thermalEvidence.projectThermalTrigger,
   )
   return result.valid ? result.totalCrewHours ?? Number.NaN : null
 }
@@ -273,6 +284,7 @@ const enumerateCrew = (
   tasks: Task[],
   crews: Crew[],
   baseline: Schedule,
+  thermalEvidence: ThermalEvidence,
 ): { candidates: CrewCandidate[]; considered: number } => {
   const crewTasks = tasks.filter(task => task.crewId === crewId)
   const fixed = crewTasks.filter(task => task.fixed)
@@ -290,7 +302,7 @@ const enumerateCrew = (
       if (crewRelevant.every(family => family.passed)) {
         candidates.push({
           schedule: full,
-          heat: peakWindowCrewHoursFor({ ...baseline, ...full }, crewTasks, crews) ?? Number.POSITIVE_INFINITY,
+          heat: peakWindowCrewHoursFor({ ...baseline, ...full }, crewTasks, crews, thermalEvidence) ?? Number.POSITIVE_INFINITY,
           movement: movementMinutes(full, baseline, movable),
         })
       }
@@ -326,6 +338,8 @@ export type RunOptions = {
   crews?: Crew[]
   evidenceState?: EvidenceState
   policyState?: PolicyState
+  thermalEvidence?: ThermalEvidence
+  scenarioLabel?: string
 }
 
 export const runCrewClock = ({
@@ -333,18 +347,48 @@ export const runCrewClock = ({
   crews = CREWS,
   evidenceState = 'ready',
   policyState = 'ready',
+  thermalEvidence = THERMAL_EVIDENCE as ThermalEvidence,
 }: RunOptions = {}): CrewClockRun => {
+  const taskRows = tasks as unknown
+  const crewRows = crews as unknown
+  const validEnvironments = new Set(['outdoor-heavy', 'outdoor-moderate', 'shaded-support'])
+  const validZones = new Set(WORKFACES.map(workface => workface.id))
+  const validRuntimeSchema = Array.isArray(taskRows) && taskRows.length > 0 && Array.isArray(crewRows) && crewRows.length > 0 &&
+    crewRows.every(crew => crew && typeof crew === 'object' && typeof (crew as Crew).id === 'string' && Array.isArray((crew as Crew).qualifications) && (crew as Crew).qualifications.every(item => typeof item === 'string')) &&
+    new Set(crewRows.map(crew => crew && typeof crew === 'object' ? (crew as Crew).id : '')).size === crewRows.length &&
+    taskRows.every(task => {
+      if (!task || typeof task !== 'object') return false
+      const row = task as Task
+      return typeof row.id === 'string' && row.id.length > 0 && typeof row.name === 'string' && typeof row.crewId === 'string' &&
+        crewRows.some(crew => crew && typeof crew === 'object' && (crew as Crew).id === row.crewId) && typeof row.zoneId === 'string' && validZones.has(row.zoneId) &&
+        Number.isFinite(row.durationMinutes) && row.durationMinutes > 0 && validTime(row.originalStart) && validTime(row.proposedStart) &&
+        typeof row.fixed === 'boolean' && validEnvironments.has(row.environment) && typeof row.qualification === 'string' &&
+        Array.isArray(row.dependencies) && row.dependencies.every(id => typeof id === 'string') && validTime(row.deadline) &&
+        row.weatherSensitivity && typeof row.weatherSensitivity === 'object' && typeof row.weatherSensitivity.precipitation === 'boolean'
+    }) &&
+    new Set(taskRows.map(task => task && typeof task === 'object' ? (task as Task).id : '')).size === taskRows.length &&
+    taskRows.every(task => task && typeof task === 'object' && (task as Task).dependencies.every(id => taskRows.some(other => other && typeof other === 'object' && (other as Task).id === id)))
+  if (!validRuntimeSchema) {
+    const safeTasks = Array.isArray(taskRows) ? taskRows.filter(task => task && typeof task === 'object') as Task[] : []
+    const safeCrews = Array.isArray(crewRows) ? crewRows.filter(crew => crew && typeof crew === 'object') as Crew[] : []
+    const verification = verifySchedule({}, safeTasks, safeCrews, {})
+    const evidenceHash = evidenceBundleHash(thermalEvidence)
+    const taskStateHash = projectStateHash(safeTasks, safeCrews)
+    return {
+      status: 'infeasible-original', original: {}, recommendation: null, investigation: { investigatedTaskIds: [], skippedIndoorTaskIds: [], retainedFixedTaskIds: [], workfaceIds: [] }, originalVerification: verification, recommendationVerification: null, beforeCrewHours: null, afterCrewHours: null, shiftedCrewHours: 0, stats: { candidatesConsidered: 0, feasibleCandidates: 0, rejectedCandidates: 0 }, deterministicId: 'CC-PHX-0716-v1', message: 'INVALID_SCHEDULE_SCHEMA: runtime input was malformed; current plan preserved.', candidateHash: null, recommendationId: null, evidenceHash, thermalEvidence, sourceScheduleHash: '', policyHash: policyContentHash(EMPLOYER_POLICY), verificationHash: null, artifactVersion: ARTIFACT_VERSION, policyVersion: String(EMPLOYER_POLICY.name), taskStateHash, tasks: safeTasks, crews: safeCrews,
+    }
+  }
   const original = originalSchedule(tasks)
   const investigation = selectThermalInvestigation(tasks)
   const originalVerification = verifySchedule(original, tasks, crews, original)
-  const beforeCrewHours = peakWindowCrewHoursFor(original, tasks, crews)
+  const beforeCrewHours = peakWindowCrewHoursFor(original, tasks, crews, thermalEvidence)
   const emptyStats = { candidatesConsidered: 0, feasibleCandidates: 0, rejectedCandidates: 0 }
-  const evidenceHash = evidenceBundleHash(THERMAL_EVIDENCE)
+  const evidenceHash = evidenceBundleHash(thermalEvidence)
   const taskStateHash = projectStateHash(tasks, crews)
   const sourceHash = sourceScheduleHash(original) ?? ''
   const policyHash = policyContentHash(EMPLOYER_POLICY)
   const policyVersion = String(EMPLOYER_POLICY.name)
-  const base = { original, investigation, originalVerification, beforeCrewHours, deterministicId: 'CC-PHX-0716-v1', candidateHash: null, recommendationId: null, evidenceHash, sourceScheduleHash: sourceHash, policyHash, verificationHash: null, artifactVersion: ARTIFACT_VERSION, policyVersion, taskStateHash, tasks, crews }
+  const base = { original, investigation, originalVerification, beforeCrewHours, deterministicId: 'CC-PHX-0716-v1', candidateHash: null, recommendationId: null, evidenceHash, thermalEvidence, sourceScheduleHash: sourceHash, policyHash, verificationHash: null, artifactVersion: ARTIFACT_VERSION, policyVersion, taskStateHash, tasks, crews }
 
   if (!originalVerification.families.filter(family => family.id !== 'employer-policy').every(family => family.passed)) {
     return { ...base, status: 'infeasible-original', recommendation: null, recommendationVerification: null, afterCrewHours: null, shiftedCrewHours: 0, stats: emptyStats, message: 'The upcoming-shift source plan is infeasible. Resolve operational constraints before optimization.' }
@@ -364,15 +408,15 @@ export const runCrewClock = ({
     }
     return { ...base, status, recommendation: null, recommendationVerification: null, afterCrewHours: null, shiftedCrewHours: 0, stats: emptyStats, message: messages[status] }
   }
-  if (THERMAL_EVIDENCE.exceedanceEvidenceStatus !== 'complete') {
+  if (thermalEvidence.exceedanceEvidenceStatus !== 'complete') {
     return { ...base, status: 'missing-evidence', recommendation: null, recommendationVerification: null, afterCrewHours: null, shiftedCrewHours: 0, stats: emptyStats, message: 'Phoenix schedule-aligned FortyGuard exceedance evidence is not demonstrated. No recommendation issued.' }
   }
 
-  const enumerations = crews.map(crew => enumerateCrew(crew.id, tasks, crews, original))
+  const enumerations = crews.map(crew => enumerateCrew(crew.id, tasks, crews, original, thermalEvidence))
   const bestByCrew = enumerations.map(({ candidates }) => [...candidates].sort((a, b) => a.heat - b.heat || a.movement - b.movement)[0])
   const recommendation = bestByCrew.reduce<Schedule>((schedule, candidate) => ({ ...schedule, ...candidate?.schedule }), {})
   const recommendationVerification = verifySchedule(recommendation, tasks, crews, original)
-  const afterCrewHours = recommendationVerification.passed ? peakWindowCrewHoursFor(recommendation, tasks, crews) : beforeCrewHours
+  const afterCrewHours = recommendationVerification.passed ? peakWindowCrewHoursFor(recommendation, tasks, crews, thermalEvidence) : beforeCrewHours
   const feasibleCandidates = enumerations.reduce((sum, item) => sum + item.candidates.length, 0)
   const candidatesConsidered = enumerations.reduce((sum, item) => sum + item.considered, 0)
   const stats = { candidatesConsidered, feasibleCandidates, rejectedCandidates: candidatesConsidered - feasibleCandidates }
@@ -417,13 +461,16 @@ export const runCrewClock = ({
 
 export const CANONICAL_RUN = runCrewClock()
 
-export const approveRecommendation = (run: CrewClockRun) => {
+export const approveRecommendation = (run: CrewClockRun, identity?: { recommendationId: string; candidateHash: string }) => {
   if (run.status !== 'recommended' || !run.recommendation || !run.recommendationVerification?.passed) {
     return { state: 'FINAL_VERIFICATION_FAILED' as const, approved: false, plan: run.original, verification: run.originalVerification, auditAction: 'Approval blocked; no verified recommendation exists' }
   }
+  if (!identity || identity.recommendationId !== run.recommendationId || identity.candidateHash !== run.candidateHash) {
+    return { state: 'FINAL_VERIFICATION_FAILED' as const, approved: false, plan: run.original, verification: run.originalVerification, auditAction: 'Approval blocked; recommendation identity was missing or mismatched' }
+  }
   const received = { state: 'APPROVAL_RECEIVED' as const, candidateHash: canonicalCandidateHash({ tasks: run.tasks, schedule: run.recommendation, crews: run.crews, policy: EMPLOYER_POLICY, sourceSchedule: run.original }) }
   const currentPolicyHash = policyContentHash(EMPLOYER_POLICY)
-  const currentEvidenceHash = evidenceBundleHash(THERMAL_EVIDENCE)
+  const currentEvidenceHash = evidenceBundleHash(run.thermalEvidence)
   const currentTaskStateHash = projectStateHash(run.tasks, run.crews)
   const currentSourceHash = sourceScheduleHash(run.original)
   const currentRecommendationId = run.recommendationId && run.verificationHash ? recommendationId({ candidateHash: received.candidateHash, sourceScheduleHash: currentSourceHash, evidenceHash: currentEvidenceHash, policyHash: currentPolicyHash, projectStateHash: currentTaskStateHash, verificationHash: run.verificationHash, artifactVersion: run.artifactVersion }) : null
@@ -458,6 +505,7 @@ export const resetDemoState = (run: CrewClockRun = CANONICAL_RUN) => ({
   deterministicId: run.deterministicId,
 })
 
+// TEST/DEMO FIXTURE UTILITY ONLY. The canonical UI consumes runtime.ts events.
 export const agentAudit = (run: CrewClockRun, approved: boolean) => {
   const evidenceSource = run.status === 'tool-failure' ? 'PROVIDER_ERROR' : run.status === 'recommended' ? 'CACHED_LIVE_FORTYGUARD' : 'EVIDENCE_UNAVAILABLE'
   const entries = [
