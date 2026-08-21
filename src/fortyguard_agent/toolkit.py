@@ -25,7 +25,7 @@ class FortyGuardToolkit:
         self.cache = cache or JsonCache()
         self.request_guard = request_guard or FortyGuardRequestGuard()
 
-    def _cached_or_live(self, endpoint: str, payload: dict[str, Any], call: Any) -> ToolResult:
+    def _cached_or_live(self, endpoint: str, payload: dict[str, Any], call: Any, *, request_at: Any = None) -> ToolResult:
         key = request_hash(endpoint, payload)
         cached = self.cache.get(key)
         if cached is not None:
@@ -41,7 +41,7 @@ class FortyGuardToolkit:
                 error="live_client_not_configured",
             )
         try:
-            estimated = self.request_guard.validate(endpoint, payload)
+            estimated = self.request_guard.validate(endpoint, payload, request_at=request_at)
             raw = call()
             result = raw.get("result", raw) if isinstance(raw, dict) else raw
             activity_id = raw.get("activity_id") if isinstance(raw, dict) else None
@@ -59,7 +59,7 @@ class FortyGuardToolkit:
             )
         except ThermalContractError as exc:
             return ToolResult(
-                data={},
+                data={"state": "INVALID_EVIDENCE", "reason": str(exc)},
                 provenance=Provenance(source="live", endpoint=endpoint, request_hash=key),
                 error=str(exc),
             )
@@ -78,10 +78,11 @@ class FortyGuardToolkit:
         if self.client is None:
             return ToolResult({}, Provenance(source="live", endpoint="/v1/heatmap"), error="live_client_not_configured")
         try:
-            self.request_guard.validate("/v1/heatmap", payload)
+            request_at = self.request_guard.heatmap_request_at(payload)
+            self.request_guard.validate("/v1/heatmap", payload, request_at=request_at)
         except GuardrailError as exc:
             return ToolResult({}, Provenance(source="derived", endpoint="/v1/heatmap"), error=str(exc))
-        return self._cached_or_live("/v1/heatmap", payload, lambda: self.client.create_heatmap(**payload, verbose=False))
+        return self._cached_or_live("/v1/heatmap", payload, lambda: self.client.create_heatmap(**payload, verbose=False), request_at=request_at)
 
     def get_environmental_parameters(self, arguments: dict[str, Any]) -> ToolResult:
         payload = dict(arguments)

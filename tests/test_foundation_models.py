@@ -69,6 +69,16 @@ def test_horizon_and_aoi_guards_fail_before_submission() -> None:
         guard.validate("/v1/heatmap", large)
 
 
+def test_flat_heatmap_payload_uses_phoenix_local_time_for_horizon() -> None:
+    guard = FortyGuardRequestGuard()
+    payload = {"start_date": "2026-08-21", "start_time": "05:00", "filter_type": 1}
+    request_at = guard.heatmap_request_at(payload)
+    assert request_at is not None
+    assert request_at.astimezone(UTC).isoformat() == "2026-08-21T12:00:00+00:00"
+    with pytest.raises(GuardrailError, match="forecast_horizon"):
+        guard.validate("/v1/heatmap", {**payload, "polygon_aoi": {"features": [{"geometry": {"coordinates": [[(-112.02, 33.43), (-112.01, 33.43), (-112.01, 33.44), (-112.02, 33.44), (-112.02, 33.43)]]}}]}, "granularity": 100}, request_at=request_at, now=datetime(2026, 8, 20, 23, tzinfo=UTC))
+
+
 def test_phoenix_timestamp_conversion_is_local_not_utc() -> None:
     value = as_project_local(datetime(2026, 8, 21, 5, tzinfo=UTC))
     assert value.hour == 22

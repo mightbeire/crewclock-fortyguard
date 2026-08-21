@@ -5,6 +5,8 @@ from datetime import datetime, timedelta, timezone
 import math
 from typing import Any
 
+from .timezones import project_timezone
+
 
 class GuardrailError(RuntimeError):
     pass
@@ -63,6 +65,28 @@ class FortyGuardRequestGuard:
     forecast_horizon_hours: int = 12
     allowed_endpoints: set[str] = field(default_factory=lambda: {"/v1/heatmap", "/v1/env_params", "/v1/status/{activity_id}"})
 
+    @staticmethod
+    def heatmap_request_at(payload: dict[str, Any]) -> datetime | None:
+        """Convert a heatmap's local start time into an aware project timestamp.
+
+        The official client accepts flat keyword arguments while the HTTP
+        contract nests these fields under ``date_time``.  Supporting both here
+        keeps the pre-submit horizon check independent of the client shape.
+        """
+        date_time = payload.get("date_time") if isinstance(payload.get("date_time"), dict) else payload
+        filter_type = date_time.get("filter_type")
+        start_date = date_time.get("start_date")
+        start_time = date_time.get("start_time")
+        if filter_type in {1, 2} and not start_time:
+            raise GuardrailError("heatmap_start_time_required")
+        if not start_date or not start_time:
+            return None
+        try:
+            naive = datetime.strptime(f"{start_date} {start_time}", "%Y-%m-%d %H:%M")
+        except (TypeError, ValueError) as exc:
+            raise GuardrailError("invalid_heatmap_start_datetime") from exc
+        return naive.replace(tzinfo=project_timezone())
+
     def estimate(self, endpoint: str, payload: dict[str, Any]) -> int:
         if endpoint == "/v1/heatmap":
             # Measured successful Phoenix single-hour request in the current account.
@@ -102,6 +126,7 @@ class FortyGuardRequestGuard:
         if not self._us_point(payload):
             raise GuardrailError("fortyguard_us_coverage_required")
         if endpoint == "/v1/heatmap":
+            self.heatmap_request_at(payload)
             area = self._aoi_area_mi2(payload)
             if area > self.max_heatmap_area_mi2:
                 raise GuardrailError("heatmap_aoi_exceeds_basic_plan_limit")

@@ -46,6 +46,7 @@ def test_duplicate_request_reuses_cache_without_new_credits(tmp_path) -> None:
     # must fail closed and therefore not cache or spend it.
     result = toolkit.get_heatmap({"polygon_aoi": {"type": "FeatureCollection", "features": [{"geometry": {"type": "Polygon", "coordinates": [[(-112.02, 33.43), (-112.01, 33.43), (-112.01, 33.44), (-112.02, 33.44), (-112.02, 33.43)]]}}]}, "start_date": "2026-08-20", "filter_type": 1, "start_time": "12:00", "granularity": 100})
     assert result.error == "heatmap_empty_feature_collection"
+    assert result.data == {"state": "INVALID_EVIDENCE", "reason": "heatmap_empty_feature_collection"}
     assert guard.run_credits_used == 0
 
 
