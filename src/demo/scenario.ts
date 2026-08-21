@@ -188,6 +188,15 @@ export const THERMAL_EVIDENCE = {
   ],
 } as const
 
+export const BREAK_POLICY = {
+  triggerStart: '11:00',
+  triggerEnd: '15:00',
+  afterContinuousMinutes: 90,
+  durationMinutes: 30,
+  source: 'SYNTHETIC_EMPLOYER_POLICY',
+  version: 'v1.4',
+} as const
+
 export const EMPLOYER_POLICY = {
   name: 'Desert Build Co. · demo policy v1.4',
   status: 'synthetic employer policy',
@@ -198,6 +207,7 @@ export const EMPLOYER_POLICY = {
     'Plan a shaded recovery after 90 minutes of continuous outdoor work during the peak window.',
     'Flag new or returning workers for the employer’s acclimatization procedure.',
   ],
+  breakRules: [BREAK_POLICY],
   authorityBoundary: 'Onsite supervisor applies the employer plan using current onsite WBGT, workload, PPE, worker condition, and professional judgment.',
 } as const
 

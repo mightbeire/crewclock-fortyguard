@@ -55,12 +55,12 @@ def test_provider_can_drive_tools_then_stop_at_approval() -> None:
     registry = build_tool_registry(toolkit)
     provider = MockProvider([
         ProviderDecision.call_tool("identify_thermal_candidates", {"tasks": [{"id": "O1", "outdoor": True, "fixed": False}]}),
-        ProviderDecision.call_tool("request_superintendent_approval", {"recommendation_id": "r1"}),
+        ProviderDecision.call_tool("request_superintendent_approval", {"recommendation_id": "r1", "candidate_hash": "fixture-candidate"}),
         ProviderDecision.finish("approval_requested"),
     ])
     runner = AgentRunner(registry, provider, budget=Budget(max_iterations=4, max_tool_calls=3, max_api_credits=3), policy=SafetyPolicy(allowed_tools=registry.names()))
     state, _ = runner.run(AgentState(Goal("adjust the upcoming shift", "superintendent")))
-    assert state.termination_reason == "awaiting_human_approval"
+    assert state.termination_reason == "FINAL_VERIFICATION_FAILED"
 
 
 def test_future_horizon_request_is_rejected_before_handler() -> None:

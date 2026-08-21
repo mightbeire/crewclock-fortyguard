@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   CREWS,
+  BREAK_POLICY,
   EMPLOYER_POLICY,
   HERO_METRIC,
   TASKS,
@@ -20,8 +21,10 @@ import {
   resetDemoState,
   selectThermalInvestigation,
   verifySchedule,
+  verifyBreakPolicy,
 } from './engine'
 import { calculateScheduledHighHeatCrewHours, type ExceedanceWindow } from './shhch'
+import { candidateHash, policyContentHash, sha256 } from './integrity'
 
 describe('CrewClock deterministic demo', () => {
   it('recomputes the hero metric from tasks and crew sizes', () => {
@@ -166,5 +169,43 @@ describe('CrewClock deterministic demo', () => {
     )
     expect(result.valid).toBe(true)
     expect(result.totalCrewHours).toBe(7.5)
+  })
+
+  it('uses cryptographic canonical identities for policy and schedules', () => {
+    expect(sha256('abc')).toBe('ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad')
+    expect(candidateHash({ tasks: [{ id: 'A', start: '06:00' }], schedule: { A: '06:00', B: '07:00' }, crews: [{ id: 'ground' }], policy: { breakRules: [] } })).toBe(
+      candidateHash({ crews: [{ id: 'ground' }], schedule: { B: '07:00', A: '06:00' }, tasks: [{ start: '06:00', id: 'A' }], policy: { breakRules: [] } }),
+    )
+    expect(policyContentHash({ ...EMPLOYER_POLICY, breakRules: [{ ...BREAK_POLICY, durationMinutes: 30 }] })).not.toBe(policyContentHash({ ...EMPLOYER_POLICY, breakRules: [{ ...BREAK_POLICY, durationMinutes: 45 }] }))
+  })
+
+  it.each([
+    [1, false], [29, false], [30, true], [45, true],
+  ])('enforces the full %s-minute inferred break duration', (gap, expected) => {
+    const makeTask = (id: string, start: string) => ({ id, name: id, crewId: 'ground' as const, zoneId: 'north' as const, durationMinutes: 90, originalStart: start, proposedStart: start, fixed: false, environment: 'outdoor-heavy' as const, qualification: 'competent-person', dependencies: [], deadline: '16:00', weatherSensitivity: { precipitation: false } })
+    const secondStart = 12 * 60 + 30 + gap
+    const tasks = [makeTask('A', '11:00'), makeTask('B', `${String(Math.floor(secondStart / 60)).padStart(2, '0')}:${String(secondStart % 60).padStart(2, '0')}`)]
+    const schedule = Object.fromEntries(tasks.map(task => [task.id, task.originalStart]))
+    expect(verifyBreakPolicy(schedule, tasks, CREWS)).toBe(expected)
+    expect(verifySchedule(schedule, tasks, CREWS, schedule).passed).toBe(expected)
+  })
+
+  it('rejects a reserved break with the wrong policy window, crew, or overlapping work', () => {
+    const tasks = [
+      { id: 'A', name: 'A', crewId: 'ground' as const, zoneId: 'north' as const, durationMinutes: 90, originalStart: '11:00', proposedStart: '11:00', fixed: false, environment: 'outdoor-heavy' as const, qualification: 'competent-person', dependencies: [], deadline: '16:00', weatherSensitivity: { precipitation: false } },
+      { id: 'B', name: 'B', crewId: 'ground' as const, zoneId: 'north' as const, durationMinutes: 90, originalStart: '13:00', proposedStart: '13:00', fixed: false, environment: 'outdoor-heavy' as const, qualification: 'competent-person', dependencies: [], deadline: '16:00', weatherSensitivity: { precipitation: false } },
+    ]
+    const schedule = { A: '11:00', B: '13:00' }
+    expect(verifySchedule(schedule, tasks, CREWS, schedule, [{ crewId: 'ground', start: '10:00', end: '10:30' }])).toMatchObject({ passed: false })
+    expect(verifySchedule({ A: '11:00', B: '12:31' }, tasks, CREWS, { A: '11:00', B: '12:31' }, [{ crewId: 'concrete', start: '12:00', end: '12:30' }])).toMatchObject({ passed: false })
+    expect(verifySchedule(schedule, tasks, CREWS, schedule, [{ crewId: 'ground', start: '12:00', end: '12:30' }])).toMatchObject({ passed: false })
+    expect(verifySchedule(fixtureRecommendation()).passed).toBe(true)
+  })
+
+  it.each([
+    null, 'not-a-task', { id: 'A' },
+  ])('fails malformed task input closed before business rules', badTask => {
+    const malformed = [badTask] as unknown as typeof TASKS
+    expect(verifySchedule({ A: '06:00' }, malformed, CREWS, {})).toMatchObject({ passed: false })
   })
 })

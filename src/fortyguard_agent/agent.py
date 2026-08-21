@@ -7,6 +7,7 @@ from typing import Any
 
 from .guardrails import Budget, GuardrailError, SafetyPolicy
 from .cache import request_hash
+from .integrity import candidate_hash_from_verification_arguments
 from .models import AgentState, AgentTrace, ApprovalRequest, Observation, Provenance, ToolResult, utc_now
 from .providers import LLMProvider
 from .state_machine import (
@@ -179,16 +180,27 @@ class AgentRunner:
                     ):
                         raise GuardrailError("recommendation_before_deterministic_verification")
                     proposal = decision.proposal
+                    verified = next((observation.content.get("data", {}) for observation in reversed(state.observations) if observation.kind == "tool_result" and observation.content.get("data", {}).get("status") == "VERIFIED"), {})
+                    if "verify_schedule" in self.registry.names():
+                        verified_candidate = verified.get("candidate_hash") or verified.get("schedule_hash")
+                        proposed_candidate = candidate_hash_from_verification_arguments(proposal.parameters)
+                        if not isinstance(verified_candidate, str) or not proposed_candidate or proposed_candidate != verified_candidate:
+                            self._set_final_verification_failed(state, trace, "candidate_identity_mismatch")
+                            break
                     state.proposals.append(proposal)
                     if proposal.requires_approval or self.policy.needs_approval(proposal.action_type):
-                        verified = next((observation.content.get("data", {}) for observation in reversed(state.observations) if observation.kind == "tool_result" and observation.content.get("data", {}).get("status") == "VERIFIED"), {})
                         state.approvals.append(ApprovalRequest(
                             proposal=proposal,
+                            recommendation_id=verified.get("recommendation_id"),
                             candidate_hash=verified.get("schedule_hash"),
+                            source_schedule_hash=verified.get("source_schedule_hash"),
                             evidence_hash=verified.get("evidence_hash") or verified.get("evidence_provenance_hash"),
+                            policy_hash=verified.get("policy_hash"),
+                            project_state_hash=verified.get("project_state_hash") or verified.get("task_state_hash"),
                             policy_version=verified.get("policy_version"),
                             task_state_hash=verified.get("task_state_hash"),
-                            verification_hash=request_hash("local:verification", verified) if verified else None,
+                            verification_hash=verified.get("verification_hash") if verified else None,
+                            artifact_version=verified.get("artifact_version"),
                         ))
                         state.termination_reason = "awaiting_human_approval"
                     else:
@@ -206,6 +218,11 @@ class AgentRunner:
                 self.policy.check_tool(name, called_tools)
                 spec = self.registry.get(name)
                 spec.validate_arguments(decision.arguments)
+                if name == "request_superintendent_approval":
+                    latest_verified = next((observation.content.get("data", {}) for observation in reversed(state.observations) if observation.kind == "tool_result" and observation.content.get("data", {}).get("status") == "VERIFIED"), {})
+                    if decision.arguments.get("recommendation_id") != latest_verified.get("recommendation_id") or decision.arguments.get("candidate_hash") != (latest_verified.get("candidate_hash") or latest_verified.get("schedule_hash")):
+                        self._set_final_verification_failed(state, trace, "approval_identity_unknown_or_mismatched")
+                        break
                 cost = self.budget.reserve_tool(name)
                 trace.record("tool_call_started", tool_name=name, arguments=_redact(decision.arguments), reserved_credits=cost)
                 try:
@@ -271,6 +288,21 @@ class AgentRunner:
         state.observations.append(Observation(kind="error", content={"data": result}))
         cls._set_terminal(state, "ERROR_SAFE", result)
         trace.record("guardrail_stop", reason=reason)
+
+    @classmethod
+    def _set_final_verification_failed(cls, state: AgentState, trace: AgentTrace, reason: str) -> None:
+        result = {
+            "status": "FINAL_VERIFICATION_FAILED",
+            "valid": False,
+            "decision_relevant_result": "CURRENT_PLAN_PRESERVED",
+            "provenance": "DETERMINISTIC_APPROVAL_IDENTITY_GUARD",
+            "next_allowed_actions": ["REGENERATE_AND_REVERIFY"],
+            "current_plan_preserved": True,
+            "error": reason,
+        }
+        state.observations.append(Observation(kind="error", content={"data": result}))
+        cls._set_terminal(state, "FINAL_VERIFICATION_FAILED", result)
+        trace.record("deterministic_terminal", status="FINAL_VERIFICATION_FAILED", source="approval_identity_guard", reason=reason)
 
     @classmethod
     def _set_evidence_unavailable(cls, state: AgentState, trace: AgentTrace, reason: str) -> None:
@@ -379,7 +411,7 @@ class AgentRunner:
             return "NO_ACTION_REQUIRED"
         return None
 
-    def resolve_approval(self, state: AgentState, index: int, approved: bool, *, final_verification: Callable[[ActionProposal], bool] | None = None) -> AgentState:
+    def resolve_approval(self, state: AgentState, index: int, approved: bool, *, recommendation_id: str | None = None, candidate_hash: str | None = None, final_verification: Callable[[ActionProposal], bool] | None = None) -> AgentState:
         """Resolve approval only after context checks and final verification."""
         if index < 0 or index >= len(state.approvals):
             raise IndexError("approval_index_out_of_range")
@@ -393,13 +425,31 @@ class AgentRunner:
             state.operational_state = "REJECTED"
             return state
         latest = next((observation.content.get("data", {}) for observation in reversed(state.observations) if observation.kind == "tool_result" and observation.content.get("data", {}).get("status") == "VERIFIED"), None)
-        context_ok = isinstance(latest, dict) and latest.get("valid") is True and all((request.candidate_hash, request.evidence_hash, request.policy_version, request.task_state_hash, request.verification_hash)) and request.candidate_hash == latest.get("schedule_hash") and request.evidence_hash == latest.get("evidence_hash") and request.policy_version == latest.get("policy_version") and request.task_state_hash == latest.get("task_state_hash") and request.verification_hash == request_hash("local:verification", latest)
+        proposal_candidate = candidate_hash_from_verification_arguments(request.proposal.parameters)
+        identity_values = (request.recommendation_id, request.candidate_hash, request.source_schedule_hash, request.evidence_hash, request.policy_hash, request.project_state_hash, request.verification_hash, request.artifact_version)
+        context_ok = (
+            isinstance(latest, dict)
+            and latest.get("valid") is True
+            and all(identity_values)
+            and recommendation_id == request.recommendation_id
+            and candidate_hash == request.candidate_hash
+            and proposal_candidate == request.candidate_hash
+            and request.recommendation_id == latest.get("recommendation_id")
+            and request.candidate_hash == (latest.get("candidate_hash") or latest.get("schedule_hash"))
+            and request.source_schedule_hash == latest.get("source_schedule_hash")
+            and request.evidence_hash == latest.get("evidence_hash")
+            and request.policy_hash == latest.get("policy_hash")
+            and request.project_state_hash == (latest.get("project_state_hash") or latest.get("task_state_hash"))
+            and request.policy_version == latest.get("policy_version")
+            and request.artifact_version == latest.get("artifact_version")
+            and request.verification_hash == latest.get("verification_hash")
+        )
         if final_verification is not None:
             final_ok = bool(final_verification(request.proposal))
         elif "verify_schedule" in self.registry.names():
             try:
                 final_result = self.registry.get("verify_schedule").handler(request.proposal.parameters)
-                final_ok = final_result.ok and final_result.data.get("status") == "VERIFIED" and final_result.data.get("valid") is True
+                final_ok = final_result.ok and final_result.data.get("status") == "VERIFIED" and final_result.data.get("valid") is True and final_result.data.get("recommendation_id") == request.recommendation_id and (final_result.data.get("candidate_hash") or final_result.data.get("schedule_hash")) == request.candidate_hash and final_result.data.get("source_schedule_hash") == request.source_schedule_hash and final_result.data.get("evidence_hash") == request.evidence_hash and final_result.data.get("policy_hash") == request.policy_hash and (final_result.data.get("project_state_hash") or final_result.data.get("task_state_hash")) == request.project_state_hash and final_result.data.get("verification_hash") == request.verification_hash
             except Exception:
                 final_ok = False
         else:

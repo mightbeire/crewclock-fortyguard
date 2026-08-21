@@ -1,5 +1,6 @@
 import {
   CREWS,
+  BREAK_POLICY,
   EMPLOYER_POLICY,
   MINUTE_END,
   MINUTE_START,
@@ -11,6 +12,16 @@ import {
   type Task,
 } from './scenario'
 import { calculateScheduledHighHeatCrewHours } from './shhch'
+import {
+  ARTIFACT_VERSION,
+  candidateHash as canonicalCandidateHash,
+  evidenceBundleHash,
+  policyContentHash,
+  projectStateHash,
+  recommendationId,
+  sourceScheduleHash,
+  verificationResultHash,
+} from './integrity'
 
 export type Schedule = Record<string, string>
 export type EvidenceState = 'ready' | 'missing' | 'stale' | 'tool-failure'
@@ -67,7 +78,12 @@ export type CrewClockRun = {
   deterministicId: string
   message: string
   candidateHash: string | null
+  recommendationId: string | null
   evidenceHash: string
+  sourceScheduleHash: string
+  policyHash: string
+  verificationHash: string | null
+  artifactVersion: string
   policyVersion: string
   taskStateHash: string
   tasks: Task[]
@@ -77,6 +93,67 @@ export type CrewClockRun = {
 export const timeToMinutes = (time: string) => {
   const [hours, minutes] = time.split(':').map(Number)
   return hours * 60 + minutes
+}
+
+const validTime = (value: unknown) => typeof value === 'string' && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value)
+
+const schemaFailure = (detail: string): Verification => ({
+  passed: false,
+  passedFamilies: 0,
+  totalFamilies: 6,
+  totalChecks: 1,
+  families: [
+    { id: 'fixed', label: 'Schedule schema', passed: false, checks: 1, detail: `INVALID_SCHEDULE_SCHEMA: ${detail}` },
+    { id: 'dependencies', label: 'Dependencies', passed: false, checks: 0, detail: 'Not evaluated' },
+    { id: 'qualifications', label: 'Qualifications', passed: false, checks: 0, detail: 'Not evaluated' },
+    { id: 'deadlines', label: 'Deadlines + bounds', passed: false, checks: 0, detail: 'Not evaluated' },
+    { id: 'crew-availability', label: 'Crew availability', passed: false, checks: 0, detail: 'Not evaluated' },
+    { id: 'employer-policy', label: 'Employer controls', passed: false, checks: 0, detail: 'Not evaluated' },
+  ],
+})
+
+export type BreakReservation = { crewId: string; start: string; end: string }
+
+export const verifyBreakPolicy = (
+  schedule: Schedule,
+  tasks: Task[],
+  crews: Crew[],
+  breakReservations: BreakReservation[] = [],
+) => {
+  const triggerStart = timeToMinutes(BREAK_POLICY.triggerStart)
+  const triggerEnd = timeToMinutes(BREAK_POLICY.triggerEnd)
+  const required = BREAK_POLICY.durationMinutes
+  const outdoorIntervals = (crewId: string) => tasks
+    .filter(task => task.crewId === crewId && task.environment !== 'shaded-support')
+    .map(task => [timeToMinutes(schedule[task.id]), timeToMinutes(schedule[task.id]) + task.durationMinutes] as [number, number])
+    .map(([start, end]) => [Math.max(start, triggerStart), Math.min(end, triggerEnd)] as [number, number])
+    .filter(([start, end]) => end > start)
+    .sort((a, b) => a[0] - b[0])
+
+  const continuousPass = crews.every(crew => {
+    let runStart = -1
+    let runEnd = -1
+    return outdoorIntervals(crew.id).every(([start, end]) => {
+      if (runStart < 0 || start - runEnd >= required) {
+        runStart = start
+        runEnd = end
+      } else {
+        runEnd = Math.max(runEnd, end)
+      }
+      return runEnd - runStart <= BREAK_POLICY.afterContinuousMinutes
+    })
+  })
+  const reservationsPass = breakReservations.every(reservation => {
+    if (!reservation || typeof reservation.crewId !== 'string' || !validTime(reservation.start) || !validTime(reservation.end)) return false
+    const start = timeToMinutes(reservation.start)
+    const end = timeToMinutes(reservation.end)
+    if (!crews.some(crew => crew.id === reservation.crewId) || end - start < required || start < triggerStart || end > triggerEnd) return false
+    return tasks.filter(task => task.crewId === reservation.crewId).every(task => {
+      const taskStart = timeToMinutes(schedule[task.id])
+      return overlapMinutes(start, required, taskStart, taskStart + task.durationMinutes) === 0
+    })
+  })
+  return continuousPass && reservationsPass
 }
 
 export const minutesToTime = (minutes: number) =>
@@ -124,10 +201,19 @@ export const verifySchedule = (
   tasks: Task[] = TASKS,
   crews: Crew[] = CREWS,
   baseline: Schedule = originalSchedule(tasks),
+  breakReservations: BreakReservation[] = [],
 ): Verification => {
-  if (!Array.isArray(tasks) || tasks.length === 0 || !schedule || typeof schedule !== 'object' || Object.keys(schedule).length !== tasks.length || new Set(tasks.map(task => task.id)).size !== tasks.length || Object.keys(schedule).some(id => !tasks.some(task => task.id === id))) {
-    return { passed: false, passedFamilies: 0, totalFamilies: 6, totalChecks: 1, families: [{ id: 'fixed', label: 'Schedule schema', passed: false, checks: 1, detail: 'Empty, malformed, incomplete, or extra task schedule' }, { id: 'dependencies', label: 'Dependencies', passed: false, checks: 0, detail: 'Not evaluated' }, { id: 'qualifications', label: 'Qualifications', passed: false, checks: 0, detail: 'Not evaluated' }, { id: 'deadlines', label: 'Deadlines + bounds', passed: false, checks: 0, detail: 'Not evaluated' }, { id: 'crew-availability', label: 'Crew availability', passed: false, checks: 0, detail: 'Not evaluated' }, { id: 'employer-policy', label: 'Employer controls', passed: false, checks: 0, detail: 'Not evaluated' }] }
-  }
+  if (!Array.isArray(tasks) || tasks.length === 0) return schemaFailure('tasks must be a non-empty array')
+  if (!schedule || typeof schedule !== 'object' || Array.isArray(schedule)) return schemaFailure('schedule must be an object')
+  const taskIds = tasks.map(task => task && typeof task === 'object' ? task.id : '')
+  if (taskIds.some(id => typeof id !== 'string' || id.length === 0) || new Set(taskIds).size !== taskIds.length) return schemaFailure('task IDs must be unique non-empty strings')
+  if (Object.keys(schedule).length !== tasks.length || Object.keys(schedule).some(id => !taskIds.includes(id))) return schemaFailure('schedule must contain exactly one entry per task')
+  if (!tasks.every(task => task && typeof task === 'object' && Number.isFinite(task.durationMinutes) && task.durationMinutes > 0 && typeof task.crewId === 'string' && typeof task.qualification === 'string' && validTime(task.deadline) && Array.isArray(task.dependencies) && task.dependencies.every(id => typeof id === 'string') && typeof task.fixed === 'boolean' && typeof task.environment === 'string' && typeof task.zoneId === 'string')) return schemaFailure('task rows contain invalid fields')
+  if (!crews.every(crew => crew && typeof crew === 'object' && typeof crew.id === 'string' && Array.isArray(crew.qualifications) && crew.qualifications.every(item => typeof item === 'string')) || new Set(crews.map(crew => crew.id)).size !== crews.length) return schemaFailure('crew schema is invalid')
+  if (!tasks.every(task => crews.some(crew => crew.id === task.crewId))) return schemaFailure('unknown crew')
+  if (!tasks.every(task => task.dependencies.every(id => taskIds.includes(id)))) return schemaFailure('unknown dependency')
+  if (!tasks.every(task => validTime(schedule[task.id]))) return schemaFailure('invalid task timestamp')
+  if (!Array.isArray(breakReservations)) return schemaFailure('break reservations must be an array')
   const fixedTasks = tasks.filter(task => task.fixed)
   const dependencyEdges = tasks.flatMap(task => task.dependencies.map(dependency => ({ dependency, task })))
   const sameCrewPairs = crews.flatMap(crew => {
@@ -135,10 +221,7 @@ export const verifySchedule = (
     return crewTasks.flatMap((task, index) => crewTasks.slice(index + 1).map(other => ({ task, other })))
   })
   const outdoorTasks = tasks.filter(task => task.environment !== 'shaded-support')
-  const windowStart = timeToMinutes(THERMAL_EVIDENCE.highWindow.start)
-  const windowEnd = timeToMinutes(THERMAL_EVIDENCE.highWindow.end)
-
-  const validTimes = tasks.every(task => typeof schedule[task.id] === 'string' && /^\d{2}:\d{2}$/.test(schedule[task.id]) && timeToMinutes(schedule[task.id]) >= MINUTE_START && timeToMinutes(schedule[task.id]) <= MINUTE_END)
+  const validTimes = tasks.every(task => validTime(schedule[task.id]) && timeToMinutes(schedule[task.id]) >= MINUTE_START && timeToMinutes(schedule[task.id]) <= MINUTE_END)
   const fixedPass = validTimes && fixedTasks.every(task => schedule[task.id] === baseline[task.id])
   const dependenciesPass = dependencyEdges.every(({ dependency, task }) => {
     const predecessor = tasks.find(item => item.id === dependency)
@@ -161,11 +244,7 @@ export const verifySchedule = (
     if (!taskStart || !otherStart) return false
     return overlapMinutes(timeToMinutes(taskStart), task.durationMinutes, timeToMinutes(otherStart), timeToMinutes(otherStart) + other.durationMinutes) === 0
   })
-  const policyPass = validTimes && crews.every(crew => {
-    const intervals = tasks.filter(task => task.crewId === crew.id && task.environment !== 'shaded-support').map(task => [timeToMinutes(schedule[task.id]), timeToMinutes(schedule[task.id]) + task.durationMinutes] as [number, number]).map(([start, end]) => [Math.max(start, windowStart), Math.min(end, windowEnd)] as [number, number]).filter(([start, end]) => end > start).sort((a, b) => a[0] - b[0])
-    let runEnd = -1; let runStart = -1
-    return intervals.every(([start, end]) => { if (start > runEnd) { runStart = start; runEnd = end } else { runEnd = Math.max(runEnd, end) }; return runEnd - runStart <= 90 })
-  })
+  const policyPass = validTimes && verifyBreakPolicy(schedule, tasks, crews, breakReservations)
 
   const families: ConstraintFamily[] = [
     { id: 'fixed', label: 'Fixed commitments', passed: fixedPass, checks: fixedTasks.length, detail: `${fixedTasks.length} anchors unchanged` },
@@ -260,16 +339,12 @@ export const runCrewClock = ({
   const originalVerification = verifySchedule(original, tasks, crews, original)
   const beforeCrewHours = peakWindowCrewHoursFor(original, tasks, crews)
   const emptyStats = { candidatesConsidered: 0, feasibleCandidates: 0, rejectedCandidates: 0 }
-  const stableHash = (value: unknown) => {
-    const text = JSON.stringify(value)
-    let hash = 2166136261
-    for (let index = 0; index < text.length; index += 1) hash = Math.imul(hash ^ text.charCodeAt(index), 16777619)
-    return (hash >>> 0).toString(16)
-  }
-  const evidenceHash = stableHash(THERMAL_EVIDENCE)
-  const taskStateHash = stableHash({ tasks, crews })
+  const evidenceHash = evidenceBundleHash(THERMAL_EVIDENCE)
+  const taskStateHash = projectStateHash(tasks, crews)
+  const sourceHash = sourceScheduleHash(original) ?? ''
+  const policyHash = policyContentHash(EMPLOYER_POLICY)
   const policyVersion = String(EMPLOYER_POLICY.name)
-  const base = { original, investigation, originalVerification, beforeCrewHours, deterministicId: 'CC-PHX-0716-v1', candidateHash: null, evidenceHash, policyVersion, taskStateHash, tasks, crews }
+  const base = { original, investigation, originalVerification, beforeCrewHours, deterministicId: 'CC-PHX-0716-v1', candidateHash: null, recommendationId: null, evidenceHash, sourceScheduleHash: sourceHash, policyHash, verificationHash: null, artifactVersion: ARTIFACT_VERSION, policyVersion, taskStateHash, tasks, crews }
 
   if (!originalVerification.families.filter(family => family.id !== 'employer-policy').every(family => family.passed)) {
     return { ...base, status: 'infeasible-original', recommendation: null, recommendationVerification: null, afterCrewHours: null, shiftedCrewHours: 0, stats: emptyStats, message: 'The upcoming-shift source plan is infeasible. Resolve operational constraints before optimization.' }
@@ -306,6 +381,17 @@ export const runCrewClock = ({
   if (!recommendationVerification.passed || shiftedCrewHours <= 0 || beforeCrewHours === null || afterCrewHours === null) {
     return { ...base, status: 'no-improvement', recommendation: null, recommendationVerification, afterCrewHours: beforeCrewHours, shiftedCrewHours: 0, stats, message: 'No defensible improvement found. The original plan remains the operational plan.' }
   }
+  const finalVerificationHash = verificationResultHash({
+    status: 'VERIFIED',
+    valid: recommendationVerification.passed,
+    checks: recommendationVerification,
+    candidate_hash: canonicalCandidateHash({ tasks, schedule: recommendation, crews, policy: EMPLOYER_POLICY, sourceSchedule: original }),
+    source_schedule_hash: sourceHash,
+    evidence_hash: evidenceHash,
+    policy_hash: policyHash,
+    project_state_hash: taskStateHash,
+  })
+  const sealedCandidateHash = canonicalCandidateHash({ tasks, schedule: recommendation, crews, policy: EMPLOYER_POLICY, sourceSchedule: original })
   return {
     ...base,
     status: 'recommended',
@@ -314,7 +400,17 @@ export const runCrewClock = ({
     afterCrewHours,
     shiftedCrewHours,
     stats,
-    candidateHash: stableHash(recommendation),
+    candidateHash: sealedCandidateHash,
+    recommendationId: recommendationId({
+      candidateHash: sealedCandidateHash,
+      sourceScheduleHash: sourceHash,
+      evidenceHash,
+      policyHash,
+      projectStateHash: taskStateHash,
+      verificationHash: finalVerificationHash,
+      artifactVersion: ARTIFACT_VERSION,
+    }),
+    verificationHash: finalVerificationHash,
     message: `${shiftedCrewHours} scheduled high-heat crew-hours can be removed from the employer trigger overlap.`,
   }
 }
@@ -322,25 +418,35 @@ export const runCrewClock = ({
 export const CANONICAL_RUN = runCrewClock()
 
 export const approveRecommendation = (run: CrewClockRun) => {
-  const stableHash = (value: unknown) => {
-    const text = JSON.stringify(value); let hash = 2166136261
-    for (let index = 0; index < text.length; index += 1) hash = Math.imul(hash ^ text.charCodeAt(index), 16777619)
-    return (hash >>> 0).toString(16)
-  }
   if (run.status !== 'recommended' || !run.recommendation || !run.recommendationVerification?.passed) {
     return { state: 'FINAL_VERIFICATION_FAILED' as const, approved: false, plan: run.original, verification: run.originalVerification, auditAction: 'Approval blocked; no verified recommendation exists' }
   }
-  const received = { state: 'APPROVAL_RECEIVED' as const, candidateHash: stableHash(run.recommendation) }
-  if (received.candidateHash !== run.candidateHash || run.evidenceHash !== stableHash(THERMAL_EVIDENCE) || run.taskStateHash !== stableHash({ tasks: run.tasks, crews: run.crews }) || run.policyVersion !== String(EMPLOYER_POLICY.name)) {
+  const received = { state: 'APPROVAL_RECEIVED' as const, candidateHash: canonicalCandidateHash({ tasks: run.tasks, schedule: run.recommendation, crews: run.crews, policy: EMPLOYER_POLICY, sourceSchedule: run.original }) }
+  const currentPolicyHash = policyContentHash(EMPLOYER_POLICY)
+  const currentEvidenceHash = evidenceBundleHash(THERMAL_EVIDENCE)
+  const currentTaskStateHash = projectStateHash(run.tasks, run.crews)
+  const currentSourceHash = sourceScheduleHash(run.original)
+  const currentRecommendationId = run.recommendationId && run.verificationHash ? recommendationId({ candidateHash: received.candidateHash, sourceScheduleHash: currentSourceHash, evidenceHash: currentEvidenceHash, policyHash: currentPolicyHash, projectStateHash: currentTaskStateHash, verificationHash: run.verificationHash, artifactVersion: run.artifactVersion }) : null
+  if (!run.recommendationId || !run.candidateHash || !run.verificationHash || received.candidateHash !== run.candidateHash || run.evidenceHash !== currentEvidenceHash || run.taskStateHash !== currentTaskStateHash || run.sourceScheduleHash !== currentSourceHash || run.policyHash !== currentPolicyHash || currentRecommendationId !== run.recommendationId || run.artifactVersion !== ARTIFACT_VERSION) {
     return { ...received, state: 'FINAL_VERIFICATION_FAILED' as const, approved: false, plan: run.original, verification: run.originalVerification, auditAction: 'Approval blocked; recommendation context is stale' }
   }
   const verification = verifySchedule(run.recommendation, run.tasks, run.crews, run.original)
+  const finalVerificationHash = verificationResultHash({
+    status: 'VERIFIED',
+    valid: verification.passed,
+    checks: verification,
+    candidate_hash: received.candidateHash,
+    source_schedule_hash: currentSourceHash,
+    evidence_hash: currentEvidenceHash,
+    policy_hash: currentPolicyHash,
+    project_state_hash: currentTaskStateHash,
+  })
   return {
-    state: verification.passed ? 'APPROVED' as const : 'FINAL_VERIFICATION_FAILED' as const,
-    approved: verification.passed,
+    state: verification.passed && finalVerificationHash === run.verificationHash ? 'APPROVED' as const : 'FINAL_VERIFICATION_FAILED' as const,
+    approved: verification.passed && finalVerificationHash === run.verificationHash,
     plan: verification.passed ? run.recommendation : run.original,
     verification,
-    auditAction: verification.passed ? 'Superintendent approved plan; final verification passed' : 'Approval blocked; final verification failed',
+    auditAction: verification.passed && finalVerificationHash === run.verificationHash ? 'Superintendent approved plan; final verification passed' : 'Approval blocked; final verification failed',
   }
 }
 

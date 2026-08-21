@@ -58,14 +58,16 @@ def _check(name: str, passed: bool, detail: str) -> ConstraintCheck:
 
 
 def _break_check(intervals: list[tuple[datetime, datetime]], policy: EmployerPolicy, trigger_start: datetime, trigger_end: datetime) -> tuple[bool, str]:
-    """Require real idle capacity for a policy break; a badge is insufficient."""
+    """Require a full policy-duration idle interval; a badge is insufficient."""
     if not intervals or not policy.break_rules:
         return True, "No required break applies."
     rule = policy.break_rules[0]
     clipped = sorted((max(start, trigger_start), min(end, trigger_end)) for start, end in intervals if min(end, trigger_end) > max(start, trigger_start))
     runs: list[tuple[datetime, datetime]] = []
     for start, end in clipped:
-        if runs and start <= runs[-1][1]:
+        # A gap shorter than the required recovery duration does not reset
+        # continuous outdoor work. Exactly the policy duration is sufficient.
+        if runs and (start - runs[-1][1]).total_seconds() / 60 < rule.duration_minutes:
             runs[-1] = (runs[-1][0], max(runs[-1][1], end))
         else:
             runs.append((start, end))
@@ -87,6 +89,7 @@ def verify_schedule(
     trigger_end: Any,
     require_thermal_evidence: bool = False,
     thermal_evidence_valid: bool = True,
+    break_reservations: list[dict[str, Any]] | None = None,
 ) -> ScheduleVerification:
     """Verify a complete schedule against every applicable hard constraint."""
     checks: list[ConstraintCheck] = []
@@ -97,13 +100,62 @@ def verify_schedule(
     except (ValueError, TypeError) as exc:
         return ScheduleVerification(False, (_check("schedule_schema", False, str(exc)),))
 
+    schema_errors: list[str] = []
     schema_ok = isinstance(tasks, list) and bool(tasks) and isinstance(schedule, dict) and bool(schedule) and isinstance(crews, dict) and bool(crews)
-    ids = [task.get("id") for task in tasks] if isinstance(tasks, list) else []
-    schema_ok = schema_ok and all(isinstance(task, dict) and isinstance(task.get("id"), str) and task.get("id") for task in tasks)
-    schema_ok = schema_ok and len(ids) == len(set(ids)) and set(schedule) == set(ids)
-    schema_ok = schema_ok and all(isinstance(crew_id, str) and isinstance(crew, dict) for crew_id, crew in crews.items())
-    checks.append(_check("schedule_schema", schema_ok, "Non-empty schedule has one valid start for every known task and no extras."))
     if not schema_ok:
+        schema_errors.append("empty_or_wrong_container")
+    task_rows = tasks if isinstance(tasks, list) else []
+    if any(not isinstance(task, dict) for task in task_rows):
+        schema_errors.append("task_object_required")
+    ids = [task.get("id") for task in task_rows if isinstance(task, dict)]
+    if any(not isinstance(task_id, str) or not task_id for task_id in ids):
+        schema_errors.append("task_id_required")
+    string_ids = [task_id for task_id in ids if isinstance(task_id, str)]
+    if len(string_ids) != len(set(string_ids)):
+        schema_errors.append("duplicate_task_id")
+    if isinstance(schedule, dict) and set(schedule) != set(string_ids):
+        schema_errors.append("schedule_task_ids_must_match")
+    if isinstance(crews, dict):
+        for crew_id, crew in crews.items():
+            if not isinstance(crew_id, str) or not isinstance(crew, dict) or not isinstance(crew.get("qualifications", []), list) or not all(isinstance(item, str) for item in crew.get("qualifications", [])):
+                schema_errors.append("crew_schema_invalid")
+    for task in task_rows:
+        if not isinstance(task, dict):
+            continue
+        if not any(key in task for key in ("duration", "duration_minutes", "durationMinutes")):
+            schema_errors.append(f"missing_duration:{task.get('id', '<unknown>')}")
+        if "deadline" not in task:
+            schema_errors.append(f"missing_deadline:{task.get('id', '<unknown>')}")
+        if not isinstance(task.get("dependencies", []), list) or not all(isinstance(item, str) for item in task.get("dependencies", [])):
+            schema_errors.append(f"dependencies_invalid:{task.get('id', '<unknown>')}")
+        elif any(item not in string_ids for item in task.get("dependencies", [])):
+            schema_errors.append(f"unknown_dependency:{task.get('id', '<unknown>')}")
+        if "fixed" in task and not isinstance(task["fixed"], bool):
+            schema_errors.append(f"fixed_invalid:{task.get('id', '<unknown>')}")
+        if "outdoor" in task and not isinstance(task["outdoor"], bool):
+            schema_errors.append(f"outdoor_invalid:{task.get('id', '<unknown>')}")
+        for key in ("workface", "workface_id", "zone_id", "zoneId"):
+            if key in task and not isinstance(task[key], str):
+                schema_errors.append(f"{key}_invalid:{task.get('id', '<unknown>')}")
+        crew_id = task.get("crew_id", task.get("crewId", task.get("crew")))
+        if not isinstance(crew_id, str) or crew_id not in crews:
+            schema_errors.append(f"unknown_crew:{task.get('id', '<unknown>')}")
+        if not isinstance(task.get("qualification"), str) or not task.get("qualification"):
+            schema_errors.append(f"qualification_required:{task.get('id', '<unknown>')}")
+        try:
+            _duration(task.get("duration", task.get("duration_minutes", task.get("durationMinutes"))), f"task:{task.get('id', '<unknown>')}:duration")
+            _timestamp(task.get("deadline"), f"task:{task.get('id', '<unknown>')}:deadline")
+        except (ValueError, TypeError):
+            schema_errors.append(f"task_timing_invalid:{task.get('id', '<unknown>')}")
+        if isinstance(schedule, dict) and task.get("id") in schedule:
+            try:
+                _timestamp(schedule[task["id"]], f"task:{task['id']}:start")
+            except (ValueError, TypeError):
+                schema_errors.append(f"start_timestamp_invalid:{task.get('id', '<unknown>')}")
+    checks.append(_check("schedule_schema", not schema_errors, f"INVALID_SCHEDULE_SCHEMA:{';'.join(schema_errors) if schema_errors else 'ok'}"))
+    if not schema_ok:
+        return ScheduleVerification(False, tuple(checks))
+    if schema_errors:
         return ScheduleVerification(False, tuple(checks))
 
     parsed: dict[str, tuple[datetime, datetime, dict[str, Any]]] = {}
@@ -162,6 +214,36 @@ def verify_schedule(
         breaks_ok = breaks_ok and ok
         details.append(f"{crew_id}: {detail}")
     checks.append(_check("policy_breaks", breaks_ok, "; ".join(details)))
+    reservations_ok = True
+    reservation_details: list[str] = []
+    reservations = break_reservations or []
+    if not isinstance(break_reservations, list) and break_reservations is not None:
+        reservations_ok = False
+        reservation_details.append("break_reservations_must_be_array")
+    elif reservations:
+        if not policy.break_rules:
+            reservations_ok = False
+            reservation_details.append("break_rule_required_for_reservation")
+        else:
+            rule = policy.break_rules[0]
+            for index, reservation in enumerate(reservations):
+                try:
+                    if not isinstance(reservation, dict):
+                        raise ValueError("reservation_object_required")
+                    crew_id = reservation.get("crew_id", reservation.get("crewId"))
+                    start = _timestamp(reservation.get("start"), f"break:{index}:start")
+                    end = _timestamp(reservation.get("end"), f"break:{index}:end")
+                    if crew_id not in crews or end <= start:
+                        raise ValueError("break_reservation_invalid")
+                    if (end - start).total_seconds() / 60 < rule.duration_minutes or start < trigger_start_dt or end > trigger_end_dt:
+                        raise ValueError("break_reservation_outside_policy_window_or_duration")
+                    task_intervals = [(task_start, task_end) for task_start, task_end, task in parsed.values() if task.get("crew_id", task.get("crewId", task.get("crew"))) == crew_id]
+                    if any(start < task_end and end > task_start for task_start, task_end in task_intervals):
+                        raise ValueError("break_reservation_overlaps_work")
+                except (ValueError, TypeError, KeyError) as exc:
+                    reservations_ok = False
+                    reservation_details.append(f"break:{index}:{exc}")
+    checks.append(_check("break_reservations", reservations_ok, "; ".join(reservation_details) if reservation_details else "All reserved breaks meet policy duration, window, crew, and overlap rules."))
     if require_thermal_evidence:
         checks.append(_check("thermal_evidence", thermal_evidence_valid, "Thermally motivated verification requires valid compatible evidence."))
     checks.append(_check("schedule_completeness", len(parsed) == len(tasks) and bool(tasks), "The candidate is complete and non-empty."))

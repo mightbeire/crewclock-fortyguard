@@ -4,6 +4,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Literal
 
+from .integrity import policy_content_hash
+
 
 PolicySource = Literal["EMPLOYER_CONFIGURED", "DEMO_POLICY", "PUBLIC_GUIDANCE_REFERENCE"]
 
@@ -47,6 +49,32 @@ class EmployerPolicy:
         for rule in self.break_rules:
             if rule.after_continuous_minutes <= 0 or rule.duration_minutes <= 0:
                 raise ValueError("break_rule_durations_must_be_positive")
+
+    def identity_payload(self) -> dict:
+        return {
+            "policy_id": self.policy_id,
+            "version": self.version,
+            "name": self.name,
+            "source": self.source,
+            "effective_date": self.effective_date,
+            "metric_used": self.metric_used,
+            "initial_trigger": self.initial_trigger,
+            "high_trigger": self.high_trigger,
+            "units": self.units,
+            "break_rules": [
+                {"trigger_name": rule.trigger_name, "after_continuous_minutes": rule.after_continuous_minutes, "duration_minutes": rule.duration_minutes, "source": rule.source}
+                for rule in self.break_rules
+            ],
+            "required_control_tier": self.required_control_tier,
+            "prefer_move_work_types": list(self.prefer_move_work_types),
+            "onsite_verification_required": self.onsite_verification_required,
+            "superintendent_review_required": self.superintendent_review_required,
+            "escalation_rule": self.escalation_rule,
+            "acclimatization_categories": list(self.acclimatization_categories),
+        }
+
+    def content_hash(self) -> str:
+        return policy_content_hash(self.identity_payload())
 
 
 def required_breaks_for_outdoor_intervals(

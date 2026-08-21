@@ -9,6 +9,15 @@ from typing import Any, Iterable
 
 from .cache import JsonCache, request_hash
 from .guardrails import FortyGuardRequestGuard, GuardrailError
+from .integrity import (
+    ARTIFACT_VERSION,
+    candidate_hash_from_verification_arguments,
+    evidence_bundle_hash,
+    project_state_hash,
+    recommendation_id,
+    source_schedule_hash,
+    verification_result_hash,
+)
 from .models import Provenance, ToolResult
 from .state_machine import deterministic_decision_result
 from .thermal import ThermalContractError, assert_env_params_schema, assert_heatmap_schema, env_params_role
@@ -321,8 +330,14 @@ class FortyGuardToolkit:
             return ToolResult({}, Provenance(source="derived", endpoint=endpoint), error="canonical_scheduler_inputs_required")
         policy_data = arguments.get("policy") or {}
         try:
-            rules = tuple(BreakRule(str(item["trigger_name"]), int(item["after_continuous_minutes"]), int(item["duration_minutes"]), "DEMO_POLICY") for item in policy_data.get("break_rules", []))
-            policy = EmployerPolicy(str(policy_data.get("policy_id", "runtime")), str(policy_data.get("version", "1")), str(policy_data.get("name", "runtime policy")), "DEMO_POLICY", str(policy_data.get("effective_date", "1970-01-01")), "modeled-temperature", policy_data.get("initial_trigger"), policy_data.get("high_trigger"), str(policy_data.get("units", "celsius")), rules)
+            rules = tuple(BreakRule(str(item["trigger_name"]), int(item["after_continuous_minutes"]), int(item["duration_minutes"]), str(item.get("source", "DEMO_POLICY"))) for item in policy_data.get("break_rules", []))
+            policy = EmployerPolicy(
+                str(policy_data.get("policy_id", "runtime")), str(policy_data.get("version", "1")), str(policy_data.get("name", "runtime policy")), str(policy_data.get("source", "DEMO_POLICY")),
+                str(policy_data.get("effective_date", "1970-01-01")), str(policy_data.get("metric_used", "modeled-temperature")), policy_data.get("initial_trigger"), policy_data.get("high_trigger"), str(policy_data.get("units", "celsius")), rules,
+                str(policy_data.get("required_control_tier")) if policy_data.get("required_control_tier") is not None else None,
+                tuple(str(item) for item in policy_data.get("prefer_move_work_types", [])), bool(policy_data.get("onsite_verification_required", True)), bool(policy_data.get("superintendent_review_required", True)),
+                str(policy_data.get("escalation_rule", "Escalate fixed work; do not create an impossible move.")), tuple(str(item) for item in policy_data.get("acclimatization_categories", ("established", "new_or_returning", "unknown"))),
+            )
             candidates = generate_feasible_schedule_alternatives(tasks, crews, policy, baseline=baseline, shift_start=arguments["shift_start"], shift_end=arguments["shift_end"], trigger_start=arguments["trigger_start"], trigger_end=arguments["trigger_end"])
         except (KeyError, TypeError, ValueError) as exc:
             return ToolResult({}, Provenance(source="derived", endpoint=endpoint), error=f"scheduler_input_invalid:{exc}")
@@ -338,12 +353,26 @@ class FortyGuardToolkit:
             return ToolResult({"status": "VERIFICATION_FAILED", "valid": False, "error": "canonical_verifier_inputs_required"}, Provenance(source="derived", endpoint=endpoint), error="canonical_verifier_inputs_required")
         policy_data = arguments.get("policy") or {}
         try:
-            rules = tuple(BreakRule(str(item["trigger_name"]), int(item["after_continuous_minutes"]), int(item["duration_minutes"]), "DEMO_POLICY") for item in policy_data.get("break_rules", []))
-            policy = EmployerPolicy(str(policy_data.get("policy_id", "runtime")), str(policy_data.get("version", "1")), str(policy_data.get("name", "runtime policy")), "DEMO_POLICY", str(policy_data.get("effective_date", "1970-01-01")), "modeled-temperature", policy_data.get("initial_trigger"), policy_data.get("high_trigger"), str(policy_data.get("units", "celsius")), rules)
-            result = verify_schedule(tasks, schedule, crews, policy, shift_start=arguments["shift_start"], shift_end=arguments["shift_end"], trigger_start=arguments["trigger_start"], trigger_end=arguments["trigger_end"], require_thermal_evidence=bool(arguments.get("require_thermal_evidence", False)), thermal_evidence_valid=bool(arguments.get("thermal_evidence_valid", True)))
+            rules = tuple(BreakRule(str(item["trigger_name"]), int(item["after_continuous_minutes"]), int(item["duration_minutes"]), str(item.get("source", "DEMO_POLICY"))) for item in policy_data.get("break_rules", []))
+            policy = EmployerPolicy(
+                str(policy_data.get("policy_id", "runtime")), str(policy_data.get("version", "1")), str(policy_data.get("name", "runtime policy")), str(policy_data.get("source", "DEMO_POLICY")),
+                str(policy_data.get("effective_date", "1970-01-01")), str(policy_data.get("metric_used", "modeled-temperature")), policy_data.get("initial_trigger"), policy_data.get("high_trigger"), str(policy_data.get("units", "celsius")), rules,
+                str(policy_data.get("required_control_tier")) if policy_data.get("required_control_tier") is not None else None,
+                tuple(str(item) for item in policy_data.get("prefer_move_work_types", [])), bool(policy_data.get("onsite_verification_required", True)), bool(policy_data.get("superintendent_review_required", True)),
+                str(policy_data.get("escalation_rule", "Escalate fixed work; do not create an impossible move.")), tuple(str(item) for item in policy_data.get("acclimatization_categories", ("established", "new_or_returning", "unknown"))),
+            )
+            result = verify_schedule(tasks, schedule, crews, policy, shift_start=arguments["shift_start"], shift_end=arguments["shift_end"], trigger_start=arguments["trigger_start"], trigger_end=arguments["trigger_end"], require_thermal_evidence=bool(arguments.get("require_thermal_evidence", False)), thermal_evidence_valid=bool(arguments.get("thermal_evidence_valid", True)), break_reservations=arguments.get("break_reservations"))
         except (KeyError, TypeError, ValueError) as exc:
             return ToolResult({"status": "VERIFICATION_FAILED", "valid": False, "error": str(exc)}, Provenance(source="derived", endpoint=endpoint), error=str(exc))
-        data = {"status": result.status, "valid": result.passed, "decision_relevant_result": "VERIFIED_SCHEDULE" if result.passed else "KEEP_CURRENT_PLAN_AND_RECHECK", "checks": [{"name": check.name, "passed": check.passed, "detail": check.detail} for check in result.checks], "schedule_hash": request_hash(endpoint, {"tasks": tasks, "schedule": schedule, "crews": crews, "policy": policy_data}), "evidence_hash": request_hash("local:evidence", arguments.get("evidence", arguments.get("thermal_evidence", {}))), "task_state_hash": request_hash("local:task-state", {"tasks": tasks, "crews": crews}), "policy_version": policy.version, "next_allowed_actions": ["COMPARE_SCHEDULE_METRICS", "REQUEST_SUPERINTENDENT_APPROVAL"] if result.passed else ["KEEP_CURRENT_PLAN_AND_RECHECK"]}
+        candidate_hash = candidate_hash_from_verification_arguments(arguments)
+        evidence_hash = evidence_bundle_hash(arguments.get("evidence", arguments.get("thermal_evidence", {})))
+        project_hash = project_state_hash(tasks, crews)
+        source_hash = source_schedule_hash(arguments.get("source_schedule"))
+        policy_hash = policy.content_hash()
+        data = {"status": result.status, "valid": result.passed, "decision_relevant_result": "VERIFIED_SCHEDULE" if result.passed else "KEEP_CURRENT_PLAN_AND_RECHECK", "checks": [{"name": check.name, "passed": check.passed, "detail": check.detail} for check in result.checks], "candidate_hash": candidate_hash, "schedule_hash": candidate_hash, "source_schedule_hash": source_hash, "evidence_hash": evidence_hash, "project_state_hash": project_hash, "task_state_hash": project_hash, "policy_hash": policy_hash, "policy_version": policy.version, "artifact_version": ARTIFACT_VERSION, "next_allowed_actions": ["COMPARE_SCHEDULE_METRICS", "REQUEST_SUPERINTENDENT_APPROVAL"] if result.passed else ["KEEP_CURRENT_PLAN_AND_RECHECK"]}
+        data["verification_hash"] = verification_result_hash(data)
+        if result.passed and candidate_hash:
+            data["recommendation_id"] = recommendation_id(candidate_hash=candidate_hash, source_schedule_hash_value=source_hash, evidence_hash=evidence_hash, policy_hash=policy_hash, project_state_hash_value=project_hash, verification_hash=data["verification_hash"])
         return ToolResult(data, Provenance(source="derived", endpoint=endpoint))
 
     @staticmethod
@@ -379,7 +408,11 @@ class FortyGuardToolkit:
 
     @staticmethod
     def request_superintendent_approval(arguments: dict[str, Any]) -> ToolResult:
-        return ToolResult({"status": "PENDING_SUPERINTENDENT_APPROVAL", "recommendation_id": arguments.get("recommendation_id"), "publish_blocked_until_approval": True}, Provenance(source="derived", endpoint="local:request_superintendent_approval"))
+        recommendation_id_value = arguments.get("recommendation_id")
+        candidate_hash = arguments.get("candidate_hash")
+        if not isinstance(recommendation_id_value, str) or not recommendation_id_value or not isinstance(candidate_hash, str) or not candidate_hash:
+            return ToolResult({"status": "FINAL_VERIFICATION_FAILED", "valid": False, "error": "recommendation_identity_required", "publish_blocked_until_approval": True}, Provenance(source="derived", endpoint="local:request_superintendent_approval"), error="recommendation_identity_required")
+        return ToolResult({"status": "PENDING_SUPERINTENDENT_APPROVAL", "recommendation_id": recommendation_id_value, "candidate_hash": candidate_hash, "publish_blocked_until_approval": True}, Provenance(source="derived", endpoint="local:request_superintendent_approval"))
 
     @staticmethod
     def recheck_thermal_evidence(arguments: dict[str, Any]) -> ToolResult:

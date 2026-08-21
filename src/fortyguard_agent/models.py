@@ -72,11 +72,16 @@ class ApprovalRequest:
     status: Literal["pending", "approved", "rejected"] = "pending"
     requested_at: str = field(default_factory=utc_now)
     decided_at: str | None = None
+    recommendation_id: str | None = None
     candidate_hash: str | None = None
+    source_schedule_hash: str | None = None
     evidence_hash: str | None = None
+    policy_hash: str | None = None
+    project_state_hash: str | None = None
     policy_version: str | None = None
     task_state_hash: str | None = None
     verification_hash: str | None = None
+    artifact_version: str | None = None
 
 
 @dataclass
