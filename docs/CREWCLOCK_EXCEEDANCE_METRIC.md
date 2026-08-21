@@ -40,17 +40,21 @@ feasibility and policy rules.
 The cached Phoenix set contains TCM, time-of-measure, persistence, and optional
 environmental context. It does not contain Phoenix schedule-aligned exceedance
 windows. A separate cached exceedance validation response is a different AOI
-and is not substituted into the Phoenix sample. Therefore
-`CACHED_EXCEEDANCE_EVIDENCE = NONE` for the canonical Phoenix fixture and the
-demo emits no fabricated SHHCH number until valid windows are inserted.
+and is not substituted into the Phoenix sample. Therefore usable
+`CACHED_EXCEEDANCE_EVIDENCE = NONE` for the canonical Phoenix fixture. The
+acquisition run is recorded as `PARTIAL` because it has failure evidence but
+zero valid windows; the demo emits no fabricated SHHCH number until valid
+windows are inserted.
 
 On 2026-08-21, two exact historical requests for the first canonical window
 (`2025-07-15`, Phoenix, `06:00–08:00`, `filter_type=2`) reached terminal
-`Failed` without a result and consumed zero credits. The sanitized activity
-records are in `evidence/crewclock-canonical-exceedance/`. The remaining four
-windows were not requested because a missing first window cannot support
-complete schedule coverage. This is a provider validation gap, not evidence
-that the interval had zero exceedance.
+`Failed` without a result and consumed zero credits. A single discriminating
+TCM request using the same AOI/date/window also reached terminal `Failed` with
+an exact retained poll history and no credit change. The sanitized activity
+records are in `evidence/crewclock-canonical-exceedance/`, with the conclusion
+in `docs/CREWCLOCK_EXCEEDANCE_FORENSICS.md`. The remaining four windows were
+not requested. This is a provider range-path validation gap, not evidence that
+the interval had zero exceedance.
 
 Future forecast status remains `FORTYGUARD_FUTURE_FORECAST_STATUS =
 NOT_DEMONSTRATED` because the retained Phoenix future probes completed with

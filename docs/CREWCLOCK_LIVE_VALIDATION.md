@@ -23,6 +23,17 @@ the sanitized records are in `evidence/crewclock-canonical-exceedance/`.
 Result: `CACHED_EXCEEDANCE_EVIDENCE = PARTIAL` for this validation run, with
 `WINDOWS_VALID = 0/5`; no SHHCH value or schedule delta is derived.
 
+### Filter-path diagnostic
+
+Because the two exceedance failures retained no provider diagnostics, one
+additional historical control was justified: the same AOI/date/window with
+`analytic_type=tcm`. The request was accepted, produced 120 recorded status
+responses, and ended `Failed` with no result. Credits remained unchanged. No
+exceedance retest was made after this control failure, so the failure is not
+isolated to the exceedance analytic. Request-time timezone semantics remain
+unspecified by the official contract; CrewClock records conversion as
+unknown rather than guessing UTC or local time.
+
 ## Decision-delta validation
 
 The requested fair baseline-versus-FortyGuard run cannot claim a PASS from this evidence. The baseline can be computed from the same synthetic 14-task plan and employer trigger, but the live future FortyGuard run has no usable workface tiles and cannot produce a defensible FortyGuard plan. Result: `FORTYGUARD_DECISION_DELTA = FAIL`, reason: evidence unavailable/ambiguous, not a tuned threshold or cherry-picked cell.

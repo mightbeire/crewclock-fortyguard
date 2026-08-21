@@ -18,6 +18,14 @@ Relevant current contract:
 - `time_of_measure` is UTC hour-of-day and must be converted before comparison with Phoenix schedules.
 - `env_params` requires a temperature anchor and returns time-aligned arrays with metadata timestamps. Its range response keeps the supplied anchor across hours; it is not a diurnal air-temperature forecast.
 
+The official material does not define whether heatmap request clock strings
+(`start_time`/`end_time`) are interpreted as project-local time or UTC. The
+Phoenix adapter therefore preserves the schedule's explicit
+`America/Phoenix` meaning for local comparisons but records the provider
+request-time conversion as `UNKNOWN` until the API specifies it. The UTC
+label applies to returned `time_of_measure` values, not automatically to
+request clock strings.
+
 ## Discrepancies that affect CrewClock
 
 1. The README's “future dates unsupported” note conflicts with the current API docs' explicit heatmap `now + 12 hours` forecast window. CrewClock follows the live/current contract and guards `+12h` locally.
@@ -30,3 +38,13 @@ Relevant current contract:
 Before submission CrewClock checks endpoint allowlist, U.S. coverage, AOI area, granularity, timestamp horizon, cache/request hash, estimated cost, per-run cap, and remaining credits. Successful responses are normalized into cache records containing request, retrieval/source timestamp, activity ID when safe, result hash, schema version, units, and provenance. Secrets are never cached.
 
 Premium satellite, street-view, and heat-intelligence endpoints are not part of the canonical MVP path.
+
+## Range-path forensic result
+
+On 2026-08-21, the exact historical Phoenix `filter_type=2` `06:00–08:00`
+TCM control used the bundled contract serializer and the previously
+successful AOI/date. It was accepted, remained `Processing` through the
+recorded poll window, then returned terminal `Failed` with no result and no
+credit change. This control failure means the prior exceedance failures are
+not isolated to the exceedance analytic. Full sanitized evidence is in
+`docs/CREWCLOCK_EXCEEDANCE_FORENSICS.md` and the corresponding evidence JSON.

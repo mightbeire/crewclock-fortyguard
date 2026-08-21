@@ -22,6 +22,17 @@ SHHCH. The sanitized records are retained under
 `evidence/crewclock-canonical-exceedance/`; no metric or schedule change is
 claimed.
 
+## 2026-08-21 — Isolate the historical filter-type range failure
+
+The retained first-window exceedance artifacts did not include exact provider
+diagnostics, so one non-exceedance control was authorized. The same Phoenix
+AOI/date/window with `filter_type=2` and `analytic_type=tcm` was accepted,
+polled 120 times, and ended `Failed` without a result or credit spend. This
+does not isolate an exceedance-specific backend defect; it points to the
+provider's historical range/AOI/date/time path, while request clock timezone
+semantics remain unspecified. No second exceedance retest was made and SHHCH
+remains fail-closed.
+
 ## 2026-08-21 — Repair offline agent terminal boundaries
 
 Forensics distinguish A/E/F behavioral stopping, E provider interruption, and

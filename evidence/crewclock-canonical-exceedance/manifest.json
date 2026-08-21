@@ -9,7 +9,16 @@
   ],
   "credit_cap": 25000,
   "credits_used_this_run": 0,
+  "forensic_diagnostic_calls_this_run": 1,
   "failure_gap": "06:00-08:00 returned terminal Failed twice; no valid exceedance tiles were returned, so schedule coverage cannot be completed without retrying this interval.",
+  "diagnostic_control": {
+    "analytic_type": "tcm",
+    "activity_id": "96b64e9c-21ec-46b9-a43b-41dba259e00a",
+    "status": "Failed",
+    "evidence_path": "evidence/crewclock-canonical-exceedance/diagnostic_filter2_tcm_06_00_08_00.json",
+    "interpretation": "Same filter_type=2 AOI/date/window also failed; exceedance-specific failure is not isolated.",
+    "credit_delta": 0
+  },
   "historical_control_date": "2025-07-15",
   "live_analysis_calls_this_run": 2,
   "provenance": "LIVE_FORTYGUARD",
