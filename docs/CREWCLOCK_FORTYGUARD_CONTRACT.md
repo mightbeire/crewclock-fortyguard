@@ -48,3 +48,12 @@ recorded poll window, then returned terminal `Failed` with no result and no
 credit change. This control failure means the prior exceedance failures are
 not isolated to the exceedance analytic. Full sanitized evidence is in
 `docs/CREWCLOCK_EXCEEDANCE_FORENSICS.md` and the corresponding evidence JSON.
+
+## Request-time calibration result
+
+Two preselected historical Phoenix `filter_type=1`, `analytic_type=tcm`
+requests (`14:00` and `22:00`) were accepted but their status retrievals ended
+with HTTP 500 `Internal server error` and no result. Each consumed 4,220
+credits. Because neither returned valid cells, request-time semantics remain
+`AMBIGUOUS` with low confidence and the Phoenix local-to-request mapping is
+unresolved. See `docs/CREWCLOCK_REQUEST_TIME_CALIBRATION.md`.

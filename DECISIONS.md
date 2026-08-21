@@ -33,6 +33,17 @@ provider's historical range/AOI/date/time path, while request clock timezone
 semantics remain unspecified. No second exceedance retest was made and SHHCH
 remains fail-closed.
 
+## 2026-08-21 — Stop request-time calibration without valid results
+
+The official request contract and stored payloads did not specify whether
+heatmap request clock strings are UTC or project-local. Two preselected
+historical Phoenix single-hour TCM calls (`14:00` and `22:00`) were therefore
+used as a bounded calibration pair. Both were accepted, then returned HTTP
+500 status errors without result envelopes; each consumed 4,220 credits.
+Neither call establishes semantics. Request-time mapping remains ambiguous
+with low confidence, no ten-hour capture is authorized, and SHHCH is
+unchanged.
+
 ## 2026-08-21 — Repair offline agent terminal boundaries
 
 Forensics distinguish A/E/F behavioral stopping, E provider interruption, and
