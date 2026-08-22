@@ -101,6 +101,11 @@ button{cursor:pointer}
 .result-actions{display:flex;align-items:center;gap:17px;margin-top:25px;flex-wrap:wrap}
 .metric{display:flex;align-items:baseline;gap:14px;margin-top:22px}.metric span{margin-right:5px;color:var(--muted);font-size:12px}.metric strong{font-family:Bricolage,serif;font-size:55px;letter-spacing:-.07em}.metric svg{color:var(--lime)}
 .metric-meaning{font-size:16px!important;color:var(--ink)!important}
+.operator-explanation{display:grid;gap:14px;margin-top:28px;padding:18px 0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+.operator-explanation>div{display:grid;gap:6px}
+.operator-explanation span{color:var(--faint);font-size:9px;font-weight:600;letter-spacing:.13em}
+.operator-explanation strong{font-size:14px}
+.operator-explanation p{margin:0!important;color:var(--muted);font-size:12px!important;line-height:1.5}
 .result-facts{display:flex;gap:25px;margin-top:25px;padding:14px 0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);color:var(--muted);font-size:11px}.result-facts span+span{padding-left:25px;border-left:1px solid var(--rule)}
 .decision-block{margin-top:52px}.decision-block h2{margin-top:15px}.evidence-link{margin-top:21px;padding:0;color:var(--muted)}
 .footer{display:flex;justify-content:space-between;max-width:1100px;margin:0 auto;padding:22px 24px 34px;border-top:1px solid var(--rule);color:var(--faint);font-size:10px}.mono{font-family:ui-monospace,Consolas,monospace}
