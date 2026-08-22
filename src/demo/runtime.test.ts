@@ -21,6 +21,13 @@ describe('real runtime to UI event contract', () => {
     expect(runtimeUiConsistency(session)).toBe(true)
   })
 
+  it('does not treat synthetic evidence as canonical without its explicit label', () => {
+    const unlabeled = createRuntimeSession({ thermalEvidence: SYNTHETIC_POSITIVE_EVIDENCE })
+    expect(unlabeled.run.status).toBe('missing-evidence')
+    expect(unlabeled.run.recommendation).toBeNull()
+    expect(unlabeled.events.some(event => event.status === 'AWAITING_APPROVAL')).toBe(false)
+  })
+
   it('changes the runtime result when a synthetic movable task becomes fixed', () => {
     const movable = createRuntimeSession({ thermalEvidence: SYNTHETIC_POSITIVE_EVIDENCE, scenarioLabel: 'SYNTHETIC TEST SCENARIO' })
     const fixedTasks = TASKS.map(task => task.id === 'G2' ? { ...task, fixed: true, proposedStart: task.originalStart } : task)
@@ -45,6 +52,13 @@ describe('real runtime to UI event contract', () => {
     expect(safeMode.events.map(event => event.status)).toContain('CURRENT_PLAN_PRESERVED')
     expect(safeMode.run.recommendation).toBeNull()
     expect(runtimeUiConsistency(safeMode)).toBe(true)
+  })
+
+  it('does not claim the optimizer ran when the runtime had no movable work', () => {
+    const noOp = createRuntimeSession({ tasks: TASKS.map(task => ({ ...task, fixed: true, proposedStart: task.originalStart })) })
+    expect(noOp.run.stats.candidatesConsidered).toBe(0)
+    expect(noOp.events.some(event => event.status === 'OPTIMIZATION_STARTED')).toBe(false)
+    expect(runtimeUiConsistency(noOp)).toBe(true)
   })
 
   it('treats prompt injection as task data and rejects malformed runtime input safely', () => {
@@ -75,5 +89,13 @@ describe('real runtime to UI event contract', () => {
     expect(approved.events.at(-2)?.status).toBe('APPROVED')
     expect(approved.events.at(-1)?.terminal_state).toBe('APPROVED')
     expect(runtimeUiConsistency(approved)).toBe(true)
+  })
+
+  it('blocks approval when the displayed candidate changes before the click', () => {
+    const session = createRuntimeSession({ thermalEvidence: SYNTHETIC_POSITIVE_EVIDENCE, scenarioLabel: 'SYNTHETIC TEST SCENARIO' })
+    session.run.recommendation!.G2 = session.run.recommendation!.G2 === '07:00' ? '07:30' : '07:00'
+    const blocked = approveRuntimeSession(session)
+    expect(blocked.approved).toBe(false)
+    expect(blocked.events.at(-2)?.status).toBe('FINAL_VERIFICATION_FAILED')
   })
 })

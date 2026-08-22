@@ -96,6 +96,17 @@ def test_stale_verification_artifact_is_rejected() -> None:
     assert approve(state).operational_state == "FINAL_VERIFICATION_FAILED"
 
 
+def test_replacing_proposal_and_all_visible_identity_fields_is_rejected() -> None:
+    state = pending_state()
+    request = state.approvals[0]
+    replacement = deepcopy(request.proposal.parameters)
+    replacement["schedule"] = {"A": "2026-08-21T07:00:00+00:00"}
+    request.proposal.parameters = replacement
+    for field in ("recommendation_id", "candidate_hash", "source_schedule_hash", "evidence_hash", "policy_hash", "project_state_hash", "task_state_hash", "verification_hash", "artifact_version"):
+        setattr(request, field, "forged")
+    assert approve(state, recommendation_id="forged", candidate_hash="forged").operational_state == "FINAL_VERIFICATION_FAILED"
+
+
 def test_forged_recommendation_artifact_id_is_rejected() -> None:
     state = pending_state()
     for observation in state.observations:

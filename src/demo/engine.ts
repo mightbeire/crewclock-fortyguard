@@ -101,11 +101,11 @@ export type CrewClockRun = {
 }
 
 export const timeToMinutes = (time: string) => {
-  const [hours, minutes] = time.split(':').map(Number)
-  return hours * 60 + minutes
+  const [hours, minutes, seconds = 0] = time.split(':').map(Number)
+  return hours * 60 + minutes + seconds / 60
 }
 
-const validTime = (value: unknown) => typeof value === 'string' && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value)
+const validTime = (value: unknown) => typeof value === 'string' && /^(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/.test(value)
 
 const schemaFailure = (detail: string): Verification => ({
   passed: false,
@@ -130,6 +130,7 @@ export const verifyBreakPolicy = (
   crews: Crew[],
   breakReservations: BreakReservation[] = [],
 ) => {
+  if (!schedule || typeof schedule !== 'object' || !Array.isArray(tasks) || !Array.isArray(crews) || tasks.some(task => !task || !validTime(schedule[task.id]))) return false
   const triggerStart = timeToMinutes(BREAK_POLICY.triggerStart)
   const triggerEnd = timeToMinutes(BREAK_POLICY.triggerEnd)
   const required = BREAK_POLICY.durationMinutes
@@ -158,10 +159,10 @@ export const verifyBreakPolicy = (
     const start = timeToMinutes(reservation.start)
     const end = timeToMinutes(reservation.end)
     if (!crews.some(crew => crew.id === reservation.crewId) || end - start < required || start < triggerStart || end > triggerEnd) return false
-    return tasks.filter(task => task.crewId === reservation.crewId).every(task => {
-      const taskStart = timeToMinutes(schedule[task.id])
-      return overlapMinutes(start, required, taskStart, taskStart + task.durationMinutes) === 0
-    })
+      return tasks.filter(task => task.crewId === reservation.crewId).every(task => {
+        const taskStart = timeToMinutes(schedule[task.id])
+      return overlapMinutes(start, end - start, taskStart, taskStart + task.durationMinutes) === 0
+      })
   })
   return continuousPass && reservationsPass
 }
@@ -342,12 +343,13 @@ export type RunOptions = {
   scenarioLabel?: string
 }
 
-export const runCrewClock = ({
+const buildCrewClockRun = ({
   tasks = TASKS,
   crews = CREWS,
   evidenceState = 'ready',
   policyState = 'ready',
   thermalEvidence = THERMAL_EVIDENCE as ThermalEvidence,
+  scenarioLabel,
 }: RunOptions = {}): CrewClockRun => {
   const taskRows = tasks as unknown
   const crewRows = crews as unknown
@@ -411,6 +413,9 @@ export const runCrewClock = ({
   if (thermalEvidence.exceedanceEvidenceStatus !== 'complete') {
     return { ...base, status: 'missing-evidence', recommendation: null, recommendationVerification: null, afterCrewHours: null, shiftedCrewHours: 0, stats: emptyStats, message: 'Phoenix schedule-aligned FortyGuard exceedance evidence is not demonstrated. No recommendation issued.' }
   }
+  if (scenarioLabel !== 'SYNTHETIC TEST SCENARIO') {
+    return { ...base, status: 'missing-evidence', recommendation: null, recommendationVerification: null, afterCrewHours: null, shiftedCrewHours: 0, stats: emptyStats, message: 'Synthetic decision-grade evidence requires the explicitly labeled synthetic test scenario. No recommendation issued.' }
+  }
 
   const enumerations = crews.map(crew => enumerateCrew(crew.id, tasks, crews, original, thermalEvidence))
   const bestByCrew = enumerations.map(({ candidates }) => [...candidates].sort((a, b) => a.heat - b.heat || a.movement - b.movement)[0])
@@ -459,22 +464,58 @@ export const runCrewClock = ({
   }
 }
 
+type SealedRecommendation = {
+  candidateHash: string
+  recommendationId: string
+  verificationHash: string
+  sourceScheduleHash: string
+  evidenceHash: string
+  policyHash: string
+  taskStateHash: string
+  artifactVersion: string
+}
+
+// The UI-facing run object is intentionally inspectable, but approval must
+// compare it with a binding captured outside that mutable presentation state.
+// A WeakMap keeps the binding private to this module and survives the normal
+// session cloning performed by the React UI.
+const sealedRecommendations = new WeakMap<CrewClockRun, SealedRecommendation>()
+
+export const runCrewClock = (options: RunOptions = {}) => {
+  const run = buildCrewClockRun(options)
+  if (run.status === 'recommended' && run.recommendationId && run.candidateHash && run.verificationHash) {
+    sealedRecommendations.set(run, {
+      candidateHash: run.candidateHash,
+      recommendationId: run.recommendationId,
+      verificationHash: run.verificationHash,
+      sourceScheduleHash: run.sourceScheduleHash,
+      evidenceHash: run.evidenceHash,
+      policyHash: run.policyHash,
+      taskStateHash: run.taskStateHash,
+      artifactVersion: run.artifactVersion,
+    })
+  }
+  return run
+}
+
 export const CANONICAL_RUN = runCrewClock()
 
 export const approveRecommendation = (run: CrewClockRun, identity?: { recommendationId: string; candidateHash: string }) => {
-  if (run.status !== 'recommended' || !run.recommendation || !run.recommendationVerification?.passed) {
+  const sealed = sealedRecommendations.get(run)
+  if (run.status !== 'recommended' || !run.recommendation || !run.recommendationVerification?.passed || !sealed) {
     return { state: 'FINAL_VERIFICATION_FAILED' as const, approved: false, plan: run.original, verification: run.originalVerification, auditAction: 'Approval blocked; no verified recommendation exists' }
   }
-  if (!identity || identity.recommendationId !== run.recommendationId || identity.candidateHash !== run.candidateHash) {
+  const currentCandidateHash = canonicalCandidateHash({ tasks: run.tasks, schedule: run.recommendation, crews: run.crews, policy: EMPLOYER_POLICY, sourceSchedule: run.original })
+  if (!identity || identity.recommendationId !== sealed.recommendationId || identity.candidateHash !== sealed.candidateHash || run.recommendationId !== sealed.recommendationId || run.candidateHash !== sealed.candidateHash || currentCandidateHash !== sealed.candidateHash) {
     return { state: 'FINAL_VERIFICATION_FAILED' as const, approved: false, plan: run.original, verification: run.originalVerification, auditAction: 'Approval blocked; recommendation identity was missing or mismatched' }
   }
-  const received = { state: 'APPROVAL_RECEIVED' as const, candidateHash: canonicalCandidateHash({ tasks: run.tasks, schedule: run.recommendation, crews: run.crews, policy: EMPLOYER_POLICY, sourceSchedule: run.original }) }
+  const received = { state: 'APPROVAL_RECEIVED' as const, candidateHash: currentCandidateHash }
   const currentPolicyHash = policyContentHash(EMPLOYER_POLICY)
   const currentEvidenceHash = evidenceBundleHash(run.thermalEvidence)
   const currentTaskStateHash = projectStateHash(run.tasks, run.crews)
   const currentSourceHash = sourceScheduleHash(run.original)
-  const currentRecommendationId = run.recommendationId && run.verificationHash ? recommendationId({ candidateHash: received.candidateHash, sourceScheduleHash: currentSourceHash, evidenceHash: currentEvidenceHash, policyHash: currentPolicyHash, projectStateHash: currentTaskStateHash, verificationHash: run.verificationHash, artifactVersion: run.artifactVersion }) : null
-  if (!run.recommendationId || !run.candidateHash || !run.verificationHash || received.candidateHash !== run.candidateHash || run.evidenceHash !== currentEvidenceHash || run.taskStateHash !== currentTaskStateHash || run.sourceScheduleHash !== currentSourceHash || run.policyHash !== currentPolicyHash || currentRecommendationId !== run.recommendationId || run.artifactVersion !== ARTIFACT_VERSION) {
+  const currentRecommendationId = recommendationId({ candidateHash: received.candidateHash, sourceScheduleHash: currentSourceHash, evidenceHash: currentEvidenceHash, policyHash: currentPolicyHash, projectStateHash: currentTaskStateHash, verificationHash: sealed.verificationHash, artifactVersion: sealed.artifactVersion })
+  if (run.evidenceHash !== sealed.evidenceHash || run.taskStateHash !== sealed.taskStateHash || run.sourceScheduleHash !== sealed.sourceScheduleHash || run.policyHash !== sealed.policyHash || run.verificationHash !== sealed.verificationHash || run.artifactVersion !== sealed.artifactVersion || currentEvidenceHash !== sealed.evidenceHash || currentTaskStateHash !== sealed.taskStateHash || currentSourceHash !== sealed.sourceScheduleHash || currentPolicyHash !== sealed.policyHash || currentRecommendationId !== sealed.recommendationId || sealed.artifactVersion !== ARTIFACT_VERSION) {
     return { ...received, state: 'FINAL_VERIFICATION_FAILED' as const, approved: false, plan: run.original, verification: run.originalVerification, auditAction: 'Approval blocked; recommendation context is stale' }
   }
   const verification = verifySchedule(run.recommendation, run.tasks, run.crews, run.original)
@@ -489,11 +530,11 @@ export const approveRecommendation = (run: CrewClockRun, identity?: { recommenda
     project_state_hash: currentTaskStateHash,
   })
   return {
-    state: verification.passed && finalVerificationHash === run.verificationHash ? 'APPROVED' as const : 'FINAL_VERIFICATION_FAILED' as const,
-    approved: verification.passed && finalVerificationHash === run.verificationHash,
+    state: verification.passed && finalVerificationHash === sealed.verificationHash ? 'APPROVED' as const : 'FINAL_VERIFICATION_FAILED' as const,
+    approved: verification.passed && finalVerificationHash === sealed.verificationHash,
     plan: verification.passed ? run.recommendation : run.original,
     verification,
-    auditAction: verification.passed && finalVerificationHash === run.verificationHash ? 'Superintendent approved plan; final verification passed' : 'Approval blocked; final verification failed',
+    auditAction: verification.passed && finalVerificationHash === sealed.verificationHash ? 'Superintendent approved plan; final verification passed' : 'Approval blocked; final verification failed',
   }
 }
 

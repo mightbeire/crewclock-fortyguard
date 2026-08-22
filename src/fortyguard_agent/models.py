@@ -66,7 +66,7 @@ class ActionProposal:
     evidence: list[str] = field(default_factory=list)
 
 
-@dataclass
+@dataclass(eq=False)
 class ApprovalRequest:
     proposal: ActionProposal
     status: Literal["pending", "approved", "rejected"] = "pending"

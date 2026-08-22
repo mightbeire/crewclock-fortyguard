@@ -3,12 +3,14 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 import json
+from copy import deepcopy
+from weakref import WeakKeyDictionary
 from typing import Any
 
 from .guardrails import Budget, GuardrailError, SafetyPolicy
 from .cache import request_hash
 from .integrity import candidate_hash_from_verification_arguments
-from .models import AgentState, AgentTrace, ApprovalRequest, Observation, Provenance, ToolResult, utc_now
+from .models import ActionProposal, AgentState, AgentTrace, ApprovalRequest, Observation, Provenance, ToolResult, utc_now
 from .providers import LLMProvider
 from .state_machine import (
     THERMAL_OPERATIONAL_ACTIONS,
@@ -18,6 +20,13 @@ from .state_machine import (
     terminal_status,
     workflow_requires_thermal_evidence,
 )
+
+
+# Approval requests are mutable because their decision status changes. Keep a
+# private, process-local binding of the exact proposal/context so a caller
+# cannot replace both the visible proposal and its identity fields before the
+# final verification step.
+_APPROVAL_SEALS: WeakKeyDictionary[ApprovalRequest, dict[str, Any]] = WeakKeyDictionary()
 
 
 @dataclass
@@ -189,10 +198,10 @@ class AgentRunner:
                             break
                     state.proposals.append(proposal)
                     if proposal.requires_approval or self.policy.needs_approval(proposal.action_type):
-                        state.approvals.append(ApprovalRequest(
+                        request = ApprovalRequest(
                             proposal=proposal,
                             recommendation_id=verified.get("recommendation_id"),
-                            candidate_hash=verified.get("schedule_hash"),
+                            candidate_hash=verified.get("candidate_hash") or verified.get("schedule_hash"),
                             source_schedule_hash=verified.get("source_schedule_hash"),
                             evidence_hash=verified.get("evidence_hash") or verified.get("evidence_provenance_hash"),
                             policy_hash=verified.get("policy_hash"),
@@ -201,7 +210,21 @@ class AgentRunner:
                             task_state_hash=verified.get("task_state_hash"),
                             verification_hash=verified.get("verification_hash") if verified else None,
                             artifact_version=verified.get("artifact_version"),
-                        ))
+                        )
+                        state.approvals.append(request)
+                        _APPROVAL_SEALS[request] = {
+                            "proposal_parameters": deepcopy(proposal.parameters),
+                            "recommendation_id": request.recommendation_id,
+                            "candidate_hash": request.candidate_hash,
+                            "source_schedule_hash": request.source_schedule_hash,
+                            "evidence_hash": request.evidence_hash,
+                            "policy_hash": request.policy_hash,
+                            "project_state_hash": request.project_state_hash,
+                            "policy_version": request.policy_version,
+                            "task_state_hash": request.task_state_hash,
+                            "verification_hash": request.verification_hash,
+                            "artifact_version": request.artifact_version,
+                        }
                         state.termination_reason = "awaiting_human_approval"
                     else:
                         state.termination_reason = "recommendation_ready"
@@ -425,31 +448,49 @@ class AgentRunner:
             state.operational_state = "REJECTED"
             return state
         latest = next((observation.content.get("data", {}) for observation in reversed(state.observations) if observation.kind == "tool_result" and observation.content.get("data", {}).get("status") == "VERIFIED"), None)
+        seal = _APPROVAL_SEALS.get(request)
+        sealed_parameters = deepcopy(seal["proposal_parameters"]) if seal else None
         proposal_candidate = candidate_hash_from_verification_arguments(request.proposal.parameters)
-        identity_values = (request.recommendation_id, request.candidate_hash, request.source_schedule_hash, request.evidence_hash, request.policy_hash, request.project_state_hash, request.verification_hash, request.artifact_version)
+        sealed_candidate = candidate_hash_from_verification_arguments(sealed_parameters) if isinstance(sealed_parameters, dict) else None
+        identity_values = tuple(seal.get(key) for key in ("recommendation_id", "candidate_hash", "source_schedule_hash", "evidence_hash", "policy_hash", "project_state_hash", "verification_hash", "artifact_version")) if seal else ()
         context_ok = (
-            isinstance(latest, dict)
+            seal is not None
+            and isinstance(latest, dict)
             and latest.get("valid") is True
             and all(identity_values)
-            and recommendation_id == request.recommendation_id
-            and candidate_hash == request.candidate_hash
-            and proposal_candidate == request.candidate_hash
-            and request.recommendation_id == latest.get("recommendation_id")
-            and request.candidate_hash == (latest.get("candidate_hash") or latest.get("schedule_hash"))
-            and request.source_schedule_hash == latest.get("source_schedule_hash")
-            and request.evidence_hash == latest.get("evidence_hash")
-            and request.policy_hash == latest.get("policy_hash")
-            and request.project_state_hash == (latest.get("project_state_hash") or latest.get("task_state_hash"))
-            and request.policy_version == latest.get("policy_version")
-            and request.artifact_version == latest.get("artifact_version")
-            and request.verification_hash == latest.get("verification_hash")
+            and request.proposal.parameters == sealed_parameters
+            and proposal_candidate == sealed_candidate == (seal.get("candidate_hash") if seal else None)
+            and recommendation_id == (seal.get("recommendation_id") if seal else None)
+            and candidate_hash == (seal.get("candidate_hash") if seal else None)
+            and request.recommendation_id == (seal.get("recommendation_id") if seal else None)
+            and request.candidate_hash == (seal.get("candidate_hash") if seal else None)
+            and request.source_schedule_hash == (seal.get("source_schedule_hash") if seal else None)
+            and request.evidence_hash == (seal.get("evidence_hash") if seal else None)
+            and request.policy_hash == (seal.get("policy_hash") if seal else None)
+            and request.project_state_hash == (seal.get("project_state_hash") if seal else None)
+            and request.policy_version == (seal.get("policy_version") if seal else None)
+            and request.task_state_hash == (seal.get("task_state_hash") if seal else None)
+            and request.artifact_version == (seal.get("artifact_version") if seal else None)
+            and request.verification_hash == (seal.get("verification_hash") if seal else None)
+            and (seal.get("recommendation_id") if seal else None) == latest.get("recommendation_id")
+            and (seal.get("candidate_hash") if seal else None) == (latest.get("candidate_hash") or latest.get("schedule_hash"))
+            and (seal.get("source_schedule_hash") if seal else None) == latest.get("source_schedule_hash")
+            and (seal.get("evidence_hash") if seal else None) == latest.get("evidence_hash")
+            and (seal.get("policy_hash") if seal else None) == latest.get("policy_hash")
+            and (seal.get("project_state_hash") if seal else None) == (latest.get("project_state_hash") or latest.get("task_state_hash"))
+            and (seal.get("policy_version") if seal else None) == latest.get("policy_version")
+            and (seal.get("artifact_version") if seal else None) == latest.get("artifact_version")
+            and (seal.get("verification_hash") if seal else None) == latest.get("verification_hash")
         )
+        sealed_proposal = deepcopy(request.proposal)
+        if sealed_parameters is not None:
+            sealed_proposal.parameters = sealed_parameters
         if final_verification is not None:
-            final_ok = bool(final_verification(request.proposal))
+            final_ok = bool(final_verification(sealed_proposal))
         elif "verify_schedule" in self.registry.names():
             try:
-                final_result = self.registry.get("verify_schedule").handler(request.proposal.parameters)
-                final_ok = final_result.ok and final_result.data.get("status") == "VERIFIED" and final_result.data.get("valid") is True and final_result.data.get("recommendation_id") == request.recommendation_id and (final_result.data.get("candidate_hash") or final_result.data.get("schedule_hash")) == request.candidate_hash and final_result.data.get("source_schedule_hash") == request.source_schedule_hash and final_result.data.get("evidence_hash") == request.evidence_hash and final_result.data.get("policy_hash") == request.policy_hash and (final_result.data.get("project_state_hash") or final_result.data.get("task_state_hash")) == request.project_state_hash and final_result.data.get("verification_hash") == request.verification_hash
+                final_result = self.registry.get("verify_schedule").handler(sealed_proposal.parameters)
+                final_ok = final_result.ok and final_result.data.get("status") == "VERIFIED" and final_result.data.get("valid") is True and final_result.data.get("recommendation_id") == (seal.get("recommendation_id") if seal else None) and (final_result.data.get("candidate_hash") or final_result.data.get("schedule_hash")) == (seal.get("candidate_hash") if seal else None) and final_result.data.get("source_schedule_hash") == (seal.get("source_schedule_hash") if seal else None) and final_result.data.get("evidence_hash") == (seal.get("evidence_hash") if seal else None) and final_result.data.get("policy_hash") == (seal.get("policy_hash") if seal else None) and (final_result.data.get("project_state_hash") or final_result.data.get("task_state_hash")) == (seal.get("project_state_hash") if seal else None) and final_result.data.get("verification_hash") == (seal.get("verification_hash") if seal else None)
             except Exception:
                 final_ok = False
         else:

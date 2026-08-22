@@ -51,6 +51,7 @@ export type RuntimeSession = {
   runId: string
   events: RuntimeUiEvent[]
   approved: boolean
+  approvalIdentity?: { recommendationId: string; candidateHash: string }
 }
 
 const SYNTHETIC_WINDOW: ExceedanceWindow = {
@@ -141,9 +142,11 @@ export const buildRuntimeEvents = (run: CrewClockRun, runId = runIdFor(run), off
     return events
   }
 
-  if (run.investigation.investigatedTaskIds.length === 0 || run.status === 'no-improvement') {
-    push('OPTIMIZATION_STARTED', 'Deterministic optimizer evaluated the movable-task set.', { stage: 'optimization', tool: 'generate_feasible_schedule_alternatives' })
-    push('CANDIDATES_GENERATED', `${run.stats.feasibleCandidates} feasible candidates remained after ${run.stats.rejectedCandidates} rejections.`, { stage: 'optimization', tool: 'generate_feasible_schedule_alternatives', metadata: { feasible_candidates: run.stats.feasibleCandidates, rejected_candidates: run.stats.rejectedCandidates } })
+  if (run.status === 'no-improvement') {
+    if (run.stats.candidatesConsidered > 0) {
+      push('OPTIMIZATION_STARTED', 'Deterministic optimizer evaluated the movable-task set.', { stage: 'optimization', tool: 'generate_feasible_schedule_alternatives' })
+      push('CANDIDATES_GENERATED', `${run.stats.feasibleCandidates} feasible candidates remained after ${run.stats.rejectedCandidates} rejections.`, { stage: 'optimization', tool: 'generate_feasible_schedule_alternatives', metadata: { feasible_candidates: run.stats.feasibleCandidates, rejected_candidates: run.stats.rejectedCandidates } })
+    }
     push('NO_FEASIBLE_IMPROVEMENT', run.message, { stage: 'terminal', terminal_state: 'NO_FEASIBLE_IMPROVEMENT' })
     push('CURRENT_PLAN_PRESERVED', 'The current plan remains the operational plan.', { stage: 'safe outcome' })
     push('RUN_COMPLETED', 'Run completed without a recommendation.', { stage: 'terminal', terminal_state: 'NO_FEASIBLE_IMPROVEMENT' })
@@ -168,6 +171,9 @@ export const buildRuntimeEvents = (run: CrewClockRun, runId = runIdFor(run), off
 export const createRuntimeSession = (options: RunOptions = {}): RuntimeSession => {
   const run = runCrewClock(options)
   const runId = runIdFor(run)
+  const approvalIdentity = run.recommendationId && run.candidateHash
+    ? Object.freeze({ recommendationId: run.recommendationId, candidateHash: run.candidateHash })
+    : undefined
   if (options.scenarioLabel === 'SAFE_MODE') {
     const events = [
       makeEvent(runId, 0, 'SHIFT_INSPECTION_STARTED', `Inspected ${run.tasks.length} tasks across ${run.crews.length} crews.`, { stage: 'shift inspection', tool: 'inspect_shift_plan' }),
@@ -176,25 +182,25 @@ export const createRuntimeSession = (options: RunOptions = {}): RuntimeSession =
       makeEvent(runId, 3, 'RECHECK_AVAILABLE', 'Retry is available when inference providers recover.', { stage: 'next action' }),
       makeEvent(runId, 4, 'RUN_COMPLETED', 'Run completed in deterministic safe mode.', { stage: 'terminal', terminal_state: 'AI_ANALYSIS_UNAVAILABLE' }),
     ]
-    return { run, runId, events, approved: false }
+    return { run, runId, events, approved: false, approvalIdentity }
   }
-  return { run, runId, events: buildRuntimeEvents(run, runId), approved: false }
+  return { run, runId, events: buildRuntimeEvents(run, runId), approved: false, approvalIdentity }
 }
 
 export const emptyRuntimeSession = (options: RunOptions = {}): RuntimeSession => {
   const run = runCrewClock(options)
   const runId = runIdFor(run)
-  return { run, runId, events: [], approved: false }
+  const approvalIdentity = run.recommendationId && run.candidateHash
+    ? Object.freeze({ recommendationId: run.recommendationId, candidateHash: run.candidateHash })
+    : undefined
+  return { run, runId, events: [], approved: false, approvalIdentity }
 }
 
 export const approveRuntimeSession = (session: RuntimeSession): RuntimeSession => {
-  const identity = session.run.recommendationId && session.run.candidateHash
-    ? { recommendationId: session.run.recommendationId, candidateHash: session.run.candidateHash }
-    : undefined
-  const decision = approveRecommendation(session.run, identity)
+  const decision = approveRecommendation(session.run, session.approvalIdentity)
   const index = session.events.length
   if (decision.approved) {
-    return { ...session, approved: true, events: [...session.events, makeEvent(session.runId, index, 'APPROVAL_RECEIVED', 'Human approval received for the exact immutable recommendation identity.', { stage: 'approval', source: 'HUMAN', provider: 'HUMAN', tool: 'request_superintendent_approval', metadata: { recommendation_id: session.run.recommendationId, candidate_hash: session.run.candidateHash } }), makeEvent(session.runId, index + 1, 'APPROVED', 'Superintendent approved the exact verified recommendation; final verification passed.', { stage: 'approval', source: 'DETERMINISTIC_VERIFIER', provider: 'DETERMINISTIC_LOCAL', tool: 'final_verify_schedule', terminal_state: 'APPROVED', metadata: { recommendation_id: session.run.recommendationId, candidate_hash: session.run.candidateHash } }), makeEvent(session.runId, index + 2, 'RUN_COMPLETED', 'Run completed with the approved plan.', { stage: 'terminal', source: 'DETERMINISTIC_VERIFIER', terminal_state: 'APPROVED' })] }
+    return { ...session, approved: true, events: [...session.events, makeEvent(session.runId, index, 'APPROVAL_RECEIVED', 'Human approval received for the exact immutable recommendation identity.', { stage: 'approval', source: 'HUMAN', provider: 'HUMAN', tool: 'request_superintendent_approval', metadata: { recommendation_id: session.approvalIdentity?.recommendationId ?? null, candidate_hash: session.approvalIdentity?.candidateHash ?? null } }), makeEvent(session.runId, index + 1, 'APPROVED', 'Superintendent approved the exact verified recommendation; final verification passed.', { stage: 'approval', source: 'DETERMINISTIC_VERIFIER', provider: 'DETERMINISTIC_LOCAL', tool: 'final_verify_schedule', terminal_state: 'APPROVED', metadata: { recommendation_id: session.approvalIdentity?.recommendationId ?? null, candidate_hash: session.approvalIdentity?.candidateHash ?? null } }), makeEvent(session.runId, index + 2, 'RUN_COMPLETED', 'Run completed with the approved plan.', { stage: 'terminal', source: 'DETERMINISTIC_VERIFIER', terminal_state: 'APPROVED' })] }
   }
   return { ...session, events: [...session.events, makeEvent(session.runId, index, 'FINAL_VERIFICATION_FAILED', 'Approval was blocked because final deterministic verification did not pass.', { stage: 'approval', source: 'DETERMINISTIC_VERIFIER', tool: 'request_superintendent_approval', terminal_state: 'FINAL_VERIFICATION_FAILED' }), makeEvent(session.runId, index + 1, 'CURRENT_PLAN_PRESERVED', 'The current plan remains the operational plan.', { stage: 'safe outcome' })] }
 }
@@ -203,7 +209,10 @@ export const recheckRuntimeSession = (session: RuntimeSession): RuntimeSession =
   const run = runCrewClock({ tasks: session.run.tasks, crews: session.run.crews, evidenceState: 'missing', thermalEvidence: session.run.thermalEvidence, scenarioLabel: 'RECHECK_THERMAL_EVIDENCE' })
   const runId = runIdFor(run)
   const start = makeEvent(runId, 0, 'THERMAL_EVIDENCE_REQUESTED', 'Recheck invoked the evidence-provider boundary using the mocked provider.', { stage: 'recheck', source: 'MOCK_EVIDENCE_PROVIDER', provider: 'MOCK_EVIDENCE', tool: 'recheck_thermal_evidence' })
-  return { run, runId, events: [start, ...buildRuntimeEvents(run, runId, 1)], approved: false }
+  const approvalIdentity = run.recommendationId && run.candidateHash
+    ? Object.freeze({ recommendationId: run.recommendationId, candidateHash: run.candidateHash })
+    : undefined
+  return { run, runId, events: [start, ...buildRuntimeEvents(run, runId, 1)], approved: false, approvalIdentity }
 }
 
 export const runtimeOptionsForMode = (mode: string | null): RunOptions => {
@@ -221,6 +230,7 @@ export const visibleRuntimeEvent = (event: RuntimeUiEvent) => event.summary
 
 export const runtimeUiConsistency = (session: RuntimeSession) => session.events.every(event => {
   if (event.status === 'THERMAL_EVIDENCE_READY') return session.run.thermalEvidence.exceedanceEvidenceStatus === 'complete'
+  if (event.status === 'OPTIMIZATION_STARTED' || event.status === 'CANDIDATES_GENERATED') return session.run.stats.candidatesConsidered > 0
   if (event.status === 'VERIFICATION_PASSED') return session.run.recommendationVerification?.passed === true && session.run.recommendation !== null
   if (event.status === 'AWAITING_APPROVAL') return session.run.status === 'recommended' && Boolean(session.run.recommendationId && session.run.candidateHash)
   if (event.status === 'APPROVED') return session.approved

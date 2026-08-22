@@ -25,6 +25,7 @@ import {
 } from './engine'
 import { calculateScheduledHighHeatCrewHours, type ExceedanceWindow } from './shhch'
 import { candidateHash, policyContentHash, sha256 } from './integrity'
+import { SYNTHETIC_POSITIVE_EVIDENCE } from './runtime'
 
 describe('CrewClock deterministic demo', () => {
   it('recomputes the hero metric from tasks and crew sizes', () => {
@@ -202,10 +203,32 @@ describe('CrewClock deterministic demo', () => {
     expect(verifySchedule(fixtureRecommendation()).passed).toBe(true)
   })
 
+  it('rejects a reservation whose later portion overlaps work', () => {
+    const tasks = [
+      { id: 'A', name: 'A', crewId: 'ground' as const, zoneId: 'north' as const, durationMinutes: 90, originalStart: '11:00', proposedStart: '11:00', fixed: false, environment: 'outdoor-heavy' as const, qualification: 'competent-person', dependencies: [], deadline: '16:00', weatherSensitivity: { precipitation: false } },
+      { id: 'B', name: 'B', crewId: 'ground' as const, zoneId: 'north' as const, durationMinutes: 30, originalStart: '12:45', proposedStart: '12:45', fixed: false, environment: 'outdoor-heavy' as const, qualification: 'competent-person', dependencies: [], deadline: '16:00', weatherSensitivity: { precipitation: false } },
+    ]
+    expect(verifySchedule({ A: '11:00', B: '12:45' }, tasks, CREWS, { A: '11:00', B: '12:45' }, [{ crewId: 'ground', start: '12:00', end: '13:00' }]).passed).toBe(false)
+  })
+
+  it('rejects a 29m59s idle gap and accepts exactly 30 minutes', () => {
+    const makeTask = (id: string, start: string) => ({ id, name: id, crewId: 'ground' as const, zoneId: 'north' as const, durationMinutes: 90, originalStart: start, proposedStart: start, fixed: false, environment: 'outdoor-heavy' as const, qualification: 'competent-person', dependencies: [], deadline: '16:00', weatherSensitivity: { precipitation: false } })
+    const tasks = [makeTask('A', '11:00:00'), makeTask('B', '12:59:59')]
+    expect(verifyBreakPolicy({ A: '11:00:00', B: '12:59:59' }, tasks, CREWS)).toBe(false)
+    expect(verifyBreakPolicy({ A: '11:00:00', B: '13:00:00' }, tasks.map(task => ({ ...task, originalStart: task.id === 'B' ? '13:00:00' : task.originalStart, proposedStart: task.id === 'B' ? '13:00:00' : task.proposedStart })), CREWS)).toBe(true)
+  })
+
   it.each([
     null, 'not-a-task', { id: 'A' },
   ])('fails malformed task input closed before business rules', badTask => {
     const malformed = [badTask] as unknown as typeof TASKS
     expect(verifySchedule({ A: '06:00' }, malformed, CREWS, {})).toMatchObject({ passed: false })
+  })
+
+  it('blocks approval after the displayed candidate is mutated', () => {
+    const run = runCrewClock({ thermalEvidence: SYNTHETIC_POSITIVE_EVIDENCE, scenarioLabel: 'SYNTHETIC TEST SCENARIO' })
+    const identity = { recommendationId: run.recommendationId!, candidateHash: run.candidateHash! }
+    run.recommendation!.G2 = run.recommendation!.G2 === '07:00' ? '07:30' : '07:00'
+    expect(approveRecommendation(run, identity).approved).toBe(false)
   })
 })
