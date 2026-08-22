@@ -1,8 +1,40 @@
 import { describe, expect, it } from 'vitest'
-import { TASKS } from './scenario'
+import { createLocalWorkfaces, createManualPolicy, createUnavailableThermalEvidence, TASKS } from './scenario'
 import { approveRuntimeSession, createRuntimeSession, emptyRuntimeSession, emittedRuntimeEvents, recheckRuntimeSession, runtimeUiConsistency, SYNTHETIC_POSITIVE_EVIDENCE } from './runtime'
 
 describe('real runtime to UI event contract', () => {
+  it('keeps user-created unavailable evidence separate from Phoenix sample provenance', () => {
+    const buffaloShift = { id: 'new-buffalo-test', location: 'Buffalo, New York', timezone: 'America/New_York', date: '2026-08-23' }
+    const buffaloEvidence = createUnavailableThermalEvidence(buffaloShift)
+    const buffaloSession = createRuntimeSession({
+      tasks: TASKS,
+      thermalEvidence: buffaloEvidence,
+      scenarioLabel: 'USER_DEFINED_SHIFT',
+      projectId: buffaloShift.id,
+      policy: createManualPolicy(buffaloShift.location),
+      workfaces: createLocalWorkfaces(),
+    })
+    const serializedBuffalo = JSON.stringify({
+      projectId: buffaloShift.id,
+      thermalEvidence: buffaloSession.run.thermalEvidence,
+      policy: buffaloSession.run.policy,
+      workfaces: buffaloSession.run.workfaces,
+      aoi: buffaloSession.run.thermalEvidence.aoi,
+    })
+    expect(buffaloSession.run.thermalEvidence.status).toBe('EVIDENCE_UNAVAILABLE')
+    expect(buffaloSession.run.status).toBe('missing-evidence')
+    expect(serializedBuffalo).not.toMatch(/Phoenix|Arizona|America\/Phoenix|Desert Build|phoenix_|env_phoenix|-112\.|33\.|CC-PHX|phoenix-sample|PHOENIX INDUSTRIAL/i)
+
+    const phoenixSample = createRuntimeSession({ thermalEvidence: SYNTHETIC_POSITIVE_EVIDENCE, scenarioLabel: 'SYNTHETIC TEST SCENARIO', projectId: 'phoenix-sample' })
+    expect(JSON.stringify(phoenixSample.run.thermalEvidence)).toContain('Phoenix')
+    expect(phoenixSample.run.thermalEvidence.cachePaths).toEqual(expect.arrayContaining([
+      '.agent_cache/live_geographies/phoenix_paved_industrial.json',
+      '.agent_cache/live_followups/env_phoenix.json',
+      '.agent_cache/live_followups/phoenix_time_of_measure.json',
+    ]))
+    expect((phoenixSample.run.thermalEvidence.aoi as { features: unknown[] }).features.length).toBeGreaterThan(0)
+  })
+
   it('projects canonical unavailable evidence from runtime state without a recommendation', () => {
     const session = createRuntimeSession()
     expect(session.run.status).toBe('missing-evidence')

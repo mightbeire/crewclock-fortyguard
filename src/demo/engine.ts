@@ -32,7 +32,13 @@ export type ThermalEvidence = {
   exceedanceEvidenceStatus: 'none' | 'partial' | 'complete'
   exceedanceWindows: ReadonlyArray<ExceedanceWindow>
   forecastStatus: string
-  projectThermalTrigger: typeof THERMAL_EVIDENCE.projectThermalTrigger
+  projectThermalTrigger: {
+    thresholdC: number
+    quantity: 'fortyguard_modeled_temperature' | 'fortyguard_tcm_temperature'
+    provenance: string
+    thresholdUnits: 'celsius'
+    direction: 'above'
+  }
   [key: string]: unknown
 }
 export type EvidenceState = 'ready' | 'missing' | 'stale' | 'tool-failure'

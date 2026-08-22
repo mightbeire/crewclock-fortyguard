@@ -226,6 +226,31 @@ export const createManualPolicy = (location: string) => ({
   breakRules: [{ ...BREAK_POLICY, source: 'USER_DEFINED_SHIFT_POLICY', version: 'user-v1' }],
 })
 
+export const createUnavailableThermalEvidence = (shift: { location: string; timezone: string; date: string }) => ({
+  source: 'CREWCLOCK_USER_SHIFT_EVIDENCE_BOUNDARY',
+  status: 'EVIDENCE_UNAVAILABLE',
+  exceedanceEvidenceStatus: 'none' as const,
+  exceedanceWindows: [],
+  forecastStatus: 'NOT_DEMONSTRATED',
+  projectThermalTrigger: {
+    thresholdC: 32 as const,
+    quantity: 'fortyguard_modeled_temperature' as const,
+    provenance: 'USER_DEFINED_SHIFT_TRIGGER_NOT_EVIDENCE',
+    thresholdUnits: 'celsius' as const,
+    direction: 'above' as const,
+  },
+  location: shift.location,
+  timezone: shift.timezone,
+  observationDate: shift.date,
+  aoi: { type: 'FeatureCollection' as const, features: [] },
+  grid: 'Location-specific workface geometry not loaded',
+  primarySignal: `No validated schedule-aligned thermal evidence is available for ${shift.location}.`,
+  environmentalContextRole: 'Unavailable until location-specific evidence is supplied; no contextual sample data is attached.',
+  evidenceClass: 'USER_SHIFT_EVIDENCE_UNAVAILABLE' as const,
+  decisionGradeThermalEvidence: false,
+  cachePaths: [],
+})
+
 export const createLocalWorkfaces = (): Workface[] => [
   { id: 'north', label: 'North workface', polygon: [[0, 0], [40, 0], [40, 40], [0, 40]] },
   { id: 'south', label: 'South workface', polygon: [[0, -40], [40, -40], [40, 0], [0, 0]] },
