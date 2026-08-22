@@ -206,7 +206,7 @@ export const approveRuntimeSession = (session: RuntimeSession): RuntimeSession =
 }
 
 export const recheckRuntimeSession = (session: RuntimeSession): RuntimeSession => {
-  const run = runCrewClock({ tasks: session.run.tasks, crews: session.run.crews, evidenceState: 'missing', thermalEvidence: session.run.thermalEvidence, scenarioLabel: 'RECHECK_THERMAL_EVIDENCE' })
+  const run = runCrewClock({ tasks: session.run.tasks, crews: session.run.crews, evidenceState: 'missing', thermalEvidence: session.run.thermalEvidence, scenarioLabel: 'RECHECK_THERMAL_EVIDENCE', policy: session.run.policy, workfaces: session.run.workfaces, projectId: session.run.deterministicId })
   const runId = runIdFor(run)
   const start = makeEvent(runId, 0, 'THERMAL_EVIDENCE_REQUESTED', 'Recheck invoked the evidence-provider boundary using the mocked provider.', { stage: 'recheck', source: 'MOCK_EVIDENCE_PROVIDER', provider: 'MOCK_EVIDENCE', tool: 'recheck_thermal_evidence' })
   const approvalIdentity = run.recommendationId && run.candidateHash
@@ -227,6 +227,9 @@ export const runtimeOptionsForMode = (mode: string | null): RunOptions => {
 }
 
 export const visibleRuntimeEvent = (event: RuntimeUiEvent) => event.summary
+
+export const emittedRuntimeEvents = (session: RuntimeSession, runtimePosition: number) =>
+  session.events.slice(0, Math.max(0, Math.min(runtimePosition + 1, session.events.length)))
 
 export const runtimeUiConsistency = (session: RuntimeSession) => session.events.every(event => {
   if (event.status === 'THERMAL_EVIDENCE_READY') return session.run.thermalEvidence.exceedanceEvidenceStatus === 'complete'

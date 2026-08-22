@@ -1,122 +1,95 @@
-# CrewClock three-minute demo script
+# CrewClock final demo script
 
 ## Stage contract
 
-- Total target: **2:50**, leaving ten seconds of recovery.
-- One user: Construction Superintendent.
-- One decision: approve the upcoming-shift revised field plan.
-- One transformation: 14 tasks visibly reorder across three crews.
-- One hero metric: **scheduled high-heat crew-hours, shown only when validated schedule-aligned exceedance evidence is cached**.
-- No chain-of-thought. Show only high-level actions, inputs, constraints and results.
-- No safety certification claim. Say “planning evidence,” “modeled window,” and “employer policy.”
+- Target duration: **2:20–2:40**; hard maximum **2:45**.
+- No live Groq, TokenRouter, or FortyGuard calls.
+- Use the in-product **Sample project → Run sample review** path.
+- The positive sample is explicitly labelled **SAMPLE RUN · Synthetic thermal evidence · not live Phoenix evidence**.
+- CrewClock presents planning evidence and a verified alternative; the superintendent remains the decision-maker.
 
 ## Before walking on stage
 
-1. Run `npm run dev` and open the CrewClock page.
-2. Click **Reset**.
-3. Confirm the status is `READY TO PLAN` and the header says `THERMAL EVIDENCE UNAVAILABLE · PROVIDER INVESTIGATION`. Do not present a before/after SHHCH number.
-4. Confirm the inspector is closed.
-5. Do not use a live FortyGuard call during the demo.
+1. Run `npm run dev` and open CrewClock.
+2. Open navigation and select **Sample project**.
+3. Confirm **Run sample review** is visible. Do not type a URL parameter.
+4. Confirm the saved **Buffalo** example is available under **New shift**. Do not run its analysis.
+5. Keep the browser at 1440×900 when possible and leave live providers disabled.
 
 ## Exact arc
 
-### 0:00–0:20 — Problem
+### 0:00–0:15 — Problem
 
-**Screen:** hero and original schedule.
+> “CrewClock helps a construction superintendent decide which movable work should move before a hot shift starts. It connects workface thermal evidence to the actual shift, tests feasible alternatives, and leaves the human in control.”
 
-**Say:**
+### 0:15–0:25 — Watchpoint
 
-> “The upcoming-shift construction plan is valid on paper. Fourteen tasks, three qualified crews, every inspection and deadline accounted for. But the heaviest movable work is scheduled in Phoenix’s worst modeled heat window. CrewClock fixes the timing without blowing the day.”
+> “This is a 14-task, three-crew look-ahead. CrewClock checks workface-level thermal evidence before testing schedule alternatives; fixed commitments remain anchored.”
 
-Point to the evidence state and the original schedule. Do not discuss regulation or present an unvalidated SHHCH number.
+### 0:25 — Start once
 
-### 0:20–0:40 — Original plan and evidence
+Click **Review shift** once if the review is already staged, or use **Run sample review** from the Sample project page. Do not click again while the runtime is advancing.
 
-**Screen:** schedule, thermal profile and workface map.
+### 0:25–0:40 — Autonomous investigation
 
-**Say:**
+> “The runtime identifies movable outdoor work, requests the relevant evidence, generates feasible alternatives, verifies the selected schedule, and stops at a human approval boundary.”
 
-> “The superintendent sees the real decision surface: the upcoming-shift tasks, fixed commitments, crews, two workfaces, and cached FortyGuard evidence. This replay peaks at 40.2°C TCM tile maximum; env_params is selective context only around 1 p.m. The task and crew data are clearly labelled demo inputs.”
+If **View activity** is opened, show only the events emitted so far. Do not imply future events have happened.
 
-Point once to the orange 11:00–15:00 band and once to locked tasks.
+### 0:40–0:55 — Transformation
 
-### 0:40–1:30 — Agent investigates
+Let the stable **I found a better sequence** beat land, then let the changed task blocks move.
 
-Click **Run the upcoming-shift plan**.
+> “The work moves, not the obligations. The ghosts show the original positions; fixed work stays anchored.”
 
-**Say while the activity rail advances:**
+### 0:55–1:10 — Metric and decision
 
-> “CrewClock reads the look-ahead, selects only flexible outdoor work that deserves thermal investigation, loads the relevant evidence, and hands the math to a deterministic scheduler. It then checks qualifications, dependencies, deadlines, fixed work, and the company’s own planned controls.”
+Point to **39h → 20h**.
 
-Do not narrate hidden reasoning. Let the seven high-level stages land.
+> “The metric is scheduled high-heat crew-hours. It is calculated from the same qualifying evidence window, task overlap, workface context, and crew headcount used by the optimizer and proof layer. This run uses synthetic test evidence, not a live Phoenix result.”
 
-### 1:30–2:00 — Schedule transforms (only when evidence is valid)
+End with **Approve plan** and **Keep current shift** visible.
 
-**Screen:** proposal automatically slides into view only after valid exceedance evidence and deterministic verification.
+### 1:10–1:25 — Proof glimpse
 
-**Say:**
+Click **Why this plan?** once. Show source, thermal finding, schedule overlap, feasible alternatives, and deterministic verification. Say:
 
-> “The work moves, not the obligations. Any proposed movement is derived from validated exceedance windows and deterministic feasibility checks. Fixed delivery and inspection commitments stay locked.”
+> “The causal chain is thermal source → workface/time overlap → SHHCH → feasible alternatives → verification → human decision.”
 
-Toggle **Before** then **Proposed** once if the audience needs the contrast. End on Proposed.
+Close the proof panel and return directly to the decision scene.
 
-### 2:00–2:25 — Verification
+### 1:25–1:38 — Human approval
 
-Point to constraint strip and agent card.
+Click **Approve plan**, then show **Shift updated**.
 
-**Say:**
+> “The superintendent approves the exact verified recommendation. CrewClock does not self-approve or change an external schedule in this MVP.”
 
-> “CrewClock retained all 14 tasks, all three crew qualification sets, every dependency, five fixed commitments, and every deadline. Missing or conflicting required evidence would stop here as unknown.”
+### 1:38–1:55 — Generality
 
-### 2:25–2:45 — Human approval (only when a verified recommendation exists)
+Open navigation → **New shift**. Show the saved Buffalo example and its location/timezone fields. Do not run it.
 
-Click **Approve the upcoming-shift plan**.
+> “Phoenix is the labelled sample, not the product boundary. A user-defined Buffalo shift carries its own project, location, timezone, workfaces, policy, and evidence state. Without validated Buffalo evidence, CrewClock stays evidence-unavailable.”
 
-**Say:**
+### 1:55–2:15 — Close
 
-> “The construction superintendent—not the model—approves. CrewClock changes no external schedule in this MVP. Onsite WBGT, company policy and field judgment still control the shift.”
-
-### 2:45–3:00 — Hero metric (only when evidence is complete)
-
-Point to the verified result in the right rail; if the evidence is incomplete, keep the run in its safe evidence-unavailable state.
-
-**Say:**
-
-> “The metric is derived from the same jobs, crews, deadlines, workface geometry, validated exceedance duration, exact task overlap, and crew headcount. It is a planning metric—not a safety outcome.”
-
-End on the validated evidence state and the derived metric only if the complete window set is present.
+> “Weather services provide useful general conditions. CrewClock adds workface and shift context, agentic investigation, deterministic optimization, verification, and human authority. That is the operational difference.”
 
 ## Judge answers
 
 ### “Isn’t this just Weather.com?”
 
-> “A forecast identifies a hot day. CrewClock identifies which work zones and tasks need investigation, uses FortyGuard timing and spatial evidence, generates only feasible alternatives, and verifies the actual field plan.”
+> “Weather services can tell a superintendent general conditions. CrewClock uses workface/time thermal evidence as an operational input, intersects it with the actual shift, quantifies scheduled overlap, tests alternatives against real construction constraints, and presents one verified change for human approval.”
 
-### “Isn’t this a spreadsheet?”
+### “Why use AI?”
 
-> “A superintendent can manually solve a small day. CrewClock automates the evidence, policy, crew, dependency, inspection and deadline cross-check—and leaves an auditable recommendation. The spreadsheet baseline is part of final validation.”
+> “The agentic layer decides what needs investigation, gathers the relevant evidence, handles uncertainty, and explains the path. The schedule math and final verification are deterministic.”
 
 ### “Is this a safety system?”
 
 > “No. It is pre-shift planning support. Onsite measurement, employer policy, trained supervision and professional judgment remain authoritative.”
 
-### “What is real?”
+### “What happens when evidence is missing?”
 
-> “The Phoenix contextual responses are cached-live, but compatible decision-grade exceedance evidence is unavailable. The construction context is grounded in public ADOT and OSHA/NIOSH sources, and the 14-task look-ahead is a labelled synthetic work package.”
+> “CrewClock says evidence is unavailable, preserves the current shift, and offers a recheck. It does not fabricate a recommendation.”
 
-### “Why an agent?”
-
-> “The optimizer does math. The agent decides what needs investigation, gathers heterogeneous evidence, manages uncertainty, explains the recommendation, verifies it, and routes approval.”
-
-## Failure-safe stage path
-
-- If animation stalls, keep the evidence-unavailable state visible; do not substitute a placeholder metric.
-- If approval does not animate, open the Evidence drawer and state the exact evidence gap.
-- If asked for current weather, say this is an intentionally reproducible historical replay; do not imply it is a current forecast.
-- If asked to certify safety, refuse the premise and point to the onsite-authority boundary.
-
-`THREE_MINUTE_DEMO = PASS`
-
-## Foundation language
-
-Say “upcoming shift” and “scheduled high-heat crew-hours”. Explain that the Phoenix contextual replay is cached-live, while SHHCH is unavailable pending compatible exceedance evidence and the schedule/employer policy are synthetic operational inputs. Do not call the environmental parameter curve a forecast, call wet bulb WBGT, or claim OSHA compliance.
+`DEMO_SCRIPT_CURRENT = PASS`

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { TASKS } from './scenario'
-import { approveRuntimeSession, createRuntimeSession, emptyRuntimeSession, recheckRuntimeSession, runtimeUiConsistency, SYNTHETIC_POSITIVE_EVIDENCE } from './runtime'
+import { approveRuntimeSession, createRuntimeSession, emptyRuntimeSession, emittedRuntimeEvents, recheckRuntimeSession, runtimeUiConsistency, SYNTHETIC_POSITIVE_EVIDENCE } from './runtime'
 
 describe('real runtime to UI event contract', () => {
   it('projects canonical unavailable evidence from runtime state without a recommendation', () => {
@@ -26,6 +26,14 @@ describe('real runtime to UI event contract', () => {
     expect(unlabeled.run.status).toBe('missing-evidence')
     expect(unlabeled.run.recommendation).toBeNull()
     expect(unlabeled.events.some(event => event.status === 'AWAITING_APPROVAL')).toBe(false)
+  })
+
+  it('exposes only emitted events at intermediate runtime positions', () => {
+    const session = createRuntimeSession({ thermalEvidence: SYNTHETIC_POSITIVE_EVIDENCE, scenarioLabel: 'SYNTHETIC TEST SCENARIO' })
+    expect(emittedRuntimeEvents(session, 0)).toHaveLength(1)
+    expect(emittedRuntimeEvents(session, 4)).toHaveLength(5)
+    expect(emittedRuntimeEvents(session, 4).some(event => event.status === 'AWAITING_APPROVAL')).toBe(false)
+    expect(emittedRuntimeEvents(session, session.events.length - 1)).toHaveLength(session.events.length)
   })
 
   it('changes the runtime result when a synthetic movable task becomes fixed', () => {

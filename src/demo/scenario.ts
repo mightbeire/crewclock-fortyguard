@@ -197,9 +197,12 @@ export const BREAK_POLICY = {
   version: 'v1.4',
 } as const
 
-export const EMPLOYER_POLICY = {
+export type BreakPolicy = { triggerStart: string; triggerEnd: string; afterContinuousMinutes: number; durationMinutes: number; source: string; version: string }
+export type EmployerPolicy = { name: string; status: string; planningRules: string[]; breakRules: BreakPolicy[]; authorityBoundary: string }
+
+export const EMPLOYER_POLICY: EmployerPolicy = {
   name: 'Desert Build Co. · demo policy v1.4',
-  status: 'synthetic employer policy',
+  status: 'synthetic employer policy' as string,
   planningRules: [
     'Prefer movable moderate/heavy outdoor work outside the modeled 11:00–15:00 peak window.',
     'Preserve fixed delivery, inspection, access, and traffic-control commitments.',
@@ -209,7 +212,26 @@ export const EMPLOYER_POLICY = {
   ],
   breakRules: [BREAK_POLICY],
   authorityBoundary: 'Onsite supervisor applies the employer plan using current onsite WBGT, workload, PPE, worker condition, and professional judgment.',
-} as const
+}
+
+export const createManualPolicy = (location: string) => ({
+  ...EMPLOYER_POLICY,
+  name: `${location} · user-defined shift policy`,
+  status: 'user-defined shift policy',
+  planningRules: [
+    'Keep fixed commitments and stated deadlines intact.',
+    'Use location-specific evidence before making environmental changes.',
+    'Keep every task with a crew holding its required qualification.',
+  ],
+  breakRules: [{ ...BREAK_POLICY, source: 'USER_DEFINED_SHIFT_POLICY', version: 'user-v1' }],
+})
+
+export const createLocalWorkfaces = (): Workface[] => [
+  { id: 'north', label: 'North workface', polygon: [[0, 0], [40, 0], [40, 40], [0, 40]] },
+  { id: 'south', label: 'South workface', polygon: [[0, -40], [40, -40], [40, 0], [0, 0]] },
+  { id: 'laydown', label: 'Laydown / support', polygon: [[45, -40], [80, -40], [80, -5], [45, -5]] },
+  { id: 'access', label: 'Access / traffic control', polygon: [[45, 5], [80, 5], [80, 40], [45, 40]] },
+]
 
 export const CANONICAL_SAMPLE_PROJECT = {
   name: 'PHOENIX INDUSTRIAL PROJECT',

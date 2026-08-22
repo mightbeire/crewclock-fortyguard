@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  createLocalWorkfaces,
+  createManualPolicy,
   CREWS,
   BREAK_POLICY,
   EMPLOYER_POLICY,
@@ -230,5 +232,17 @@ describe('CrewClock deterministic demo', () => {
     const identity = { recommendationId: run.recommendationId!, candidateHash: run.candidateHash! }
     run.recommendation!.G2 = run.recommendation!.G2 === '07:00' ? '07:30' : '07:00'
     expect(approveRecommendation(run, identity).approved).toBe(false)
+  })
+
+  it('keeps a user-defined location isolated from Phoenix sample evidence', () => {
+    const workfaces = createLocalWorkfaces()
+    const policy = createManualPolicy('Buffalo, New York')
+    const run = runCrewClock({ tasks: TASKS, crews: CREWS, thermalEvidence: { ...THERMAL_EVIDENCE, location: 'Buffalo, New York', timezone: 'America/New_York', aoi: { type: 'FeatureCollection', features: [] }, exceedanceWindows: [], primarySignal: 'No validated Buffalo evidence.' }, policy, workfaces, projectId: 'buffalo-example', scenarioLabel: 'USER_DEFINED_SHIFT' })
+    expect(run.status).toBe('missing-evidence')
+    expect(run.recommendation).toBeNull()
+    expect(run.deterministicId).toBe('buffalo-example')
+    expect(run.policy.name).toContain('Buffalo')
+    expect(JSON.stringify(run.thermalEvidence)).not.toContain('Phoenix')
+    expect(JSON.stringify(run.workfaces)).not.toContain('-112.018')
   })
 })
