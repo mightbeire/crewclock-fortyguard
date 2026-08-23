@@ -180,6 +180,16 @@ def test_state_handoff_prompt_is_compact_and_preserves_authority_fields() -> Non
     assert "PENDING_SUPERINTENDENT_APPROVAL" in encoded
     assert "publish_blocked_until_approval" in encoded
     assert "coordinates" not in encoded
+    assert "scheduler_outcome" not in compact["workflow"]
+    assert "evidence_status" not in compact["workflow"]
+
+
+def test_state_handoff_preserves_completed_tool_identity() -> None:
+    state = state_with_history()
+    state.observations[-1].content["tool_name"] = "inspect_shift_plan"
+    compact = compact_continuation_state(state)
+    assert compact["deterministic_observations"][0]["tool_name"] == "inspect_shift_plan"
+    assert compact["workflow"]["completed_tools_do_not_repeat"] == ["inspect_shift_plan"]
 
 
 def test_deterministic_terminal_shortcuts_prevent_extra_model_turns() -> None:

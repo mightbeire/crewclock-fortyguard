@@ -34,6 +34,28 @@ def test_repeated_tool_calls_are_blocked() -> None:
     assert state.termination_reason == "repeated_tool_call_blocked:inspect"
 
 
+def test_bounded_duplicate_recovery_rejects_without_reexecuting_tool() -> None:
+    calls: list[str] = []
+    registry = ToolRegistry()
+    registry.register(ToolSpec("inspect", "inspect", {"type": "object"}, lambda _: calls.append("inspect") or ToolResult({"status": "INSPECTED"}, Provenance(source="derived"))))
+    registry.register(ToolSpec("finish", "finish", {"type": "object"}, lambda _: calls.append("finish") or ToolResult({"status": "NO_ACTION_REQUIRED"}, Provenance(source="derived"))))
+    provider = MockProvider([
+        ProviderDecision.call_tool("inspect", {}),
+        ProviderDecision.call_tool("inspect", {}),
+        ProviderDecision.call_tool("finish", {}),
+    ])
+    state, trace = AgentRunner(
+        registry,
+        provider,
+        budget=Budget(max_iterations=4, max_model_calls=4, max_tool_calls=2, max_api_credits=2),
+        policy=SafetyPolicy(allowed_tools=registry.names()),
+        max_repeated_tool_recoveries=1,
+    ).run(AgentState(Goal("Inspect once, then finish.", "operator")))
+    assert state.termination_reason == "NO_ACTION_REQUIRED"
+    assert calls == ["inspect", "finish"]
+    assert sum(event.event == "guardrail_recovery" for event in trace.events) == 1
+
+
 def test_missing_required_arguments_stop_without_crashing() -> None:
     registry = ToolRegistry()
     registry.register(ToolSpec("inspect", "Inspect", {"type": "object", "required": ["site"]}, ok_tool))

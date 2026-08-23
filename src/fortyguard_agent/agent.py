@@ -114,17 +114,20 @@ class ToolRegistry:
 class AgentRunner:
     MAX_MODEL_STOP_CONTINUATIONS = 1
 
-    def __init__(self, registry: ToolRegistry, provider: LLMProvider, *, budget: Budget | None = None, policy: SafetyPolicy | None = None) -> None:
+    def __init__(self, registry: ToolRegistry, provider: LLMProvider, *, budget: Budget | None = None, policy: SafetyPolicy | None = None, max_repeated_tool_recoveries: int = 0, max_model_stop_continuations: int | None = None) -> None:
         self.registry = registry
         self.provider = provider
         self.budget = budget or Budget()
         self.policy = policy or SafetyPolicy(allowed_tools=registry.names())
+        self.max_repeated_tool_recoveries = max(0, int(max_repeated_tool_recoveries))
+        self.max_model_stop_continuations = self.MAX_MODEL_STOP_CONTINUATIONS if max_model_stop_continuations is None else max(0, int(max_model_stop_continuations))
 
     def run(self, state: AgentState) -> tuple[AgentState, AgentTrace]:
         trace = AgentTrace()
         trace.record("goal_started", goal_id=state.goal.goal_id, text=state.goal.text)
         called_tools: list[str] = []
         rejected_model_stops = 0
+        repeated_tool_recoveries = 0
         if self._apply_authoritative_state(state, trace):
             trace.record("goal_finished", reason=state.termination_reason, iterations=state.iteration, model_calls=0, tool_calls=0, reserved_credits=0)
             return state, trace
@@ -171,7 +174,7 @@ class AgentRunner:
                     # terminal or looping forever.
                     rejected_model_stops += 1
                     trace.record("model_stop_rejected", reason="non_terminal_workflow_state", continuation=rejected_model_stops)
-                    if rejected_model_stops <= self.MAX_MODEL_STOP_CONTINUATIONS:
+                    if rejected_model_stops <= self.max_model_stop_continuations:
                         state.observations.append(Observation(kind="error", content={"error": "model_stop_before_terminal_state", "decision_relevant_result": "CONTINUE_WORKFLOW"}))
                         continue
                     self._set_safe_error(state, trace, "model_stop_before_terminal_state")
@@ -259,7 +262,9 @@ class AgentRunner:
                 if normalized is not None:
                     result = ToolResult(normalized, result.provenance, error=result.error, estimated_credits=result.estimated_credits)
                 called_tools.append(name)
-                state.observations.append(Observation(kind="tool_result" if result.ok else "error", content=result.to_dict()))
+                observation_content = result.to_dict()
+                observation_content["tool_name"] = name
+                state.observations.append(Observation(kind="tool_result" if result.ok else "error", content=observation_content))
                 try:
                     self.provider.observe(result, state, decision.tool_call_id)
                 except TypeError:
@@ -274,6 +279,29 @@ class AgentRunner:
                 if str(exc).startswith("thermal_action_forbidden_without_evidence:"):
                     self._set_evidence_unavailable(state, trace, str(exc))
                     break
+                if str(exc).startswith("repeated_tool_call_blocked:") and repeated_tool_recoveries < self.max_repeated_tool_recoveries:
+                    repeated_tool_recoveries += 1
+                    rejected_name = str(exc).split(":", 1)[1]
+                    rejection = ToolResult(
+                        {
+                            "status": "DUPLICATE_TOOL_CALL_REJECTED",
+                            "valid": False,
+                            "decision_relevant_result": "CONTINUE_WORKFLOW",
+                            "next_allowed_actions": ["CALL_NEXT_UNCALLED_TOOL"],
+                            "completed_tools": list(called_tools),
+                        },
+                        Provenance(source="derived", endpoint="local:duplicate_tool_guard"),
+                        error=str(exc),
+                    )
+                    content = rejection.to_dict()
+                    content["tool_name"] = rejected_name
+                    state.observations.append(Observation(kind="error", content=content))
+                    try:
+                        self.provider.observe(rejection, state, decision.tool_call_id)
+                    except TypeError:
+                        self.provider.observe(rejection, state)
+                    trace.record("guardrail_recovery", reason=str(exc), recovery=repeated_tool_recoveries, completed_tools=list(called_tools))
+                    continue
                 state.terminated = True
                 state.operational_state = "ERROR_SAFE"
                 reason = str(exc)
@@ -421,8 +449,6 @@ class AgentRunner:
             "KEEP_CURRENT_PLAN_AND_RECHECK",
             "REJECTED_FIXED_COMMITMENT",
         }
-        if "VERIFIED" not in statuses and any(status in {"FEASIBLE_ALTERNATIVES", "CANDIDATE_READY", "THERMAL_OVERLAP_READY"} for status in statuses):
-            return "ERROR_SAFE"
         if any(status in safe_terminal for status in statuses):
             return str(next(status for status in statuses if status in safe_terminal))
         inspected = [

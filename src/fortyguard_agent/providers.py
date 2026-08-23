@@ -462,11 +462,16 @@ def compact_continuation_state(state: AgentState, *, max_observations: int = 6) 
             compact_tasks.append({key: _compact_value(task.get(key)) for key in ("id", "name", "outdoor", "fixed", "workface", "duration_minutes", "dependencies") if key in task})
     observations = []
     selected_observations = state.observations[-max_observations:] if max_observations else []
+    completed_tools = []
     for observation in selected_observations:
         content = observation.content if isinstance(observation.content, dict) else {}
         data = content.get("data") if isinstance(content.get("data"), dict) else content
+        tool_name = content.get("tool_name")
+        if isinstance(tool_name, str) and tool_name and tool_name not in completed_tools:
+            completed_tools.append(tool_name)
         observations.append({
             "kind": observation.kind,
+            "tool_name": tool_name,
             "status": data.get("status") or data.get("state") or data.get("evidence_status"),
             "decision_relevant_result": data.get("decision_relevant_result"),
             "valid": data.get("valid"),
@@ -483,9 +488,8 @@ def compact_continuation_state(state: AgentState, *, max_observations: int = 6) 
             "terminated": state.terminated,
             "termination_reason": state.termination_reason,
             "operational_state": state.operational_state,
+            "completed_tools_do_not_repeat": completed_tools,
             "authoritative_result": _compact_value(state.authoritative_result),
-            "evidence_status": _compact_value(constraints.get("evidence_status")),
-            "scheduler_outcome": _compact_value(constraints.get("scheduler_outcome")),
             "policy_summary": _compact_value(constraints.get("policy_summary")),
             "shift_plan": {"tasks": compact_tasks, "shift_start": shift.get("shift_start"), "shift_end": shift.get("shift_end")},
         },
@@ -522,7 +526,10 @@ class GroqChatCompletionsProvider:
         "Use cached-live evidence only in this runtime. Keep responses concise. "
         "Always call inspect_shift_plan exactly once before any other tool or conclusion. "
         "If inspection shows every task is indoor, finish immediately after inspection; do not call identify_thermal_candidates or any thermal tool. "
-        "If inspection shows a movable outdoor task and evidence is valid, use the deterministic scheduler before concluding whether a better plan exists; do not infer scheduler output from policy text. "
+        "Initial constraint fields such as evidence_status and scheduler_outcome are preflight routing hints, not tool results and not authority to skip a workflow step. "
+        "For movable outdoor work, continue in this order: identify candidates, retrieve workface evidence, calculate overlap only after valid decision-grade evidence, then call the deterministic scheduler. "
+        "Never finish after inspection, candidate identification, valid evidence, or overlap; those are non-terminal intermediate results. "
+        "Use the deterministic scheduler before concluding whether a better plan exists; do not infer evidence or scheduler output from goal or policy text. "
         "If a deterministic result reports EVIDENCE_UNAVAILABLE, INVALID_EVIDENCE, COMPLETED_BUT_EMPTY, "
         "NO_FEASIBLE_IMPROVEMENT, or REJECTED_FIXED_COMMITMENT, finish with a safe abstention and do not verify or request approval. "
         "For a feasible alternative, verify it before requesting pending human approval. "

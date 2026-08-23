@@ -173,6 +173,11 @@ def test_real_eval_checkpoint_round_trip_and_first_incomplete(tmp_path, monkeypa
     assert payload["next_incomplete_trial"] == "A-2"
 
 
+def test_termination_classifier_accepts_canonical_underscore_states() -> None:
+    assert real_agent_eval._termination_class("NO_FEASIBLE_IMPROVEMENT") == "abstention_or_uncertainty"
+    assert real_agent_eval._termination_class("EVIDENCE_UNAVAILABLE") == "abstention_or_uncertainty"
+
+
 def test_cached_live_thermal_tool_is_compact_and_never_live() -> None:
     toolkit = FortyGuardToolkit()
     result = toolkit.get_workface_thermal_evidence({"fixture": ".agent_cache/live_geographies/phoenix_paved_industrial.json", "workfaces": ["WF-A"], "window": "11:00-15:00"})
@@ -327,3 +332,65 @@ def test_final_gate_f1_reaches_provider_then_normalizes_completed_empty() -> Non
         "model_calls": 2,
     }
     assert final_gate._module._pass(case, result)
+
+
+def test_final_gate_retries_pending_cases_in_rounds_and_accumulates_requests(monkeypatch) -> None:
+    calls: dict[tuple[str, int], int] = {}
+    writes: list[list[dict]] = []
+    sleeps: list[float] = []
+
+    def run_trial(case_key: str, ordinal: int) -> dict:
+        target = (case_key, ordinal)
+        calls[target] = calls.get(target, 0) + 1
+        passed = target != ("A", 1) or calls[target] > 1
+        return {
+            "scenario": case_key,
+            "trial": ordinal,
+            "final_provider": "TOKENROUTER",
+            "fallback_used": True,
+            "fallback_reason": "RATE_LIMIT_OR_CAPACITY",
+            "passed": passed,
+            "failure_classification": None if passed else "PROVIDER_INFRA_FAILURE",
+            "terminal_state": "awaiting_human_approval" if passed else "AI_ANALYSIS_UNAVAILABLE",
+            "latency_ms": 1,
+            "model_calls": 1,
+            "tool_calls": 1,
+            "provider_requests": {"GROQ": 1, "TOKENROUTER": 1},
+            "safe_mode": not passed,
+        }
+
+    monkeypatch.setenv("REAL_GATE_MAX_ATTEMPTS", "2")
+    monkeypatch.setenv("REAL_GATE_RETRY_BACKOFF_SECONDS", "0.25")
+    monkeypatch.setattr(final_gate, "_run_trial", run_trial)
+    monkeypatch.setattr(final_gate, "_load_passed_results", lambda: {})
+    monkeypatch.setattr(final_gate, "_write", lambda rows, started_at: writes.append([dict(row) for row in rows]))
+    monkeypatch.setattr(final_gate.time, "sleep", sleeps.append)
+
+    assert final_gate.main() == 0
+    assert calls[("A", 1)] == 2
+    assert all(count == 1 for target, count in calls.items() if target != ("A", 1))
+    assert sleeps == [0.25]
+    assert writes[-1][0]["provider_requests"] == {"GROQ": 2, "TOKENROUTER": 2}
+
+
+def test_f1_fixture_does_not_reveal_the_downstream_evidence_outcome() -> None:
+    case = final_gate._module.CASES["F"]
+    constraints = case.constraints()
+    assert constraints["evidence_status"] == "available"
+    assert "COMPLETED_BUT_EMPTY" not in constraints["policy_summary"]
+    assert "INVALID_EVIDENCE" not in constraints["policy_summary"]
+    assert "not demonstrated" not in case.goal.lower()
+
+
+def test_e_fixture_uses_decision_grade_evidence_before_no_improvement_terminal() -> None:
+    case = final_gate._module.CASES["E"]
+    assert "no better" not in case.goal.lower()
+    result = final_gate._module._compact_result(case, "get_workface_thermal_evidence", {"workface_ids": ["WF-A"], "analytic_type": "exceedance"})
+    assert result.ok
+    assert result.data["status"] == "VALID_THERMAL_EVIDENCE"
+    assert result.data["thermal_evidence_valid"] is True
+    assert "no superior candidate" not in case.constraints()["policy_summary"]
+
+    overlap = final_gate._module._compact_result(case, "calculate_thermal_overlap", {"task_id": "O1"})
+    assert overlap.data["status"] == "THERMAL_OVERLAP_READY"
+    assert overlap.data["next_allowed_actions"] == ["GENERATE_FEASIBLE_SCHEDULE_ALTERNATIVES"]

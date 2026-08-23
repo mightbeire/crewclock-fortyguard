@@ -124,6 +124,45 @@ def test_model_stop_before_any_terminal_state_gets_one_bounded_continuation() ->
     assert sum(event.event == "model_stop_rejected" for event in trace.events) == 2
 
 
+def test_model_stop_after_nonterminal_overlap_gets_bounded_continuation() -> None:
+    registry = ToolRegistry()
+    registry.register(ToolSpec("overlap", "overlap", {"type": "object"}, lambda _: ToolResult({"status": "THERMAL_OVERLAP_READY", "next_allowed_actions": ["SCHEDULE"]}, Provenance(source="derived"))))
+    registry.register(ToolSpec("schedule", "schedule", {"type": "object"}, lambda _: ToolResult({"status": "NO_FEASIBLE_IMPROVEMENT", "valid": True}, Provenance(source="derived"))))
+    provider = MockProvider([
+        ProviderDecision.call_tool("overlap", {}),
+        ProviderDecision.finish("The overlap is known."),
+        ProviderDecision.call_tool("schedule", {}),
+    ])
+    state, trace = AgentRunner(
+        registry,
+        provider,
+        budget=Budget(max_iterations=4, max_model_calls=4, max_tool_calls=2, max_api_credits=2),
+        policy=SafetyPolicy(allowed_tools=registry.names()),
+    ).run(AgentState(Goal("Continue through the deterministic scheduler.", "operator")))
+    assert state.termination_reason == "NO_FEASIBLE_IMPROVEMENT"
+    assert sum(event.event == "model_stop_rejected" for event in trace.events) == 1
+
+
+def test_configured_model_stop_continuations_remain_bounded() -> None:
+    registry = ToolRegistry()
+    registry.register(ToolSpec("inspect", "inspect", {"type": "object"}, lambda _: ToolResult({"status": "INSPECTED"}, Provenance(source="derived"))))
+    provider = MockProvider([
+        ProviderDecision.call_tool("inspect", {}),
+        ProviderDecision.finish("stop one"),
+        ProviderDecision.finish("stop two"),
+        ProviderDecision.finish("stop three"),
+    ])
+    state, trace = AgentRunner(
+        registry,
+        provider,
+        budget=Budget(max_iterations=5, max_model_calls=5, max_tool_calls=1, max_api_credits=1),
+        policy=SafetyPolicy(allowed_tools=registry.names()),
+        max_model_stop_continuations=2,
+    ).run(AgentState(Goal("Continue until a deterministic terminal.", "operator")))
+    assert state.termination_reason == "ERROR_SAFE"
+    assert sum(event.event == "model_stop_rejected" for event in trace.events) == 3
+
+
 def test_all_indoor_finish_has_a_deterministic_terminal_state() -> None:
     goal = Goal(
         "Review the shift.",

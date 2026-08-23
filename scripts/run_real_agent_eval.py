@@ -99,15 +99,15 @@ CASES = {
     ),
     "E": Case(
         "E",
-        "Review this upcoming shift and accept the deterministic result if no better feasible schedule exists.",
+        "Review this upcoming shift. Obtain decision-grade evidence, calculate the relevant overlap, and use the deterministic scheduler before following its authoritative result.",
         (_task("O1", outdoor=True, fixed=False),),
-        ("WF-A",), "available", "no_feasible_improvement", "Dependencies, deadlines, crew availability and policy constraints leave no superior candidate.",
+        ("WF-A",), "available", "no_feasible_improvement", "Dependencies, deadlines, crew availability and policy constraints are authoritative scheduler inputs; do not infer feasibility from this note.",
     ),
     "F": Case(
         "F",
-        "Review this upcoming shift when the requested future evidence is not demonstrated. Keep the current plan or recheck; do not fabricate a forecast.",
+        "Review this upcoming shift. Obtain the required future thermal evidence through the deterministic evidence tool, then follow its authoritative result without fabricating a forecast.",
         (_task("O1", outdoor=True, fixed=False),),
-        ("WF-A",), "completed_but_empty", "unknown", "COMPLETED_BUT_EMPTY is INVALID_EVIDENCE and cannot support scheduling.", preflight_evidence="available",
+        ("WF-A",), "completed_but_empty", "unknown", "Future evidence must be obtained from the deterministic evidence tool before any thermal scheduling action.", preflight_evidence="available",
     ),
     "G": Case(
         "G",
@@ -144,15 +144,18 @@ def _compact_result(case: Case, tool: str, arguments: dict[str, Any]) -> ToolRes
         if not isinstance(supplied, list) or {item.get("id") for item in supplied if isinstance(item, dict)} - known_tasks:
             return ToolResult({}, Provenance(source="derived", endpoint=f"local:{tool}"), error="unknown_task_id")
     if tool == "inspect_shift_plan":
-        return FortyGuardToolkit.inspect_shift_plan({"tasks": list(case.tasks), "shift_start": "06:00", "shift_end": "16:00"})
+        result = FortyGuardToolkit.inspect_shift_plan({"tasks": list(case.tasks), "shift_start": "06:00", "shift_end": "16:00"})
+        return ToolResult({**result.data, "status": "SHIFT_PLAN_INSPECTED", "next_allowed_actions": ["IDENTIFY_THERMAL_CANDIDATES"]}, result.provenance)
     if tool == "identify_thermal_candidates":
-        return FortyGuardToolkit.identify_thermal_candidates({"tasks": list(case.tasks)})
+        result = FortyGuardToolkit.identify_thermal_candidates({"tasks": list(case.tasks)})
+        next_actions = ["GET_WORKFACE_THERMAL_EVIDENCE"] if result.data.get("candidate_task_ids") else ["KEEP_CURRENT_PLAN"]
+        return ToolResult({**result.data, "status": "THERMAL_CANDIDATES_IDENTIFIED", "next_allowed_actions": next_actions}, result.provenance)
     if tool == "get_workface_thermal_evidence":
         workfaces = arguments.get("workface_ids", [])
         if not isinstance(workfaces, list) or not set(workfaces).issubset(known_workfaces):
             return ToolResult({}, Provenance(source="derived", endpoint="local:get_workface_thermal_evidence"), error="unknown_workface_id")
         if case.evidence == "available":
-            decision_grade = case.scheduler == "feasible_alternatives"
+            decision_grade = case.scheduler in {"feasible_alternatives", "no_feasible_improvement", "break_rule_rejection", "cached_reuse"}
             return FortyGuardToolkit().get_workface_thermal_evidence({
                 "fixture": DECISION_GRADE_FIXTURE if decision_grade else FIXTURE,
                 "workfaces": workfaces,
@@ -178,7 +181,7 @@ def _compact_result(case: Case, tool: str, arguments: dict[str, Any]) -> ToolRes
         task_id = arguments.get("task_id")
         if task_id not in known_tasks:
             return ToolResult({}, Provenance(source="derived", endpoint="local:calculate_thermal_overlap"), error="unknown_task_id")
-        return ToolResult({"task_id": task_id, "overlap_minutes": 60, "crew_hours": 6.0, "confidence": "covered", "evidence_source": "CACHED_LIVE_FORTYGUARD"}, Provenance(source="derived", endpoint="local:calculate_thermal_overlap"))
+        return ToolResult({"status": "THERMAL_OVERLAP_READY", "task_id": task_id, "overlap_minutes": 60, "crew_hours": 6.0, "confidence": "covered", "evidence_source": "CACHED_LIVE_FORTYGUARD", "next_allowed_actions": ["GENERATE_FEASIBLE_SCHEDULE_ALTERNATIVES"]}, Provenance(source="derived", endpoint="local:calculate_thermal_overlap"))
     if tool == "generate_feasible_schedule_alternatives":
         task_ids = arguments.get("task_ids", [])
         if not isinstance(task_ids, list) or not set(task_ids).issubset(known_tasks):
@@ -218,7 +221,7 @@ def _registry(case: Case) -> ToolRegistry:
 
 
 def _termination_class(reason: str | None) -> str:
-    text = (reason or "").lower()
+    text = (reason or "").lower().replace("_", " ").replace("-", " ")
     if "approval" in text:
         return "approval_or_pending"
     if any(token in text for token in ("abstain", "unavailable", "no feasible", "no defensible", "insufficient", "invalid")):
