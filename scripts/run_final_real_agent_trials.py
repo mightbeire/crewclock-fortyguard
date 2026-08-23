@@ -48,6 +48,7 @@ def _observation_summaries(state: Any) -> list[dict[str, Any]]:
             "status": data.get("status") or data.get("state") or data.get("evidence_status") or ("ERROR" if observation.kind == "error" else "OK"),
             "decision_relevant_result": data.get("decision_relevant_result"),
             "valid": data.get("valid"),
+            "original_evidence_status": data.get("original_evidence_status"),
             "source": provenance.get("source"),
             "assumptions": list(provenance.get("assumptions", []))[:2],
         })

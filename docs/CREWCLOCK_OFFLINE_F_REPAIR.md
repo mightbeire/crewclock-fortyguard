@@ -26,3 +26,11 @@ the latter means both inference providers were unavailable.
 The repair is runtime/state-machine enforcement, with offline adversarial tests;
 it makes no live Groq, TokenRouter, or FortyGuard requests and does not branch
 on scenario names.
+
+The real-provider F1 gate must keep workflow preflight fail-closed while testing
+the downstream provider boundary separately. Its gate fixture therefore marks
+preflight evidence as available, then returns `COMPLETED_BUT_EMPTY` from the
+evidence tool. The runner normalizes that result to authoritative
+`EVIDENCE_UNAVAILABLE` before any optimizer, SHHCH, verification, or approval
+operation. The original invalid status is retained as structured diagnostic
+context for the gate assertion.

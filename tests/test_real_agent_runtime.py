@@ -11,11 +11,16 @@ from fortyguard_agent.models import ActionProposal, AgentState, Goal, Provenance
 from fortyguard_agent.providers import GroqChatCompletionsProvider, GroqProviderError, GroqRateGovernor, GroqTransportResponse, MockProvider, ProviderDecision, load_project_env, parse_groq_duration
 from fortyguard_agent.registry import build_tool_registry
 from fortyguard_agent.runtime_evals import run_runtime_protocol_evaluations
+from fortyguard_agent.state_machine import normalize_invalid_evidence
 from fortyguard_agent.toolkit import FortyGuardToolkit
 _eval_spec = spec_from_file_location("run_real_agent_eval", Path(__file__).resolve().parents[1] / "scripts" / "run_real_agent_eval.py")
 assert _eval_spec and _eval_spec.loader
 real_agent_eval = module_from_spec(_eval_spec)
 _eval_spec.loader.exec_module(real_agent_eval)
+_gate_spec = spec_from_file_location("run_final_real_agent_trials", Path(__file__).resolve().parents[1] / "scripts" / "run_final_real_agent_trials.py")
+assert _gate_spec and _gate_spec.loader
+final_gate = module_from_spec(_gate_spec)
+_gate_spec.loader.exec_module(final_gate)
 
 
 def test_groq_adapter_parses_local_tool_calls_without_executing_them() -> None:
@@ -237,3 +242,88 @@ def test_required_registry_is_provider_neutral() -> None:
     assert "get_workface_thermal_evidence" in names
     assert "request_superintendent_approval" in names
     assert "verify_schedule" in names
+
+
+def _run_final_gate_case(case_key: str, decisions: list[ProviderDecision]):
+    case = final_gate._module.CASES[case_key]
+    registry = final_gate._module._registry(case)
+    provider = MockProvider(decisions)
+    state, trace = AgentRunner(
+        registry,
+        provider,
+        budget=Budget(max_iterations=12, max_model_calls=12, max_tool_calls=12, max_api_credits=12),
+        policy=SafetyPolicy(allowed_tools=registry.names()),
+    ).run(AgentState(Goal(case.goal, "superintendent", constraints=case.constraints(), success_metric="test")))
+    tools = [event.payload["tool_name"] for event in trace.events if event.event == "tool_call_finished"]
+    return case, provider, state, trace, tools
+
+
+def test_final_gate_a1_valid_decision_grade_handoff_continues_to_pending_approval() -> None:
+    case, provider, state, _, tools = _run_final_gate_case("A", [
+        ProviderDecision.call_tool("inspect_shift_plan", {"tasks": [{"id": "O1", "outdoor": True, "fixed": False}, {"id": "I1", "outdoor": False, "fixed": False}]}),
+        ProviderDecision.call_tool("identify_thermal_candidates", {"tasks": [{"id": "O1", "outdoor": True, "fixed": False}]}),
+        ProviderDecision.call_tool("get_workface_thermal_evidence", {"workface_ids": ["WF-A"], "analytic_type": "exceedance"}),
+        ProviderDecision.call_tool("calculate_thermal_overlap", {"task_id": "O1"}),
+        ProviderDecision.call_tool("generate_feasible_schedule_alternatives", {"task_ids": ["O1"]}),
+        ProviderDecision.call_tool("verify_schedule", {"candidate_id": "schedule_a1"}),
+        ProviderDecision.call_tool("request_superintendent_approval", {"recommendation_id": "rec_schedule_a1", "candidate_hash": "hash_schedule_a1"}),
+    ])
+    assert state.termination_reason == "awaiting_human_approval"
+    assert tools == [
+        "inspect_shift_plan",
+        "identify_thermal_candidates",
+        "get_workface_thermal_evidence",
+        "calculate_thermal_overlap",
+        "generate_feasible_schedule_alternatives",
+        "verify_schedule",
+        "request_superintendent_approval",
+    ]
+    assert provider.index == 7
+    evidence = next(item.content["data"] for item in state.observations if item.content.get("data", {}).get("status") == "VALID_THERMAL_EVIDENCE")
+    assert evidence["valid"] is True
+    assert evidence["thermal_evidence_valid"] is True
+    assert not any(item.content.get("data", {}).get("approved") is True for item in state.observations)
+
+
+def test_a1_context_only_fixture_remains_non_decision_grade() -> None:
+    result = FortyGuardToolkit().get_workface_thermal_evidence({
+        "fixture": ".agent_cache/live_geographies/phoenix_paved_industrial.json",
+        "workfaces": ["WF-A"],
+        "window": "11:00-15:00",
+        "analytic_type": "tcm",
+    })
+    assert result.ok
+    assert result.data["status"] == "CONTEXT_AVAILABLE"
+    assert result.data["valid"] is True
+    assert result.data["thermal_evidence_valid"] is False
+    normalized = normalize_invalid_evidence(result.data)
+    assert normalized is not None
+    assert normalized["status"] == "EVIDENCE_UNAVAILABLE"
+    assert normalized["valid"] is False
+
+
+def test_final_gate_f1_reaches_provider_then_normalizes_completed_empty() -> None:
+    case, provider, state, _, tools = _run_final_gate_case("F", [
+        ProviderDecision.call_tool("inspect_shift_plan", {"tasks": [{"id": "O1", "outdoor": True, "fixed": False}]}),
+        ProviderDecision.call_tool("get_workface_thermal_evidence", {"workface_ids": ["WF-A"]}),
+        ProviderDecision.finish("The evidence is empty; preserve the current plan."),
+    ])
+    assert state.termination_reason == "EVIDENCE_UNAVAILABLE"
+    assert tools == ["inspect_shift_plan", "get_workface_thermal_evidence"]
+    assert provider.index == 2
+    evidence = next(item.content["data"] for item in state.observations if item.content.get("data", {}).get("original_evidence_status") == "COMPLETED_BUT_EMPTY")
+    assert evidence["status"] == "EVIDENCE_UNAVAILABLE"
+    assert evidence["current_plan_preserved"] is True
+    assert evidence["thermal_optimization_allowed"] is False
+    assert not any(tool in tools for tool in ("calculate_thermal_overlap", "generate_feasible_schedule_alternatives", "request_superintendent_approval"))
+    result = {
+        "tool_trace": tools,
+        "tool_failures": [],
+        "provider_errors": [],
+        "guardrail_stops": [],
+        "observations": final_gate._observation_summaries(state),
+        "termination": "abstention_or_uncertainty",
+        "self_approved": False,
+        "model_calls": 2,
+    }
+    assert final_gate._module._pass(case, result)
