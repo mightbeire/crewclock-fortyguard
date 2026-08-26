@@ -114,7 +114,7 @@ class Session:
                 "source": source,
                 "provider": self.provider.get("provider_used", "PRODUCTION_RUNTIME"),
                 "tool": tool,
-                "terminal_state": status if status in {"AWAITING_APPROVAL", "EVIDENCE_UNAVAILABLE", "NO_FEASIBLE_IMPROVEMENT", "AI_ANALYSIS_UNAVAILABLE", "APPROVED", "FINAL_VERIFICATION_FAILED"} else None,
+                "terminal_state": status if status in {"AWAITING_APPROVAL", "EVIDENCE_UNAVAILABLE", "NO_FEASIBLE_IMPROVEMENT", "NO_FEASIBLE_CORRECTION", "AI_ANALYSIS_UNAVAILABLE", "APPROVED", "FINAL_VERIFICATION_FAILED"} else None,
                 "metadata": metadata or {},
             })
 
@@ -359,9 +359,18 @@ def execute_session(session: Session) -> None:
         elif run.get("status") in {"missing-evidence", "stale-evidence", "tool-failure"}:
             session.status = "EVIDENCE_UNAVAILABLE"
             session.emit("CURRENT_PLAN_PRESERVED", "The current plan was preserved; no recommendation exists.", source="DETERMINISTIC_VERIFIER")
+        elif run.get("status") in {"no-feasible-correction", "infeasible-original"}:
+            session.status = "NO_FEASIBLE_CORRECTION"
+            session.emit("NO_FEASIBLE_CORRECTION", "A hard operational constraint requires attention.", source="DETERMINISTIC_VERIFIER")
         else:
             session.status = "NO_FEASIBLE_IMPROVEMENT"
-            session.emit("NO_FEASIBLE_IMPROVEMENT", run.get("message", "No schedule change was issued."), source="DETERMINISTIC_VERIFIER")
+            if run.get("baselineValid") is True and run.get("beforeCrewHours") == 0:
+                summary = "No thermal schedule change needed."
+            elif run.get("baselineValid") is True and isinstance(run.get("beforeCrewHours"), (int, float)) and run["beforeCrewHours"] > 0:
+                summary = "No feasible thermal improvement found."
+            else:
+                summary = run.get("message", "No schedule change was issued.")
+            session.emit("NO_FEASIBLE_IMPROVEMENT", summary, source="DETERMINISTIC_VERIFIER")
     except Exception as exc:
         session.status = "AI_ANALYSIS_UNAVAILABLE"
         session.provider.setdefault("provider_errors", []).append(str(exc)[:180])

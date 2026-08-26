@@ -3,6 +3,7 @@ import { CREWS, WORKFACES, type Task } from './scenario'
 import { calculateScheduledHighHeatCrewHours, type ExceedanceWindow } from './shhch'
 import { runCrewClock, type ThermalEvidence } from './engine'
 import { SYNTHETIC_POSITIVE_EVIDENCE, SYNTHETIC_POSITIVE_POLICY } from './runtime'
+import { terminalNoChangeCopy } from './terminalCopy'
 
 const tile = WORKFACES[0].polygon
 
@@ -143,6 +144,22 @@ describe('CrewClock canonical decision hierarchy', () => {
     expect(result.beforeCrewHours).toBe(0)
     expect(result.status).toBe('no-improvement')
     expect(result.recommendation).toBeNull()
+    const copy = terminalNoChangeCopy(result)
+    expect(copy.heading).toBe('No thermal schedule change needed.')
+    expect(`${copy.heading} ${copy.detail}`).not.toMatch(/fails? a hard constraint|hard operational constraint requires attention/i)
+  })
+
+  it('distinguishes positive-SHHCH no-improvement and invalid-baseline terminal copy', () => {
+    const positive = run([task('A', '11:00', 60, '16:00')], fullHotEvidence())
+    expect(positive.baselineValid).toBe(true)
+    expect(positive.beforeCrewHours).toBeGreaterThan(0)
+    expect(positive.status).toBe('no-improvement')
+    expect(terminalNoChangeCopy(positive).heading).toBe('No feasible thermal improvement found.')
+
+    const invalid = run([task('A', '11:00', 60, '12:00', true), task('B', '12:00', 60, '13:00', true)], fullHotEvidence())
+    expect(invalid.baselineValid).toBe(false)
+    expect(invalid.status).toBe('no-feasible-correction')
+    expect(terminalNoChangeCopy(invalid).heading).toBe('A hard operational constraint requires attention.')
   })
 
   it('orders equivalent candidates deterministically', () => {

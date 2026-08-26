@@ -3,7 +3,7 @@ from __future__ import annotations
 from fortyguard_agent import production_service as service
 
 
-def _run(status: str = "recommended") -> dict:
+def _run(status: str = "recommended", *, baseline_valid: bool = True, before_crew_hours: float | None = None) -> dict:
     recommendation = {"T1": "07:00"} if status == "recommended" else None
     return {
         "run": {
@@ -11,6 +11,8 @@ def _run(status: str = "recommended") -> dict:
             "recommendation": recommendation,
             "stats": {"candidatesConsidered": 2 if recommendation else 0, "feasibleCandidates": 1 if recommendation else 0, "rejectedCandidates": 1 if recommendation else 0},
             "recommendationVerification": {"passed": True} if recommendation else None,
+            "baselineValid": baseline_valid,
+            "beforeCrewHours": before_crew_hours,
             "message": "No change",
         }
     }
@@ -50,6 +52,23 @@ def test_all_indoor_skips_evidence_and_optimization(monkeypatch) -> None:
     assert statuses[0] == "NO_THERMAL_INVESTIGATION"
     assert "THERMAL_EVIDENCE_REQUESTED" not in statuses
     assert "OPTIMIZATION_STARTED" not in statuses
+
+
+def test_terminal_events_distinguish_zero_shhch_from_invalid_baseline(monkeypatch) -> None:
+    zero = service.Session("run-zero", "synthetic-positive", {})
+    monkeypatch.setattr(service, "orchestrate", lambda current, inspection: "INVESTIGATE")
+    monkeypatch.setattr(service, "run_engine", lambda payload: _run("no-improvement", before_crew_hours=0))
+    service.execute_session(zero)
+    assert zero.status == "NO_FEASIBLE_IMPROVEMENT"
+    assert zero.events[-1]["summary"] == "No thermal schedule change needed."
+    assert "hard" not in zero.events[-1]["summary"].lower()
+
+    invalid = service.Session("run-invalid", "synthetic-positive", {})
+    monkeypatch.setattr(service, "run_engine", lambda payload: _run("no-feasible-correction", baseline_valid=False))
+    service.execute_session(invalid)
+    assert invalid.status == "NO_FEASIBLE_CORRECTION"
+    assert invalid.events[-1]["summary"] == "A hard operational constraint requires attention."
+    assert invalid.events[-1]["terminal_state"] == "NO_FEASIBLE_CORRECTION"
 
 
 def test_unknown_evidence_scenario_fails_closed(monkeypatch) -> None:
