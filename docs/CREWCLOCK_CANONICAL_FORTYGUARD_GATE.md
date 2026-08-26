@@ -34,12 +34,15 @@ exceedance union, the real canonical baseline is:
 The deterministic scheduler considered 144 candidates, rejected 102, and
 found 42 feasible alternatives. All feasible alternatives have the same
 canonical qualifying-window cost because all five windows report 2.0
-exceedance hours. No strict improvement exists, so the truthful result is
-`REAL_NO_FEASIBLE_IMPROVEMENT`; no proposed schedule is accepted or shown as
-an improvement. The baseline’s synthetic employer-break policy family is
-false, while the generated feasible alternatives pass all six hard-constraint
-families.
+exceedance hours. No strict SHHCH improvement exists, but the baseline’s
+employer-break policy family is false. CrewClock therefore selects the
+least-disruptive feasible correction, `G4 → 13:30` (60 minutes), producing
+`5/6 → 6/6` hard-constraint families while truthfully reporting `91.5 → 91.5`
+SHHCH. The result is `REAL_FEASIBLE_OPERATIONAL_CORRECTION`, not a thermal
+improvement. Approval identity and final deterministic re-verification remain
+required.
 
-The canonical UI remains unchanged. Its existing synthetic-positive rehearsal
-remains explicitly synthetic; the real result is packaged separately under
-`evidence/fortyguard-canonical-phoenix/`.
+The browser’s existing synthetic-positive rehearsal remains explicitly
+synthetic. The real result is replayed separately from the saved evidence
+under `evidence/fortyguard-canonical-phoenix/`, with correction copy kept
+distinct from thermal-improvement copy.

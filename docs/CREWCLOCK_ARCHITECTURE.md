@@ -101,9 +101,14 @@ Evidence or policy failure branches from the investigation stages to `NO_CHANGE_
 - cached-evidence tool failure;
 - ambiguous employer policy;
 - infeasible original operational input;
-- no better feasible plan.
+- no better feasible plan for a valid baseline;
+- no feasible correction for an invalid baseline.
 
-These states use the wording “No defensible improvement found” where applicable. They never relabel stale evidence as current or convert uncertainty into approval.
+An invalid baseline is never described as the best feasible plan or as a valid
+unchanged schedule. A feasible invalid-baseline repair is classified as an
+operational correction, even when SHHCH is unchanged; only a strict SHHCH
+reduction is classified as a thermal improvement. These states never relabel
+stale evidence as current or convert uncertainty into approval.
 
 ## Approval and audit
 

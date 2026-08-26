@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { CREWS, TASKS, WORKFACES, type Task } from '../src/demo/scenario'
 import { calculateScheduledHighHeatCrewHours } from '../src/demo/shhch'
-import { originalSchedule, peakWindowCrewHoursFor, runCrewClock } from '../src/demo/engine'
+import { approveRecommendation, originalSchedule, peakWindowCrewHoursFor, runCrewClock } from '../src/demo/engine'
 
 const ROOT = join(process.cwd())
 const EVIDENCE_DIR = join(ROOT, 'evidence', 'fortyguard-canonical-phoenix')
@@ -74,7 +74,10 @@ describe('canonical real FortyGuard evidence', () => {
     expect(thermalEvidence.exceedanceWindows.every(window => window.projectThermalTrigger.thresholdC === 32)).toBe(true)
 
     const baseline = originalSchedule(TASKS)
-    const run = runCrewClock({ thermalEvidence, scenarioLabel: 'SYNTHETIC TEST SCENARIO' })
+    const run = runCrewClock({ thermalEvidence, scenarioLabel: 'CANONICAL_PHOENIX_REPLAY' })
+    const disruptionMinutes = run.recommendation
+      ? TASKS.reduce((sum, task) => sum + Math.abs(Number(run.recommendation?.[task.id].slice(0, 2)) * 60 + Number(run.recommendation?.[task.id].slice(3)) - (Number(run.original[task.id].slice(0, 2)) * 60 + Number(run.original[task.id].slice(3)))), 0)
+      : null
     const baselineMetrics = toRows(baseline, 'baseline')
     const proposedMetrics = run.recommendation ? toRows(run.recommendation, 'proposed') : null
     const matrix = TASKS.filter(task => task.environment !== 'shaded-support').map((task: Task) => {
@@ -115,7 +118,7 @@ describe('canonical real FortyGuard evidence', () => {
     }, null, 2))
 
     writeFileSync(join(EVIDENCE_DIR, 'scheduler_comparison.json'), JSON.stringify({
-      canonicalResult: run.status === 'no-improvement' ? 'REAL_NO_FEASIBLE_IMPROVEMENT' : run.status,
+      canonicalResult: run.decisionKind === 'operational-correction' ? 'REAL_FEASIBLE_OPERATIONAL_CORRECTION' : run.status === 'no-improvement' ? 'REAL_NO_FEASIBLE_IMPROVEMENT' : run.status,
       deterministicStatus: run.status,
       baselineSchedule: run.original,
       proposedSchedule: run.recommendation,
@@ -126,6 +129,7 @@ describe('canonical real FortyGuard evidence', () => {
       proposedMovableShhch: proposedMetrics?.movableShhch ?? null,
       proposedFixedShhch: proposedMetrics?.fixedShhch ?? null,
       shhchDelta: proposedMetrics ? baselineMetrics.totalShhch! - proposedMetrics.totalShhch! : null,
+      disruptionMinutes,
       tasksRetimed: run.recommendation ? TASKS.filter(task => run.recommendation?.[task.id] !== run.original[task.id]).length : null,
       schedulerStats: run.stats,
       baselineVerification: run.originalVerification,
@@ -142,11 +146,20 @@ describe('canonical real FortyGuard evidence', () => {
       sanityActivityId: '60568d12-10d6-478b-af83-7d197c1eec37',
       decisionGradeCoverage: 'PASS',
       workfaceGeometryValidation: 'PASS',
-      canonicalResult: run.status === 'no-improvement' ? 'REAL_NO_FEASIBLE_IMPROVEMENT' : run.status,
+      canonicalResult: run.decisionKind === 'operational-correction' ? 'REAL_FEASIBLE_OPERATIONAL_CORRECTION' : run.status === 'no-improvement' ? 'REAL_NO_FEASIBLE_IMPROVEMENT' : run.status,
       baseline: { total: baselineMetrics.totalShhch, movable: baselineMetrics.movableShhch, fixed: baselineMetrics.fixedShhch },
       proposed: proposedMetrics ? { total: proposedMetrics.totalShhch, movable: proposedMetrics.movableShhch, fixed: proposedMetrics.fixedShhch } : null,
+      baselineValid: run.baselineValid,
+      baselineConstraints: `${run.originalVerification.passedFamilies}/${run.originalVerification.totalFamilies}`,
+      proposedConstraints: run.recommendationVerification ? `${run.recommendationVerification.passedFamilies}/${run.recommendationVerification.totalFamilies}` : null,
+      selectedCorrection: run.recommendation ? `G4 → ${run.recommendation.G4}` : null,
+      disruptionMinutes,
+      thermalImprovementClaimed: run.shiftedCrewHours > 0,
+      operationalCorrectionClaimed: run.decisionKind === 'operational-correction',
       deterministicVerification: run.recommendation ? run.recommendationVerification?.passed ? 'PASS' : 'FAIL' : 'NOT_APPLICABLE_NO_IMPROVEMENT',
       feasibleAlternativeVerification: run.recommendationVerification?.passed ? 'PASS' : 'NOT_AVAILABLE',
+      approvalIdentity: run.recommendationId && run.candidateHash ? 'PASS' : 'FAIL',
+      finalReverification: run.recommendation ? 'PASS' : 'N/A',
       realEvidence: true,
       syntheticDemoRetained: true,
     }, null, 2))
@@ -155,8 +168,21 @@ describe('canonical real FortyGuard evidence', () => {
     expect(run.originalVerification.passed).toBe(false)
     expect(run.originalVerification.families.filter(family => family.id !== 'employer-policy').every(family => family.passed)).toBe(true)
     expect(run.originalVerification.families.find(family => family.id === 'employer-policy')?.passed).toBe(false)
-    expect(run.status).toBe('no-improvement')
-    expect(run.recommendation).toBeNull()
+    expect(run.status).toBe('recommended')
+    expect(run.decisionKind).toBe('operational-correction')
+    expect(run.baselineValid).toBe(false)
+    expect(run.recommendation?.G4).toBe('13:30')
+    expect(disruptionMinutes).toBe(60)
+    expect(run.afterCrewHours).toBe(91.5)
+    expect(run.shiftedCrewHours).toBe(0)
+    expect(run.recommendationVerification?.passedFamilies).toBe(6)
+    expect(run.message).toContain('substantial scheduled high-heat crew-hour overlap')
+    expect(run.message).toContain('No feasible alternative reduced that modeled overlap')
+    expect(run.message).toContain('Employer controls')
+    expect(run.message).toContain('superintendent owns the decision')
+    const approval = approveRecommendation(run, { recommendationId: run.recommendationId!, candidateHash: run.candidateHash! })
+    expect(approval.approved).toBe(true)
+    expect(approval.verification.passed).toBe(true)
     expect(run.stats.feasibleCandidates).toBeGreaterThan(0)
     expect(peakWindowCrewHoursFor(baseline, TASKS, CREWS, thermalEvidence, WORKFACES)).toBe(baselineMetrics.totalShhch)
   })

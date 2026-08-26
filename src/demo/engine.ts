@@ -46,11 +46,21 @@ export type PolicyState = 'ready' | 'ambiguous'
 export type RecommendationStatus =
   | 'recommended'
   | 'no-improvement'
+  | 'no-feasible-correction'
   | 'missing-evidence'
   | 'stale-evidence'
   | 'tool-failure'
   | 'ambiguous-policy'
   | 'infeasible-original'
+
+export type DecisionKind =
+  | 'thermal-improvement'
+  | 'operational-correction'
+  | 'no-improvement'
+  | 'no-feasible-correction'
+  | 'evidence-unavailable'
+  | 'infeasible-original'
+  | 'ambiguous-policy'
 
 export type ConstraintFamily = {
   id: 'fixed' | 'dependencies' | 'qualifications' | 'deadlines' | 'crew-availability' | 'employer-policy'
@@ -83,6 +93,8 @@ export type SchedulerStats = {
 
 export type CrewClockRun = {
   status: RecommendationStatus
+  decisionKind: DecisionKind
+  baselineValid: boolean
   original: Schedule
   recommendation: Schedule | null
   investigation: Investigation
@@ -294,6 +306,18 @@ type CrewCandidate = { schedule: Schedule; heat: number; movement: number }
 const movementMinutes = (schedule: Schedule, baseline: Schedule, tasks: Task[]) =>
   tasks.reduce((sum, task) => sum + Math.abs(timeToMinutes(schedule[task.id]) - timeToMinutes(baseline[task.id])), 0)
 
+const scheduleSignature = (schedule: Schedule) => Object.keys(schedule).sort().map(id => `${id}=${schedule[id]}`).join('|')
+
+const candidateOrder = (baselineValid: boolean) => (left: CrewCandidate, right: CrewCandidate) => {
+  // A valid baseline is optimized for the existing thermal objective. An
+  // invalid baseline is repaired first; disruption is the primary objective
+  // and SHHCH is only the truthful secondary objective.
+  const ordered = baselineValid
+    ? [left.heat - right.heat, left.movement - right.movement]
+    : [left.movement - right.movement, left.heat - right.heat]
+  return ordered.find(value => value !== 0) ?? scheduleSignature(left.schedule).localeCompare(scheduleSignature(right.schedule))
+}
+
 const enumerateCrew = (
   crewId: CrewId,
   tasks: Task[],
@@ -399,12 +423,13 @@ const buildCrewClockRun = ({
     const evidenceHash = evidenceBundleHash(thermalEvidence)
     const taskStateHash = projectStateHash(safeTasks, safeCrews)
     return {
-      status: 'infeasible-original', original: {}, recommendation: null, investigation: { investigatedTaskIds: [], skippedIndoorTaskIds: [], retainedFixedTaskIds: [], workfaceIds: [] }, originalVerification: verification, recommendationVerification: null, beforeCrewHours: null, afterCrewHours: null, shiftedCrewHours: 0, stats: { candidatesConsidered: 0, feasibleCandidates: 0, rejectedCandidates: 0 }, deterministicId: projectId, message: 'INVALID_SCHEDULE_SCHEMA: runtime input was malformed; current plan preserved.', candidateHash: null, recommendationId: null, evidenceHash, thermalEvidence, sourceScheduleHash: '', policyHash: policyContentHash(policy), verificationHash: null, artifactVersion: ARTIFACT_VERSION, policyVersion: String(policy.name), taskStateHash, tasks: safeTasks, crews: safeCrews, policy, workfaces,
+      status: 'infeasible-original', decisionKind: 'infeasible-original', baselineValid: false, original: {}, recommendation: null, investigation: { investigatedTaskIds: [], skippedIndoorTaskIds: [], retainedFixedTaskIds: [], workfaceIds: [] }, originalVerification: verification, recommendationVerification: null, beforeCrewHours: null, afterCrewHours: null, shiftedCrewHours: 0, stats: { candidatesConsidered: 0, feasibleCandidates: 0, rejectedCandidates: 0 }, deterministicId: projectId, message: 'INVALID_SCHEDULE_SCHEMA: runtime input was malformed; current plan preserved.', candidateHash: null, recommendationId: null, evidenceHash, thermalEvidence, sourceScheduleHash: '', policyHash: policyContentHash(policy), verificationHash: null, artifactVersion: ARTIFACT_VERSION, policyVersion: String(policy.name), taskStateHash, tasks: safeTasks, crews: safeCrews, policy, workfaces,
     }
   }
   const original = originalSchedule(tasks)
   const investigation = selectThermalInvestigation(tasks)
   const originalVerification = verifySchedule(original, tasks, crews, original, [], policy)
+  const baselineValid = originalVerification.passed
   const beforeCrewHours = peakWindowCrewHoursFor(original, tasks, crews, thermalEvidence, workfaces)
   const emptyStats = { candidatesConsidered: 0, feasibleCandidates: 0, rejectedCandidates: 0 }
   const evidenceHash = evidenceBundleHash(thermalEvidence)
@@ -412,19 +437,18 @@ const buildCrewClockRun = ({
   const sourceHash = sourceScheduleHash(original) ?? ''
   const policyHash = policyContentHash(policy)
   const policyVersion = String(policy.name)
-  const base = { original, investigation, originalVerification, beforeCrewHours, deterministicId: projectId, candidateHash: null, recommendationId: null, evidenceHash, thermalEvidence, sourceScheduleHash: sourceHash, policyHash, verificationHash: null, artifactVersion: ARTIFACT_VERSION, policyVersion, taskStateHash, tasks, crews, policy, workfaces }
+  const base = { original, investigation, originalVerification, baselineValid, beforeCrewHours, deterministicId: projectId, candidateHash: null, recommendationId: null, evidenceHash, thermalEvidence, sourceScheduleHash: sourceHash, policyHash, verificationHash: null, artifactVersion: ARTIFACT_VERSION, policyVersion, taskStateHash, tasks, crews, policy, workfaces }
 
   if (scenarioLabel === 'USER_DEFINED_SHIFT' && thermalEvidence.exceedanceEvidenceStatus !== 'complete') {
-    return { ...base, status: 'missing-evidence', recommendation: null, recommendationVerification: null, afterCrewHours: null, shiftedCrewHours: 0, stats: emptyStats, message: `${String(thermalEvidence.location ?? 'Project')} has no validated schedule-aligned thermal evidence. No recommendation issued.` }
-  }
-  if (!originalVerification.families.filter(family => family.id !== 'employer-policy').every(family => family.passed)) {
-    return { ...base, status: 'infeasible-original', recommendation: null, recommendationVerification: null, afterCrewHours: null, shiftedCrewHours: 0, stats: emptyStats, message: 'The upcoming-shift source plan is infeasible. Resolve operational constraints before optimization.' }
+    return { ...base, status: 'missing-evidence', decisionKind: 'evidence-unavailable', recommendation: null, recommendationVerification: null, afterCrewHours: null, shiftedCrewHours: 0, stats: emptyStats, message: `${String(thermalEvidence.location ?? 'Project')} has no validated schedule-aligned thermal evidence. No recommendation issued.` }
   }
   if (policyState === 'ambiguous') {
-    return { ...base, status: 'ambiguous-policy', recommendation: null, recommendationVerification: null, afterCrewHours: null, shiftedCrewHours: 0, stats: emptyStats, message: 'Employer controls are ambiguous. Superintendent clarification is required.' }
+    return { ...base, status: 'ambiguous-policy', decisionKind: 'ambiguous-policy', recommendation: null, recommendationVerification: null, afterCrewHours: null, shiftedCrewHours: 0, stats: emptyStats, message: 'Employer controls are ambiguous. Superintendent clarification is required.' }
   }
   if (investigation.investigatedTaskIds.length === 0) {
-    return { ...base, status: 'no-improvement', recommendation: null, recommendationVerification: null, afterCrewHours: beforeCrewHours, shiftedCrewHours: 0, stats: emptyStats, message: 'No movable outdoor work requires a schedule change. The current plan remains the operational plan.' }
+    return baselineValid
+      ? { ...base, status: 'no-improvement', decisionKind: 'no-improvement', recommendation: null, recommendationVerification: null, afterCrewHours: beforeCrewHours, shiftedCrewHours: 0, stats: emptyStats, message: 'No movable outdoor work requires a schedule change. The current plan remains the operational plan.' }
+      : { ...base, status: 'no-feasible-correction', decisionKind: 'no-feasible-correction', recommendation: null, recommendationVerification: null, afterCrewHours: null, shiftedCrewHours: 0, stats: emptyStats, message: 'The existing shift fails a hard constraint and has no movable work available for a feasible correction. Superintendent attention is required; the shift is not declared valid.' }
   }
   if (evidenceState !== 'ready') {
     const status: RecommendationStatus = evidenceState === 'missing' ? 'missing-evidence' : evidenceState === 'stale' ? 'stale-evidence' : 'tool-failure'
@@ -433,27 +457,39 @@ const buildCrewClockRun = ({
       'stale-evidence': 'Cached thermal evidence is outside the approved freshness window. No recommendation issued.',
       'tool-failure': 'The evidence tool failed. The original plan remains unchanged.',
     }
-    return { ...base, status, recommendation: null, recommendationVerification: null, afterCrewHours: null, shiftedCrewHours: 0, stats: emptyStats, message: messages[status] }
+    return { ...base, status, decisionKind: 'evidence-unavailable', recommendation: null, recommendationVerification: null, afterCrewHours: null, shiftedCrewHours: 0, stats: emptyStats, message: messages[status] }
   }
   if (thermalEvidence.exceedanceEvidenceStatus !== 'complete') {
-    return { ...base, status: 'missing-evidence', recommendation: null, recommendationVerification: null, afterCrewHours: null, shiftedCrewHours: 0, stats: emptyStats, message: `${String(thermalEvidence.location ?? 'Project')} schedule-aligned FortyGuard-compatible exceedance evidence is not demonstrated. No recommendation issued.` }
+    return { ...base, status: 'missing-evidence', decisionKind: 'evidence-unavailable', recommendation: null, recommendationVerification: null, afterCrewHours: null, shiftedCrewHours: 0, stats: emptyStats, message: `${String(thermalEvidence.location ?? 'Project')} schedule-aligned FortyGuard-compatible exceedance evidence is not demonstrated. No recommendation issued.` }
   }
-  if (scenarioLabel !== 'SYNTHETIC TEST SCENARIO') {
-    return { ...base, status: 'missing-evidence', recommendation: null, recommendationVerification: null, afterCrewHours: null, shiftedCrewHours: 0, stats: emptyStats, message: 'Synthetic decision-grade evidence requires the explicitly labeled synthetic test scenario. No recommendation issued.' }
+  if (scenarioLabel !== 'SYNTHETIC TEST SCENARIO' && scenarioLabel !== 'CANONICAL_PHOENIX_REPLAY') {
+    return { ...base, status: 'missing-evidence', decisionKind: 'evidence-unavailable', recommendation: null, recommendationVerification: null, afterCrewHours: null, shiftedCrewHours: 0, stats: emptyStats, message: 'Decision-grade evidence requires an explicitly labeled replay or synthetic test scenario. No recommendation issued.' }
   }
 
   const enumerations = crews.map(crew => enumerateCrew(crew.id, tasks, crews, original, thermalEvidence, workfaces, policy))
-  const bestByCrew = enumerations.map(({ candidates }) => [...candidates].sort((a, b) => a.heat - b.heat || a.movement - b.movement)[0])
-  const recommendation = bestByCrew.reduce<Schedule>((schedule, candidate) => ({ ...schedule, ...candidate?.schedule }), {})
-  const recommendationVerification = verifySchedule(recommendation, tasks, crews, original, [], policy)
-  const afterCrewHours = recommendationVerification.passed ? peakWindowCrewHoursFor(recommendation, tasks, crews, thermalEvidence, workfaces) : beforeCrewHours
+  const bestByCrew = enumerations.map(({ candidates }) => [...candidates].sort(candidateOrder(baselineValid))[0])
   const feasibleCandidates = enumerations.reduce((sum, item) => sum + item.candidates.length, 0)
   const candidatesConsidered = enumerations.reduce((sum, item) => sum + item.considered, 0)
   const stats = { candidatesConsidered, feasibleCandidates, rejectedCandidates: candidatesConsidered - feasibleCandidates }
+  if (bestByCrew.some(candidate => !candidate)) {
+    const status = baselineValid ? 'no-improvement' : 'no-feasible-correction'
+    const message = baselineValid
+      ? 'No defensible improvement found. The original plan remains the operational plan.'
+      : 'The existing shift fails a hard constraint and no feasible correction was found. Superintendent attention is required; the shift is not declared valid.'
+    return { ...base, status, decisionKind: status, recommendation: null, recommendationVerification: null, afterCrewHours: baselineValid ? beforeCrewHours : null, shiftedCrewHours: 0, stats, message }
+  }
+  const recommendation = bestByCrew.reduce<Schedule>((schedule, candidate) => ({ ...schedule, ...candidate?.schedule }), {})
+  const recommendationVerification = verifySchedule(recommendation, tasks, crews, original, [], policy)
+  const afterCrewHours = recommendationVerification.passed ? peakWindowCrewHoursFor(recommendation, tasks, crews, thermalEvidence, workfaces) : beforeCrewHours
   const shiftedCrewHours = beforeCrewHours !== null && afterCrewHours !== null ? beforeCrewHours - afterCrewHours : 0
+  const scheduleChanged = tasks.some(task => recommendation[task.id] !== original[task.id])
 
-  if (!recommendationVerification.passed || shiftedCrewHours <= 0 || beforeCrewHours === null || afterCrewHours === null) {
-    return { ...base, status: 'no-improvement', recommendation: null, recommendationVerification, afterCrewHours: beforeCrewHours, shiftedCrewHours: 0, stats, message: 'No defensible improvement found. The original plan remains the operational plan.' }
+  if (!recommendationVerification.passed || !scheduleChanged || beforeCrewHours === null || afterCrewHours === null || (baselineValid && shiftedCrewHours <= 0)) {
+    const status = baselineValid ? 'no-improvement' : 'no-feasible-correction'
+    const message = baselineValid
+      ? 'No defensible improvement found. The original plan remains the operational plan.'
+      : 'The existing shift fails a hard constraint and no feasible correction was found. Superintendent attention is required; the shift is not declared valid.'
+    return { ...base, status, decisionKind: status, recommendation: null, recommendationVerification, afterCrewHours: baselineValid ? beforeCrewHours : null, shiftedCrewHours: 0, stats, message }
   }
   const finalVerificationHash = verificationResultHash({
     status: 'VERIFIED',
@@ -466,9 +502,15 @@ const buildCrewClockRun = ({
     project_state_hash: taskStateHash,
   })
   const sealedCandidateHash = canonicalCandidateHash({ tasks, schedule: recommendation, crews, policy, sourceSchedule: original })
+  const failedFamilies = originalVerification.families.filter(family => !family.passed).map(family => family.label).join(', ')
+  const correctionMessage = shiftedCrewHours > 0
+    ? `FortyGuard evidence found ${beforeCrewHours} scheduled high-heat crew-hours of modeled overlap. CrewClock found a least-disruptive feasible correction that reduces that modeled overlap by ${shiftedCrewHours} crew-hours. The existing shift violated ${failedFamilies}; superintendent approval is required.`
+    : `FortyGuard evidence found substantial scheduled high-heat crew-hour overlap (${beforeCrewHours}). No feasible alternative reduced that modeled overlap. The existing shift violated the configured ${failedFamilies}. CrewClock found the least-disruptive feasible correction with ${shiftedCrewHours} SHHCH change; the superintendent owns the decision and approval is required.`
   return {
     ...base,
     status: 'recommended',
+    decisionKind: baselineValid ? 'thermal-improvement' : 'operational-correction',
+    baselineValid,
     recommendation,
     recommendationVerification,
     afterCrewHours,
@@ -485,7 +527,7 @@ const buildCrewClockRun = ({
       artifactVersion: ARTIFACT_VERSION,
     }),
     verificationHash: finalVerificationHash,
-    message: `${shiftedCrewHours} scheduled high-heat crew-hours can be removed from the employer trigger overlap.`,
+    message: baselineValid ? `${shiftedCrewHours} scheduled high-heat crew-hours can be removed from the employer trigger overlap.` : correctionMessage,
   }
 }
 

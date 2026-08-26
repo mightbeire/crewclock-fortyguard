@@ -119,10 +119,11 @@ describe('CrewClock deterministic demo', () => {
     expect(run.recommendation).toBeNull()
   })
 
-  it('returns no improvement when all work is immovable', () => {
+  it('surfaces an invalid fixed-only baseline when no correction is possible', () => {
     const fixedTasks = TASKS.map(task => ({ ...task, fixed: true, proposedStart: task.originalStart }))
     const run = runCrewClock({ tasks: fixedTasks })
-    expect(run.status).toBe('no-improvement')
+    expect(run.status).toBe('no-feasible-correction')
+    expect(run.baselineValid).toBe(false)
     expect(run.recommendation).toBeNull()
     expect(run.shiftedCrewHours).toBe(0)
   })

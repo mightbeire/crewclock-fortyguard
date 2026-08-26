@@ -47,8 +47,11 @@ describe('real runtime to UI event contract', () => {
   it('uses the real deterministic optimizer/verifier path for labeled synthetic evidence', () => {
     const session = createRuntimeSession({ thermalEvidence: SYNTHETIC_POSITIVE_EVIDENCE, scenarioLabel: 'SYNTHETIC TEST SCENARIO' })
     expect(session.run.status).toBe('recommended')
+    expect(session.run.decisionKind).toBe('operational-correction')
     expect(session.run.recommendation).not.toBeNull()
     expect(session.events.map(event => event.status)).toEqual(expect.arrayContaining(['OPTIMIZATION_STARTED', 'CANDIDATES_GENERATED', 'VERIFICATION_PASSED', 'AWAITING_APPROVAL']))
+    expect(session.events.find(event => event.status === 'AWAITING_APPROVAL')?.summary).toContain('operational correction')
+    expect(session.run.message).toContain('least-disruptive feasible correction')
     expect(session.events.every(event => event.event_id.startsWith(session.runId))).toBe(true)
     expect(runtimeUiConsistency(session)).toBe(true)
   })
@@ -85,7 +88,8 @@ describe('real runtime to UI event contract', () => {
 
   it('renders no-feasible and provider-safe-mode terminal states without a recommendation', () => {
     const noFeasible = createRuntimeSession({ tasks: TASKS.map(task => ({ ...task, fixed: true, proposedStart: task.originalStart })) })
-    expect(noFeasible.events.some(event => event.status === 'NO_FEASIBLE_IMPROVEMENT')).toBe(true)
+    expect(noFeasible.events.some(event => event.status === 'NO_FEASIBLE_CORRECTION')).toBe(true)
+    expect(noFeasible.events.some(event => event.status === 'OPERATOR_ATTENTION_REQUIRED')).toBe(true)
     expect(noFeasible.run.recommendation).toBeNull()
     const safeMode = createRuntimeSession({ evidenceState: 'tool-failure', scenarioLabel: 'SAFE_MODE' })
     expect(safeMode.events.map(event => event.status)).toContain('AI_ANALYSIS_UNAVAILABLE')

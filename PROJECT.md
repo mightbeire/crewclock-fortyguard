@@ -20,11 +20,11 @@ CrewClock is now a submission-grade, single-screen React/Vite mission-control wo
 - two field workfaces and one shaded laydown zone;
 
 Metric lock amendment: the canonical fixture now declares four polygon
-workfaces and a Phoenix evidence status of `CACHED_EXCEEDANCE_EVIDENCE = NONE`.
-SHHCH is emitted only from schedule-aligned FortyGuard `exceedance` windows;
-TCM, heat index, and `env_params` cannot supply its duration. The deterministic
-engine and offline repair are complete, while Phoenix exceedance evidence
-remains the blocker before a numeric canonical replay.
+workfaces and a Phoenix evidence status of `CACHED_EXCEEDANCE_EVIDENCE = NONE`
+for the default browser state. SHHCH is emitted only from schedule-aligned
+FortyGuard `exceedance` windows; TCM, heat index, and `env_params` cannot
+supply its duration. The deterministic engine, offline repair, and saved real
+Phoenix replay are complete.
 - fixed inspections, traffic-control and concrete commitments;
 - cached Phoenix contextual FortyGuard TCM, environmental parameters and time-of-measure evidence; compatible Phoenix exceedance evidence is currently unavailable;
 - a seven-step high-level agent run;
@@ -67,7 +67,7 @@ This is a derived planning proxy. It is not a safety, health, compliance, produc
 - FortyGuard supports pre-shift spatial/temporal investigation and alternate-window screening.
 - FortyGuard is not WBGT and does not certify safety.
 - Onsite measurement, workload, PPE, acclimatization, worker condition, employer policy and professional judgment remain authoritative.
-- The current canonical demo state is `THERMAL EVIDENCE UNAVAILABLE / PROVIDER INVESTIGATION`; it preserves the current plan and is not a current forecast.
+- The default browser state is `THERMAL EVIDENCE UNAVAILABLE / PROVIDER INVESTIGATION`; it preserves the current plan and is not a current forecast. The saved historical Phoenix replay is a separate, explicit validation fixture.
 - The 14-task work package and employer policy are realistic but synthetic.
 - Public ADOT project data is context/schema evidence, not a customer work order.
 - The federal OSHA heat rule remains proposed as of the research date.

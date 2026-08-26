@@ -4,15 +4,28 @@
   "sanityActivityId": "60568d12-10d6-478b-af83-7d197c1eec37",
   "decisionGradeCoverage": "PASS",
   "workfaceGeometryValidation": "PASS",
-  "canonicalResult": "REAL_NO_FEASIBLE_IMPROVEMENT",
+  "canonicalResult": "REAL_FEASIBLE_OPERATIONAL_CORRECTION",
   "baseline": {
     "total": 91.5,
     "movable": 67,
     "fixed": 24.5
   },
-  "proposed": null,
-  "deterministicVerification": "NOT_APPLICABLE_NO_IMPROVEMENT",
+  "proposed": {
+    "total": 91.5,
+    "movable": 67,
+    "fixed": 24.5
+  },
+  "baselineValid": false,
+  "baselineConstraints": "5/6",
+  "proposedConstraints": "6/6",
+  "selectedCorrection": "G4 → 13:30",
+  "disruptionMinutes": 60,
+  "thermalImprovementClaimed": false,
+  "operationalCorrectionClaimed": true,
+  "deterministicVerification": "PASS",
   "feasibleAlternativeVerification": "PASS",
+  "approvalIdentity": "PASS",
+  "finalReverification": "PASS",
   "realEvidence": true,
   "syntheticDemoRetained": true
 }

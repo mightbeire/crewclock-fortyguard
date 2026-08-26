@@ -24,7 +24,7 @@ activity ID for every contribution.
 
 ## Result
 
-The real canonical result is `REAL_NO_FEASIBLE_IMPROVEMENT`.
+The real canonical result is `REAL_FEASIBLE_OPERATIONAL_CORRECTION`.
 
 The frozen area-weighted SHHCH calculation produces:
 
@@ -34,9 +34,11 @@ The frozen area-weighted SHHCH calculation produces:
 
 The deterministic scheduler found `42` feasible alternatives after rejecting
 `102` candidates. Because every covered canonical window reports the same
-`2.0` qualifying exceedance hours and the existing objective cannot reduce the
-result by retiming within the bounded shift, no candidate with a strict SHHCH
-improvement was selected. No proposed plan is presented as an improvement.
+`2.0` qualifying exceedance hours, no candidate reduces modeled SHHCH. The
+baseline nevertheless fails the employer break/recovery control, so CrewClock
+selects the least-disruptive feasible correction: `G4 → 13:30` (60 minutes of
+disruption), with `91.5 → 91.5` SHHCH and `5/6 → 6/6` hard-constraint families.
+This is an operational correction, not a thermal improvement.
 
 The baseline itself fails the synthetic employer break-policy family, while
 the generated feasible alternatives pass all six hard-constraint families.

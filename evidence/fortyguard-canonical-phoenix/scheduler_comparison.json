@@ -1,6 +1,6 @@
 {
-  "canonicalResult": "REAL_NO_FEASIBLE_IMPROVEMENT",
-  "deterministicStatus": "no-improvement",
+  "canonicalResult": "REAL_FEASIBLE_OPERATIONAL_CORRECTION",
+  "deterministicStatus": "recommended",
   "baselineSchedule": {
     "G0": "06:00",
     "G1": "06:30",
@@ -17,15 +17,31 @@
     "E3": "10:00",
     "E4": "13:00"
   },
-  "proposedSchedule": null,
+  "proposedSchedule": {
+    "G0": "06:00",
+    "G1": "06:30",
+    "G2": "08:30",
+    "G3": "10:30",
+    "G4": "13:30",
+    "C3": "09:00",
+    "C4": "09:30",
+    "C5": "13:00",
+    "C1": "06:00",
+    "C2": "08:00",
+    "E4": "13:00",
+    "E1": "06:00",
+    "E2": "08:00",
+    "E3": "10:00"
+  },
   "baselineTotalShhch": 91.5,
   "baselineMovableShhch": 67,
   "baselineFixedShhch": 24.5,
-  "proposedTotalShhch": null,
-  "proposedMovableShhch": null,
-  "proposedFixedShhch": null,
-  "shhchDelta": null,
-  "tasksRetimed": null,
+  "proposedTotalShhch": 91.5,
+  "proposedMovableShhch": 67,
+  "proposedFixedShhch": 24.5,
+  "shhchDelta": 0,
+  "disruptionMinutes": 60,
+  "tasksRetimed": 1,
   "schedulerStats": {
     "candidatesConsidered": 144,
     "feasibleCandidates": 42,
@@ -176,6 +192,6 @@
       "detail": "11 outdoor tasks checked"
     }
   ],
-  "schedulerMessage": "No defensible improvement found. The original plan remains the operational plan.",
+  "schedulerMessage": "FortyGuard evidence found substantial scheduled high-heat crew-hour overlap (91.5). No feasible alternative reduced that modeled overlap. The existing shift violated the configured Employer controls. CrewClock found the least-disruptive feasible correction with 0 SHHCH change; the superintendent owns the decision and approval is required.",
   "frozenEngine": "src/demo/engine.ts"
 }

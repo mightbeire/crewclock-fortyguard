@@ -22,6 +22,8 @@ export type UiEventName =
   | 'VERIFICATION_FAILED'
   | 'VERIFICATION_PASSED'
   | 'NO_FEASIBLE_IMPROVEMENT'
+  | 'NO_FEASIBLE_CORRECTION'
+  | 'OPERATOR_ATTENTION_REQUIRED'
   | 'CURRENT_PLAN_PRESERVED'
   | 'RECHECK_AVAILABLE'
   | 'AWAITING_APPROVAL'
@@ -142,6 +144,17 @@ export const buildRuntimeEvents = (run: CrewClockRun, runId = runIdFor(run), off
     return events
   }
 
+  if (run.status === 'no-feasible-correction') {
+    if (run.stats.candidatesConsidered > 0) {
+      push('OPTIMIZATION_STARTED', 'Deterministic optimizer evaluated the movable-task set.', { stage: 'optimization', tool: 'generate_feasible_schedule_alternatives' })
+      push('CANDIDATES_GENERATED', `${run.stats.feasibleCandidates} feasible candidates remained after ${run.stats.rejectedCandidates} rejections.`, { stage: 'optimization', tool: 'generate_feasible_schedule_alternatives', metadata: { feasible_candidates: run.stats.feasibleCandidates, rejected_candidates: run.stats.rejectedCandidates } })
+    }
+    push('NO_FEASIBLE_CORRECTION', run.message, { stage: 'terminal', terminal_state: 'NO_FEASIBLE_CORRECTION' })
+    push('OPERATOR_ATTENTION_REQUIRED', 'The existing shift is not declared valid; superintendent attention is required.', { stage: 'safe outcome', terminal_state: 'NO_FEASIBLE_CORRECTION' })
+    push('RUN_COMPLETED', 'Run completed without a recommendation because no feasible correction exists.', { stage: 'terminal', terminal_state: 'NO_FEASIBLE_CORRECTION' })
+    return events
+  }
+
   if (run.status === 'no-improvement') {
     if (run.stats.candidatesConsidered > 0) {
       push('OPTIMIZATION_STARTED', 'Deterministic optimizer evaluated the movable-task set.', { stage: 'optimization', tool: 'generate_feasible_schedule_alternatives' })
@@ -153,13 +166,13 @@ export const buildRuntimeEvents = (run: CrewClockRun, runId = runIdFor(run), off
     return events
   }
 
-  push('THERMAL_EVIDENCE_READY', 'Synthetic test evidence is available for this labeled scenario.', { stage: 'thermal evidence', source: 'MOCK_EVIDENCE_PROVIDER', provider: 'MOCK_EVIDENCE' })
+  push('THERMAL_EVIDENCE_READY', run.thermalEvidence.status === 'SYNTHETIC_TEST_SCENARIO' ? 'Synthetic test evidence is available for this labeled scenario.' : 'Cached real FortyGuard evidence is available for historical replay.', { stage: 'thermal evidence', source: run.thermalEvidence.status === 'SYNTHETIC_TEST_SCENARIO' ? 'MOCK_EVIDENCE_PROVIDER' : 'RUNTIME', provider: run.thermalEvidence.status === 'SYNTHETIC_TEST_SCENARIO' ? 'MOCK_EVIDENCE' : 'DETERMINISTIC_LOCAL' })
   push('OPTIMIZATION_STARTED', 'Deterministic optimizer generated constraint-preserving alternatives.', { stage: 'optimization', tool: 'generate_feasible_schedule_alternatives' })
   push('CANDIDATES_GENERATED', `${run.stats.feasibleCandidates} feasible candidates generated.`, { stage: 'optimization', tool: 'generate_feasible_schedule_alternatives', metadata: { feasible_candidates: run.stats.feasibleCandidates, considered: run.stats.candidatesConsidered } })
   push('VERIFICATION_STARTED', 'Authoritative deterministic verification started for the selected candidate.', { stage: 'verification', tool: 'verify_schedule' })
   if (run.recommendationVerification?.passed) {
     push('VERIFICATION_PASSED', 'Candidate passed all deterministic constraint families.', { stage: 'verification', source: 'DETERMINISTIC_VERIFIER', tool: 'verify_schedule', metadata: { passed_families: run.recommendationVerification.passedFamilies, total_families: run.recommendationVerification.totalFamilies } })
-    push('AWAITING_APPROVAL', 'Verified recommendation is awaiting superintendent approval.', { stage: 'approval', terminal_state: 'AWAITING_APPROVAL', metadata: { recommendation_id: run.recommendationId, candidate_hash: run.candidateHash } })
+    push('AWAITING_APPROVAL', run.decisionKind === 'operational-correction' ? 'Verified operational correction is awaiting superintendent approval.' : 'Verified thermal improvement is awaiting superintendent approval.', { stage: 'approval', terminal_state: 'AWAITING_APPROVAL', metadata: { recommendation_id: run.recommendationId, candidate_hash: run.candidateHash } })
   } else {
     push('VERIFICATION_FAILED', 'Candidate failed deterministic verification; no recommendation was issued.', { stage: 'verification', source: 'DETERMINISTIC_VERIFIER', tool: 'verify_schedule', terminal_state: 'VERIFICATION_FAILED' })
     push('CURRENT_PLAN_PRESERVED', 'The current plan remains the operational plan.', { stage: 'safe outcome' })
@@ -238,7 +251,8 @@ export const runtimeUiConsistency = (session: RuntimeSession) => session.events.
   if (event.status === 'AWAITING_APPROVAL') return session.run.status === 'recommended' && Boolean(session.run.recommendationId && session.run.candidateHash)
   if (event.status === 'APPROVED') return session.approved
   if (event.status === 'THERMAL_EVIDENCE_UNAVAILABLE') return session.run.status === 'missing-evidence' || session.run.status === 'stale-evidence' || session.run.status === 'tool-failure'
-  if (event.status === 'NO_FEASIBLE_IMPROVEMENT') return session.run.status === 'no-improvement' || session.run.status === 'infeasible-original'
+  if (event.status === 'NO_FEASIBLE_IMPROVEMENT') return session.run.status === 'no-improvement'
+  if (event.status === 'NO_FEASIBLE_CORRECTION' || event.status === 'OPERATOR_ATTENTION_REQUIRED') return session.run.status === 'no-feasible-correction'
   if (event.status === 'AI_ANALYSIS_UNAVAILABLE') return event.terminal_state === 'AI_ANALYSIS_UNAVAILABLE'
   return true
 })
