@@ -1,0 +1,181 @@
+{
+  "canonicalResult": "REAL_NO_FEASIBLE_IMPROVEMENT",
+  "deterministicStatus": "no-improvement",
+  "baselineSchedule": {
+    "G0": "06:00",
+    "G1": "06:30",
+    "G2": "08:30",
+    "G3": "10:30",
+    "G4": "12:30",
+    "C1": "06:00",
+    "C2": "08:00",
+    "C3": "09:00",
+    "C4": "09:30",
+    "C5": "13:00",
+    "E1": "06:00",
+    "E2": "08:00",
+    "E3": "10:00",
+    "E4": "13:00"
+  },
+  "proposedSchedule": null,
+  "baselineTotalShhch": 91.5,
+  "baselineMovableShhch": 67,
+  "baselineFixedShhch": 24.5,
+  "proposedTotalShhch": null,
+  "proposedMovableShhch": null,
+  "proposedFixedShhch": null,
+  "shhchDelta": null,
+  "tasksRetimed": null,
+  "schedulerStats": {
+    "candidatesConsidered": 144,
+    "feasibleCandidates": 42,
+    "rejectedCandidates": 102
+  },
+  "baselineVerification": {
+    "passed": false,
+    "passedFamilies": 5,
+    "totalFamilies": 6,
+    "totalChecks": 81,
+    "families": [
+      {
+        "id": "fixed",
+        "label": "Fixed commitments",
+        "passed": true,
+        "checks": 5,
+        "detail": "5 anchors unchanged"
+      },
+      {
+        "id": "dependencies",
+        "label": "Dependencies",
+        "passed": true,
+        "checks": 11,
+        "detail": "11 precedence links preserved"
+      },
+      {
+        "id": "qualifications",
+        "label": "Qualifications",
+        "passed": true,
+        "checks": 14,
+        "detail": "14 assignments qualified"
+      },
+      {
+        "id": "deadlines",
+        "label": "Deadlines + bounds",
+        "passed": true,
+        "checks": 14,
+        "detail": "14 finish times in bounds"
+      },
+      {
+        "id": "crew-availability",
+        "label": "Crew availability",
+        "passed": true,
+        "checks": 26,
+        "detail": "26 same-crew pairs conflict-free"
+      },
+      {
+        "id": "employer-policy",
+        "label": "Employer controls",
+        "passed": false,
+        "checks": 11,
+        "detail": "11 outdoor tasks checked"
+      }
+    ]
+  },
+  "candidateVerification": {
+    "passed": true,
+    "passedFamilies": 6,
+    "totalFamilies": 6,
+    "totalChecks": 81,
+    "families": [
+      {
+        "id": "fixed",
+        "label": "Fixed commitments",
+        "passed": true,
+        "checks": 5,
+        "detail": "5 anchors unchanged"
+      },
+      {
+        "id": "dependencies",
+        "label": "Dependencies",
+        "passed": true,
+        "checks": 11,
+        "detail": "11 precedence links preserved"
+      },
+      {
+        "id": "qualifications",
+        "label": "Qualifications",
+        "passed": true,
+        "checks": 14,
+        "detail": "14 assignments qualified"
+      },
+      {
+        "id": "deadlines",
+        "label": "Deadlines + bounds",
+        "passed": true,
+        "checks": 14,
+        "detail": "14 finish times in bounds"
+      },
+      {
+        "id": "crew-availability",
+        "label": "Crew availability",
+        "passed": true,
+        "checks": 26,
+        "detail": "26 same-crew pairs conflict-free"
+      },
+      {
+        "id": "employer-policy",
+        "label": "Employer controls",
+        "passed": true,
+        "checks": 11,
+        "detail": "11 outdoor tasks checked"
+      }
+    ]
+  },
+  "feasibleAlternativeVerification": "PASS",
+  "hardConstraintFamilies": [
+    {
+      "id": "fixed",
+      "label": "Fixed commitments",
+      "passed": true,
+      "checks": 5,
+      "detail": "5 anchors unchanged"
+    },
+    {
+      "id": "dependencies",
+      "label": "Dependencies",
+      "passed": true,
+      "checks": 11,
+      "detail": "11 precedence links preserved"
+    },
+    {
+      "id": "qualifications",
+      "label": "Qualifications",
+      "passed": true,
+      "checks": 14,
+      "detail": "14 assignments qualified"
+    },
+    {
+      "id": "deadlines",
+      "label": "Deadlines + bounds",
+      "passed": true,
+      "checks": 14,
+      "detail": "14 finish times in bounds"
+    },
+    {
+      "id": "crew-availability",
+      "label": "Crew availability",
+      "passed": true,
+      "checks": 26,
+      "detail": "26 same-crew pairs conflict-free"
+    },
+    {
+      "id": "employer-policy",
+      "label": "Employer controls",
+      "passed": false,
+      "checks": 11,
+      "detail": "11 outdoor tasks checked"
+    }
+  ],
+  "schedulerMessage": "No defensible improvement found. The original plan remains the operational plan.",
+  "frozenEngine": "src/demo/engine.ts"
+}

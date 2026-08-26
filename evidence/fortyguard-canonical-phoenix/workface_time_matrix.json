@@ -1,0 +1,552 @@
+{
+  "status": "COMPLETE",
+  "semantics": {
+    "date": "2025-07-15",
+    "timezone": "America/Phoenix",
+    "requestTimeSemantics": "AOI_LOCAL_TIME",
+    "analyticType": "exceedance",
+    "units": "hour",
+    "trigger": {
+      "thresholdC": 32,
+      "quantity": "fortyguard_modeled_temperature",
+      "provenance": "CrewClock project_thermal_trigger configured before live retrieval; FortyGuard modeled temperature, not heat index.",
+      "thresholdUnits": "celsius",
+      "direction": "above"
+    }
+  },
+  "method": "Frozen CrewClock area-weighted tile intersection and schedule-aligned exceedance union; overlapping evidence intervals are not double-counted.",
+  "workfaceGeometry": {
+    "validation": "PASS",
+    "interpretation": "Each provider tile intersects each declared workface; ratios are retained to distinguish overlap from a claim of full-face coverage.",
+    "overlapRatiosByWindow": {
+      "north": 0.569696,
+      "south": 0.529689,
+      "laydown": 0.933531,
+      "access": 1
+    }
+  },
+  "rows": [
+    {
+      "taskId": "G0",
+      "task": "Traffic-control handoff",
+      "workface": "north",
+      "crewId": "ground",
+      "crewSize": 6,
+      "scheduledStart": "06:00",
+      "scheduledEndMinutes": 390,
+      "evidenceWindows": [
+        {
+          "start": "06:00",
+          "end": "08:00",
+          "resultHash": "b6c793d1b52c2bfc1440a12f03772dcd9037d1b8d6b7349c7cb359ed295a3061",
+          "valueHours": 2
+        },
+        {
+          "start": "08:00",
+          "end": "10:00",
+          "resultHash": "04a96cbb93cd6a683e4cb30603a077ba6d1dc445db07413cf51b008683517c2f",
+          "valueHours": 2
+        },
+        {
+          "start": "10:00",
+          "end": "12:00",
+          "resultHash": "953a269ebe6f4714b58026b250603f17cacbc06c134202c530e86c05e57a3178",
+          "valueHours": 2
+        },
+        {
+          "start": "12:00",
+          "end": "14:00",
+          "resultHash": "9372bfa6b8fb5dc8c45b6b2f5835c50dab94daa27eb7c698338b9fee716ea54e",
+          "valueHours": 2
+        },
+        {
+          "start": "14:00",
+          "end": "16:00",
+          "resultHash": "c3926ed63f4622b87f7950abc780f6b966d0e02aba97e3faec38fb727bcc4251",
+          "valueHours": 2
+        }
+      ],
+      "validExceedanceHours": 0.5,
+      "crewHours": 3,
+      "fixed": true,
+      "provenance": [
+        "LIVE_FORTYGUARD:60568d12-10d6-478b-af83-7d197c1eec37:b6c793d1b52c2bfc1440a12f03772dcd9037d1b8d6b7349c7cb359ed295a3061"
+      ]
+    },
+    {
+      "taskId": "G2",
+      "task": "Signal trench excavation",
+      "workface": "north",
+      "crewId": "ground",
+      "crewSize": 6,
+      "scheduledStart": "08:30",
+      "scheduledEndMinutes": 630,
+      "evidenceWindows": [
+        {
+          "start": "06:00",
+          "end": "08:00",
+          "resultHash": "b6c793d1b52c2bfc1440a12f03772dcd9037d1b8d6b7349c7cb359ed295a3061",
+          "valueHours": 2
+        },
+        {
+          "start": "08:00",
+          "end": "10:00",
+          "resultHash": "04a96cbb93cd6a683e4cb30603a077ba6d1dc445db07413cf51b008683517c2f",
+          "valueHours": 2
+        },
+        {
+          "start": "10:00",
+          "end": "12:00",
+          "resultHash": "953a269ebe6f4714b58026b250603f17cacbc06c134202c530e86c05e57a3178",
+          "valueHours": 2
+        },
+        {
+          "start": "12:00",
+          "end": "14:00",
+          "resultHash": "9372bfa6b8fb5dc8c45b6b2f5835c50dab94daa27eb7c698338b9fee716ea54e",
+          "valueHours": 2
+        },
+        {
+          "start": "14:00",
+          "end": "16:00",
+          "resultHash": "c3926ed63f4622b87f7950abc780f6b966d0e02aba97e3faec38fb727bcc4251",
+          "valueHours": 2
+        }
+      ],
+      "validExceedanceHours": 2,
+      "crewHours": 12,
+      "fixed": false,
+      "provenance": [
+        "LIVE_FORTYGUARD:58e409cf-3134-4427-9b5e-9be5ded00a51:04a96cbb93cd6a683e4cb30603a077ba6d1dc445db07413cf51b008683517c2f",
+        "LIVE_FORTYGUARD:8fc2078e-a854-4e0b-9757-16043f9265b2:953a269ebe6f4714b58026b250603f17cacbc06c134202c530e86c05e57a3178"
+      ]
+    },
+    {
+      "taskId": "G3",
+      "task": "Fine grade & compact",
+      "workface": "north",
+      "crewId": "ground",
+      "crewSize": 6,
+      "scheduledStart": "10:30",
+      "scheduledEndMinutes": 750,
+      "evidenceWindows": [
+        {
+          "start": "06:00",
+          "end": "08:00",
+          "resultHash": "b6c793d1b52c2bfc1440a12f03772dcd9037d1b8d6b7349c7cb359ed295a3061",
+          "valueHours": 2
+        },
+        {
+          "start": "08:00",
+          "end": "10:00",
+          "resultHash": "04a96cbb93cd6a683e4cb30603a077ba6d1dc445db07413cf51b008683517c2f",
+          "valueHours": 2
+        },
+        {
+          "start": "10:00",
+          "end": "12:00",
+          "resultHash": "953a269ebe6f4714b58026b250603f17cacbc06c134202c530e86c05e57a3178",
+          "valueHours": 2
+        },
+        {
+          "start": "12:00",
+          "end": "14:00",
+          "resultHash": "9372bfa6b8fb5dc8c45b6b2f5835c50dab94daa27eb7c698338b9fee716ea54e",
+          "valueHours": 2
+        },
+        {
+          "start": "14:00",
+          "end": "16:00",
+          "resultHash": "c3926ed63f4622b87f7950abc780f6b966d0e02aba97e3faec38fb727bcc4251",
+          "valueHours": 2
+        }
+      ],
+      "validExceedanceHours": 2,
+      "crewHours": 12,
+      "fixed": false,
+      "provenance": [
+        "LIVE_FORTYGUARD:8fc2078e-a854-4e0b-9757-16043f9265b2:953a269ebe6f4714b58026b250603f17cacbc06c134202c530e86c05e57a3178",
+        "LIVE_FORTYGUARD:33e67a0e-412a-4fe2-a761-44c281fecaa7:9372bfa6b8fb5dc8c45b6b2f5835c50dab94daa27eb7c698338b9fee716ea54e"
+      ]
+    },
+    {
+      "taskId": "G4",
+      "task": "Conduit bedding",
+      "workface": "north",
+      "crewId": "ground",
+      "crewSize": 6,
+      "scheduledStart": "12:30",
+      "scheduledEndMinutes": 870,
+      "evidenceWindows": [
+        {
+          "start": "06:00",
+          "end": "08:00",
+          "resultHash": "b6c793d1b52c2bfc1440a12f03772dcd9037d1b8d6b7349c7cb359ed295a3061",
+          "valueHours": 2
+        },
+        {
+          "start": "08:00",
+          "end": "10:00",
+          "resultHash": "04a96cbb93cd6a683e4cb30603a077ba6d1dc445db07413cf51b008683517c2f",
+          "valueHours": 2
+        },
+        {
+          "start": "10:00",
+          "end": "12:00",
+          "resultHash": "953a269ebe6f4714b58026b250603f17cacbc06c134202c530e86c05e57a3178",
+          "valueHours": 2
+        },
+        {
+          "start": "12:00",
+          "end": "14:00",
+          "resultHash": "9372bfa6b8fb5dc8c45b6b2f5835c50dab94daa27eb7c698338b9fee716ea54e",
+          "valueHours": 2
+        },
+        {
+          "start": "14:00",
+          "end": "16:00",
+          "resultHash": "c3926ed63f4622b87f7950abc780f6b966d0e02aba97e3faec38fb727bcc4251",
+          "valueHours": 2
+        }
+      ],
+      "validExceedanceHours": 2,
+      "crewHours": 12,
+      "fixed": false,
+      "provenance": [
+        "LIVE_FORTYGUARD:33e67a0e-412a-4fe2-a761-44c281fecaa7:9372bfa6b8fb5dc8c45b6b2f5835c50dab94daa27eb7c698338b9fee716ea54e",
+        "LIVE_FORTYGUARD:94b8cb21-ec66-4308-9bf7-4a3a723fd33b:c3926ed63f4622b87f7950abc780f6b966d0e02aba97e3faec38fb727bcc4251"
+      ]
+    },
+    {
+      "taskId": "C1",
+      "task": "Foundation formwork",
+      "workface": "south",
+      "crewId": "concrete",
+      "crewSize": 5,
+      "scheduledStart": "06:00",
+      "scheduledEndMinutes": 480,
+      "evidenceWindows": [
+        {
+          "start": "06:00",
+          "end": "08:00",
+          "resultHash": "b6c793d1b52c2bfc1440a12f03772dcd9037d1b8d6b7349c7cb359ed295a3061",
+          "valueHours": 2
+        },
+        {
+          "start": "08:00",
+          "end": "10:00",
+          "resultHash": "04a96cbb93cd6a683e4cb30603a077ba6d1dc445db07413cf51b008683517c2f",
+          "valueHours": 2
+        },
+        {
+          "start": "10:00",
+          "end": "12:00",
+          "resultHash": "953a269ebe6f4714b58026b250603f17cacbc06c134202c530e86c05e57a3178",
+          "valueHours": 2
+        },
+        {
+          "start": "12:00",
+          "end": "14:00",
+          "resultHash": "9372bfa6b8fb5dc8c45b6b2f5835c50dab94daa27eb7c698338b9fee716ea54e",
+          "valueHours": 2
+        },
+        {
+          "start": "14:00",
+          "end": "16:00",
+          "resultHash": "c3926ed63f4622b87f7950abc780f6b966d0e02aba97e3faec38fb727bcc4251",
+          "valueHours": 2
+        }
+      ],
+      "validExceedanceHours": 2,
+      "crewHours": 10,
+      "fixed": false,
+      "provenance": [
+        "LIVE_FORTYGUARD:60568d12-10d6-478b-af83-7d197c1eec37:b6c793d1b52c2bfc1440a12f03772dcd9037d1b8d6b7349c7cb359ed295a3061"
+      ]
+    },
+    {
+      "taskId": "C2",
+      "task": "Rebar & anchor bolts",
+      "workface": "south",
+      "crewId": "concrete",
+      "crewSize": 5,
+      "scheduledStart": "08:00",
+      "scheduledEndMinutes": 540,
+      "evidenceWindows": [
+        {
+          "start": "06:00",
+          "end": "08:00",
+          "resultHash": "b6c793d1b52c2bfc1440a12f03772dcd9037d1b8d6b7349c7cb359ed295a3061",
+          "valueHours": 2
+        },
+        {
+          "start": "08:00",
+          "end": "10:00",
+          "resultHash": "04a96cbb93cd6a683e4cb30603a077ba6d1dc445db07413cf51b008683517c2f",
+          "valueHours": 2
+        },
+        {
+          "start": "10:00",
+          "end": "12:00",
+          "resultHash": "953a269ebe6f4714b58026b250603f17cacbc06c134202c530e86c05e57a3178",
+          "valueHours": 2
+        },
+        {
+          "start": "12:00",
+          "end": "14:00",
+          "resultHash": "9372bfa6b8fb5dc8c45b6b2f5835c50dab94daa27eb7c698338b9fee716ea54e",
+          "valueHours": 2
+        },
+        {
+          "start": "14:00",
+          "end": "16:00",
+          "resultHash": "c3926ed63f4622b87f7950abc780f6b966d0e02aba97e3faec38fb727bcc4251",
+          "valueHours": 2
+        }
+      ],
+      "validExceedanceHours": 1,
+      "crewHours": 5,
+      "fixed": false,
+      "provenance": [
+        "LIVE_FORTYGUARD:58e409cf-3134-4427-9b5e-9be5ded00a51:04a96cbb93cd6a683e4cb30603a077ba6d1dc445db07413cf51b008683517c2f"
+      ]
+    },
+    {
+      "taskId": "C4",
+      "task": "Foundation concrete pour",
+      "workface": "south",
+      "crewId": "concrete",
+      "crewSize": 5,
+      "scheduledStart": "09:30",
+      "scheduledEndMinutes": 690,
+      "evidenceWindows": [
+        {
+          "start": "06:00",
+          "end": "08:00",
+          "resultHash": "b6c793d1b52c2bfc1440a12f03772dcd9037d1b8d6b7349c7cb359ed295a3061",
+          "valueHours": 2
+        },
+        {
+          "start": "08:00",
+          "end": "10:00",
+          "resultHash": "04a96cbb93cd6a683e4cb30603a077ba6d1dc445db07413cf51b008683517c2f",
+          "valueHours": 2
+        },
+        {
+          "start": "10:00",
+          "end": "12:00",
+          "resultHash": "953a269ebe6f4714b58026b250603f17cacbc06c134202c530e86c05e57a3178",
+          "valueHours": 2
+        },
+        {
+          "start": "12:00",
+          "end": "14:00",
+          "resultHash": "9372bfa6b8fb5dc8c45b6b2f5835c50dab94daa27eb7c698338b9fee716ea54e",
+          "valueHours": 2
+        },
+        {
+          "start": "14:00",
+          "end": "16:00",
+          "resultHash": "c3926ed63f4622b87f7950abc780f6b966d0e02aba97e3faec38fb727bcc4251",
+          "valueHours": 2
+        }
+      ],
+      "validExceedanceHours": 2,
+      "crewHours": 10,
+      "fixed": true,
+      "provenance": [
+        "LIVE_FORTYGUARD:58e409cf-3134-4427-9b5e-9be5ded00a51:04a96cbb93cd6a683e4cb30603a077ba6d1dc445db07413cf51b008683517c2f",
+        "LIVE_FORTYGUARD:8fc2078e-a854-4e0b-9757-16043f9265b2:953a269ebe6f4714b58026b250603f17cacbc06c134202c530e86c05e57a3178"
+      ]
+    },
+    {
+      "taskId": "C5",
+      "task": "Finish & protect concrete",
+      "workface": "south",
+      "crewId": "concrete",
+      "crewSize": 5,
+      "scheduledStart": "13:00",
+      "scheduledEndMinutes": 870,
+      "evidenceWindows": [
+        {
+          "start": "06:00",
+          "end": "08:00",
+          "resultHash": "b6c793d1b52c2bfc1440a12f03772dcd9037d1b8d6b7349c7cb359ed295a3061",
+          "valueHours": 2
+        },
+        {
+          "start": "08:00",
+          "end": "10:00",
+          "resultHash": "04a96cbb93cd6a683e4cb30603a077ba6d1dc445db07413cf51b008683517c2f",
+          "valueHours": 2
+        },
+        {
+          "start": "10:00",
+          "end": "12:00",
+          "resultHash": "953a269ebe6f4714b58026b250603f17cacbc06c134202c530e86c05e57a3178",
+          "valueHours": 2
+        },
+        {
+          "start": "12:00",
+          "end": "14:00",
+          "resultHash": "9372bfa6b8fb5dc8c45b6b2f5835c50dab94daa27eb7c698338b9fee716ea54e",
+          "valueHours": 2
+        },
+        {
+          "start": "14:00",
+          "end": "16:00",
+          "resultHash": "c3926ed63f4622b87f7950abc780f6b966d0e02aba97e3faec38fb727bcc4251",
+          "valueHours": 2
+        }
+      ],
+      "validExceedanceHours": 1.5,
+      "crewHours": 7.5,
+      "fixed": true,
+      "provenance": [
+        "LIVE_FORTYGUARD:33e67a0e-412a-4fe2-a761-44c281fecaa7:9372bfa6b8fb5dc8c45b6b2f5835c50dab94daa27eb7c698338b9fee716ea54e",
+        "LIVE_FORTYGUARD:94b8cb21-ec66-4308-9bf7-4a3a723fd33b:c3926ed63f4622b87f7950abc780f6b966d0e02aba97e3faec38fb727bcc4251"
+      ]
+    },
+    {
+      "taskId": "E2",
+      "task": "Proof duct & pull line",
+      "workface": "south",
+      "crewId": "electrical",
+      "crewSize": 4,
+      "scheduledStart": "08:00",
+      "scheduledEndMinutes": 600,
+      "evidenceWindows": [
+        {
+          "start": "06:00",
+          "end": "08:00",
+          "resultHash": "b6c793d1b52c2bfc1440a12f03772dcd9037d1b8d6b7349c7cb359ed295a3061",
+          "valueHours": 2
+        },
+        {
+          "start": "08:00",
+          "end": "10:00",
+          "resultHash": "04a96cbb93cd6a683e4cb30603a077ba6d1dc445db07413cf51b008683517c2f",
+          "valueHours": 2
+        },
+        {
+          "start": "10:00",
+          "end": "12:00",
+          "resultHash": "953a269ebe6f4714b58026b250603f17cacbc06c134202c530e86c05e57a3178",
+          "valueHours": 2
+        },
+        {
+          "start": "12:00",
+          "end": "14:00",
+          "resultHash": "9372bfa6b8fb5dc8c45b6b2f5835c50dab94daa27eb7c698338b9fee716ea54e",
+          "valueHours": 2
+        },
+        {
+          "start": "14:00",
+          "end": "16:00",
+          "resultHash": "c3926ed63f4622b87f7950abc780f6b966d0e02aba97e3faec38fb727bcc4251",
+          "valueHours": 2
+        }
+      ],
+      "validExceedanceHours": 2,
+      "crewHours": 8,
+      "fixed": false,
+      "provenance": [
+        "LIVE_FORTYGUARD:58e409cf-3134-4427-9b5e-9be5ded00a51:04a96cbb93cd6a683e4cb30603a077ba6d1dc445db07413cf51b008683517c2f"
+      ]
+    },
+    {
+      "taskId": "E3",
+      "task": "Pull signal conductors",
+      "workface": "south",
+      "crewId": "electrical",
+      "crewSize": 4,
+      "scheduledStart": "10:00",
+      "scheduledEndMinutes": 720,
+      "evidenceWindows": [
+        {
+          "start": "06:00",
+          "end": "08:00",
+          "resultHash": "b6c793d1b52c2bfc1440a12f03772dcd9037d1b8d6b7349c7cb359ed295a3061",
+          "valueHours": 2
+        },
+        {
+          "start": "08:00",
+          "end": "10:00",
+          "resultHash": "04a96cbb93cd6a683e4cb30603a077ba6d1dc445db07413cf51b008683517c2f",
+          "valueHours": 2
+        },
+        {
+          "start": "10:00",
+          "end": "12:00",
+          "resultHash": "953a269ebe6f4714b58026b250603f17cacbc06c134202c530e86c05e57a3178",
+          "valueHours": 2
+        },
+        {
+          "start": "12:00",
+          "end": "14:00",
+          "resultHash": "9372bfa6b8fb5dc8c45b6b2f5835c50dab94daa27eb7c698338b9fee716ea54e",
+          "valueHours": 2
+        },
+        {
+          "start": "14:00",
+          "end": "16:00",
+          "resultHash": "c3926ed63f4622b87f7950abc780f6b966d0e02aba97e3faec38fb727bcc4251",
+          "valueHours": 2
+        }
+      ],
+      "validExceedanceHours": 2,
+      "crewHours": 8,
+      "fixed": false,
+      "provenance": [
+        "LIVE_FORTYGUARD:8fc2078e-a854-4e0b-9757-16043f9265b2:953a269ebe6f4714b58026b250603f17cacbc06c134202c530e86c05e57a3178"
+      ]
+    },
+    {
+      "taskId": "E4",
+      "task": "Inspector test window",
+      "workface": "south",
+      "crewId": "electrical",
+      "crewSize": 4,
+      "scheduledStart": "13:00",
+      "scheduledEndMinutes": 840,
+      "evidenceWindows": [
+        {
+          "start": "06:00",
+          "end": "08:00",
+          "resultHash": "b6c793d1b52c2bfc1440a12f03772dcd9037d1b8d6b7349c7cb359ed295a3061",
+          "valueHours": 2
+        },
+        {
+          "start": "08:00",
+          "end": "10:00",
+          "resultHash": "04a96cbb93cd6a683e4cb30603a077ba6d1dc445db07413cf51b008683517c2f",
+          "valueHours": 2
+        },
+        {
+          "start": "10:00",
+          "end": "12:00",
+          "resultHash": "953a269ebe6f4714b58026b250603f17cacbc06c134202c530e86c05e57a3178",
+          "valueHours": 2
+        },
+        {
+          "start": "12:00",
+          "end": "14:00",
+          "resultHash": "9372bfa6b8fb5dc8c45b6b2f5835c50dab94daa27eb7c698338b9fee716ea54e",
+          "valueHours": 2
+        },
+        {
+          "start": "14:00",
+          "end": "16:00",
+          "resultHash": "c3926ed63f4622b87f7950abc780f6b966d0e02aba97e3faec38fb727bcc4251",
+          "valueHours": 2
+        }
+      ],
+      "validExceedanceHours": 1,
+      "crewHours": 4,
+      "fixed": true,
+      "provenance": [
+        "LIVE_FORTYGUARD:33e67a0e-412a-4fe2-a761-44c281fecaa7:9372bfa6b8fb5dc8c45b6b2f5835c50dab94daa27eb7c698338b9fee716ea54e"
+      ]
+    }
+  ]
+}

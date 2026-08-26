@@ -1,0 +1,156 @@
+{
+  "definition": "valid scheduled exceedance overlap hours × crew size",
+  "baseline": {
+    "label": "baseline",
+    "status": "SHHCH_READY",
+    "valid": true,
+    "totalShhch": 91.5,
+    "movableShhch": 67,
+    "fixedShhch": 24.5,
+    "contributions": [
+      {
+        "taskId": "G0",
+        "workfaceId": "north",
+        "overlappingExceedanceHours": 0.5,
+        "crewHours": 3,
+        "provenance": [
+          "LIVE_FORTYGUARD:60568d12-10d6-478b-af83-7d197c1eec37:b6c793d1b52c2bfc1440a12f03772dcd9037d1b8d6b7349c7cb359ed295a3061"
+        ],
+        "fixed": true
+      },
+      {
+        "taskId": "G2",
+        "workfaceId": "north",
+        "overlappingExceedanceHours": 2,
+        "crewHours": 12,
+        "provenance": [
+          "LIVE_FORTYGUARD:58e409cf-3134-4427-9b5e-9be5ded00a51:04a96cbb93cd6a683e4cb30603a077ba6d1dc445db07413cf51b008683517c2f",
+          "LIVE_FORTYGUARD:8fc2078e-a854-4e0b-9757-16043f9265b2:953a269ebe6f4714b58026b250603f17cacbc06c134202c530e86c05e57a3178"
+        ],
+        "fixed": false
+      },
+      {
+        "taskId": "G3",
+        "workfaceId": "north",
+        "overlappingExceedanceHours": 2,
+        "crewHours": 12,
+        "provenance": [
+          "LIVE_FORTYGUARD:8fc2078e-a854-4e0b-9757-16043f9265b2:953a269ebe6f4714b58026b250603f17cacbc06c134202c530e86c05e57a3178",
+          "LIVE_FORTYGUARD:33e67a0e-412a-4fe2-a761-44c281fecaa7:9372bfa6b8fb5dc8c45b6b2f5835c50dab94daa27eb7c698338b9fee716ea54e"
+        ],
+        "fixed": false
+      },
+      {
+        "taskId": "G4",
+        "workfaceId": "north",
+        "overlappingExceedanceHours": 2,
+        "crewHours": 12,
+        "provenance": [
+          "LIVE_FORTYGUARD:33e67a0e-412a-4fe2-a761-44c281fecaa7:9372bfa6b8fb5dc8c45b6b2f5835c50dab94daa27eb7c698338b9fee716ea54e",
+          "LIVE_FORTYGUARD:94b8cb21-ec66-4308-9bf7-4a3a723fd33b:c3926ed63f4622b87f7950abc780f6b966d0e02aba97e3faec38fb727bcc4251"
+        ],
+        "fixed": false
+      },
+      {
+        "taskId": "C1",
+        "workfaceId": "south",
+        "overlappingExceedanceHours": 2,
+        "crewHours": 10,
+        "provenance": [
+          "LIVE_FORTYGUARD:60568d12-10d6-478b-af83-7d197c1eec37:b6c793d1b52c2bfc1440a12f03772dcd9037d1b8d6b7349c7cb359ed295a3061"
+        ],
+        "fixed": false
+      },
+      {
+        "taskId": "C2",
+        "workfaceId": "south",
+        "overlappingExceedanceHours": 1,
+        "crewHours": 5,
+        "provenance": [
+          "LIVE_FORTYGUARD:58e409cf-3134-4427-9b5e-9be5ded00a51:04a96cbb93cd6a683e4cb30603a077ba6d1dc445db07413cf51b008683517c2f"
+        ],
+        "fixed": false
+      },
+      {
+        "taskId": "C4",
+        "workfaceId": "south",
+        "overlappingExceedanceHours": 2,
+        "crewHours": 10,
+        "provenance": [
+          "LIVE_FORTYGUARD:58e409cf-3134-4427-9b5e-9be5ded00a51:04a96cbb93cd6a683e4cb30603a077ba6d1dc445db07413cf51b008683517c2f",
+          "LIVE_FORTYGUARD:8fc2078e-a854-4e0b-9757-16043f9265b2:953a269ebe6f4714b58026b250603f17cacbc06c134202c530e86c05e57a3178"
+        ],
+        "fixed": true
+      },
+      {
+        "taskId": "C5",
+        "workfaceId": "south",
+        "overlappingExceedanceHours": 1.5,
+        "crewHours": 7.5,
+        "provenance": [
+          "LIVE_FORTYGUARD:33e67a0e-412a-4fe2-a761-44c281fecaa7:9372bfa6b8fb5dc8c45b6b2f5835c50dab94daa27eb7c698338b9fee716ea54e",
+          "LIVE_FORTYGUARD:94b8cb21-ec66-4308-9bf7-4a3a723fd33b:c3926ed63f4622b87f7950abc780f6b966d0e02aba97e3faec38fb727bcc4251"
+        ],
+        "fixed": true
+      },
+      {
+        "taskId": "E2",
+        "workfaceId": "south",
+        "overlappingExceedanceHours": 2,
+        "crewHours": 8,
+        "provenance": [
+          "LIVE_FORTYGUARD:58e409cf-3134-4427-9b5e-9be5ded00a51:04a96cbb93cd6a683e4cb30603a077ba6d1dc445db07413cf51b008683517c2f"
+        ],
+        "fixed": false
+      },
+      {
+        "taskId": "E3",
+        "workfaceId": "south",
+        "overlappingExceedanceHours": 2,
+        "crewHours": 8,
+        "provenance": [
+          "LIVE_FORTYGUARD:8fc2078e-a854-4e0b-9757-16043f9265b2:953a269ebe6f4714b58026b250603f17cacbc06c134202c530e86c05e57a3178"
+        ],
+        "fixed": false
+      },
+      {
+        "taskId": "E4",
+        "workfaceId": "south",
+        "overlappingExceedanceHours": 1,
+        "crewHours": 4,
+        "provenance": [
+          "LIVE_FORTYGUARD:33e67a0e-412a-4fe2-a761-44c281fecaa7:9372bfa6b8fb5dc8c45b6b2f5835c50dab94daa27eb7c698338b9fee716ea54e"
+        ],
+        "fixed": true
+      }
+    ]
+  },
+  "proposed": null,
+  "evidenceHashInputs": [
+    {
+      "start": "06:00",
+      "end": "08:00",
+      "resultHash": "b6c793d1b52c2bfc1440a12f03772dcd9037d1b8d6b7349c7cb359ed295a3061"
+    },
+    {
+      "start": "08:00",
+      "end": "10:00",
+      "resultHash": "04a96cbb93cd6a683e4cb30603a077ba6d1dc445db07413cf51b008683517c2f"
+    },
+    {
+      "start": "10:00",
+      "end": "12:00",
+      "resultHash": "953a269ebe6f4714b58026b250603f17cacbc06c134202c530e86c05e57a3178"
+    },
+    {
+      "start": "12:00",
+      "end": "14:00",
+      "resultHash": "9372bfa6b8fb5dc8c45b6b2f5835c50dab94daa27eb7c698338b9fee716ea54e"
+    },
+    {
+      "start": "14:00",
+      "end": "16:00",
+      "resultHash": "c3926ed63f4622b87f7950abc780f6b966d0e02aba97e3faec38fb727bcc4251"
+    }
+  ]
+}

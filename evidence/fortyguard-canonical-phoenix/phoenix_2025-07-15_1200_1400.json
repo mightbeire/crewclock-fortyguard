@@ -1,0 +1,288 @@
+{
+  "activity_id": "33e67a0e-412a-4fe2-a761-44c281fecaa7",
+  "aoi": {
+    "features": [
+      {
+        "geometry": {
+          "coordinates": [
+            [
+              [
+                -112.01845,
+                33.43355
+              ],
+              [
+                -112.01755,
+                33.43355
+              ],
+              [
+                -112.01755,
+                33.43445
+              ],
+              [
+                -112.01845,
+                33.43445
+              ],
+              [
+                -112.01845,
+                33.43355
+              ]
+            ]
+          ],
+          "type": "Polygon"
+        },
+        "properties": {},
+        "type": "Feature"
+      }
+    ],
+    "type": "FeatureCollection"
+  },
+  "credit_delta": 4220,
+  "credits_after": {
+    "cycle_credits_used": 242480,
+    "cycle_remaining_credits": 1757520
+  },
+  "credits_before": {
+    "cycle_credits_used": 238260,
+    "cycle_remaining_credits": 1761740
+  },
+  "feature_count": 1,
+  "historical_date": "2025-07-15",
+  "local_window": {
+    "end": "14:00",
+    "start": "12:00",
+    "timezone": "America/Phoenix"
+  },
+  "operation": "POST /v1/heatmap; GET /v1/status/{activity_id}",
+  "phoenix_timezone": "America/Phoenix",
+  "project_thermal_trigger": {
+    "direction": "above",
+    "provenance": "CrewClock project_thermal_trigger configured before live retrieval; FortyGuard modeled temperature, not heat index.",
+    "quantity": "fortyguard_modeled_temperature",
+    "threshold_c": 32.0,
+    "threshold_units": "celsius"
+  },
+  "provenance": "LIVE_FORTYGUARD",
+  "request": {
+    "analytic_type": "exceedance",
+    "date_time": {
+      "end_time": "14:00",
+      "filter_type": 2,
+      "start_date": "2025-07-15",
+      "start_time": "12:00"
+    },
+    "direction": "above",
+    "granularity": 100,
+    "polygon_aoi": {
+      "features": [
+        {
+          "geometry": {
+            "coordinates": [
+              [
+                [
+                  -112.01845,
+                  33.43355
+                ],
+                [
+                  -112.01755,
+                  33.43355
+                ],
+                [
+                  -112.01755,
+                  33.43445
+                ],
+                [
+                  -112.01845,
+                  33.43445
+                ],
+                [
+                  -112.01845,
+                  33.43355
+                ]
+              ]
+            ],
+            "type": "Polygon"
+          },
+          "properties": {},
+          "type": "Feature"
+        }
+      ],
+      "type": "FeatureCollection"
+    },
+    "threshold": 32.0
+  },
+  "request_time_semantics": "AOI_LOCAL_TIME",
+  "result": {
+    "map_data": {
+      "features": [
+        {
+          "geometry": {
+            "coordinates": [
+              [
+                [
+                  -112.01822109947398,
+                  33.4336196024392
+                ],
+                [
+                  -112.01711620776446,
+                  33.433628669172144
+                ],
+                [
+                  -112.01712706332819,
+                  33.43455911841942
+                ],
+                [
+                  -112.01823196682514,
+                  33.43455005136807
+                ],
+                [
+                  -112.01822109947398,
+                  33.4336196024392
+                ]
+              ]
+            ],
+            "type": "Polygon"
+          },
+          "id": "0",
+          "properties": {
+            "tile_id": 0,
+            "value": 2.0
+          },
+          "type": "Feature"
+        }
+      ],
+      "type": "FeatureCollection"
+    },
+    "stats_data": {
+      "activity_id": "33e67a0e-412a-4fe2-a761-44c281fecaa7",
+      "analytic_type": "exceedance",
+      "max": 2.0,
+      "mean": 2.0,
+      "min": 2.0,
+      "n_cells": 1,
+      "units": "hour"
+    }
+  },
+  "result_sha256": "9372bfa6b8fb5dc8c45b6b2f5835c50dab94daa27eb7c698338b9fee716ea54e",
+  "retrieved_at_utc": "2026-08-26T10:58:13.311555+00:00",
+  "stats": {
+    "analytic_type": "exceedance",
+    "feature_count": 1,
+    "max": 2.0,
+    "mean": 2.0,
+    "min": 2.0,
+    "n_cells": 1,
+    "units": "hour",
+    "values": [
+      2.0
+    ]
+  },
+  "status": "COMPLETED",
+  "status_history": [
+    {
+      "has_result": false,
+      "status": "processing"
+    },
+    {
+      "has_result": false,
+      "status": "processing"
+    },
+    {
+      "has_result": false,
+      "status": "processing"
+    },
+    {
+      "has_result": false,
+      "status": "processing"
+    },
+    {
+      "has_result": false,
+      "status": "processing"
+    },
+    {
+      "has_result": false,
+      "status": "processing"
+    },
+    {
+      "has_result": false,
+      "status": "processing"
+    },
+    {
+      "has_result": true,
+      "status": "completed"
+    }
+  ],
+  "workfaces": {
+    "access": [
+      [
+        -112.01795,
+        33.43405
+      ],
+      [
+        -112.0176,
+        33.43405
+      ],
+      [
+        -112.0176,
+        33.4344
+      ],
+      [
+        -112.01795,
+        33.4344
+      ]
+    ],
+    "laydown": [
+      [
+        -112.01795,
+        33.4336
+      ],
+      [
+        -112.0176,
+        33.4336
+      ],
+      [
+        -112.0176,
+        33.43395
+      ],
+      [
+        -112.01795,
+        33.43395
+      ]
+    ],
+    "north": [
+      [
+        -112.0184,
+        33.434
+      ],
+      [
+        -112.018,
+        33.434
+      ],
+      [
+        -112.018,
+        33.4344
+      ],
+      [
+        -112.0184,
+        33.4344
+      ]
+    ],
+    "south": [
+      [
+        -112.0184,
+        33.4336
+      ],
+      [
+        -112.018,
+        33.4336
+      ],
+      [
+        -112.018,
+        33.434
+      ],
+      [
+        -112.0184,
+        33.434
+      ]
+    ]
+  }
+}

@@ -1,0 +1,211 @@
+{
+  "analytic_type": "exceedance",
+  "aoi": {
+    "features": [
+      {
+        "geometry": {
+          "coordinates": [
+            [
+              [
+                -112.01845,
+                33.43355
+              ],
+              [
+                -112.01755,
+                33.43355
+              ],
+              [
+                -112.01755,
+                33.43445
+              ],
+              [
+                -112.01845,
+                33.43445
+              ],
+              [
+                -112.01845,
+                33.43355
+              ]
+            ]
+          ],
+          "type": "Polygon"
+        },
+        "properties": {},
+        "type": "Feature"
+      }
+    ],
+    "type": "FeatureCollection"
+  },
+  "api_keys_used": [
+    "KEY_1"
+  ],
+  "credits_after_mission": {
+    "cycle_credits_used": 246700,
+    "cycle_remaining_credits": 1753300
+  },
+  "credits_before_mission": {
+    "cycle_credits_used": 225600,
+    "cycle_remaining_credits": 1774400
+  },
+  "credits_spent": 21100,
+  "decision_grade_coverage": true,
+  "environmental_parameter_calls": 0,
+  "failed_job_credits_charged": 0,
+  "failed_jobs": 0,
+  "geometry_validation": "PASS",
+  "historical_date": "2025-07-15",
+  "package": "CrewClock canonical Phoenix FortyGuard evidence",
+  "phoenix_timezone": "America/Phoenix",
+  "provider_status": "RESOLVED",
+  "request_time_semantics": "AOI_LOCAL_TIME",
+  "result_hashes": {
+    "06:00": "b6c793d1b52c2bfc1440a12f03772dcd9037d1b8d6b7349c7cb359ed295a3061",
+    "08:00": "04a96cbb93cd6a683e4cb30603a077ba6d1dc445db07413cf51b008683517c2f",
+    "10:00": "953a269ebe6f4714b58026b250603f17cacbc06c134202c530e86c05e57a3178",
+    "12:00": "9372bfa6b8fb5dc8c45b6b2f5835c50dab94daa27eb7c698338b9fee716ea54e",
+    "14:00": "c3926ed63f4622b87f7950abc780f6b966d0e02aba97e3faec38fb727bcc4251"
+  },
+  "sanity_request": {
+    "activity_id": "60568d12-10d6-478b-af83-7d197c1eec37",
+    "feature_count": 1,
+    "stats": {
+      "analytic_type": "exceedance",
+      "feature_count": 1,
+      "max": 2.0,
+      "mean": 2.0,
+      "min": 2.0,
+      "n_cells": 1,
+      "units": "hour",
+      "values": [
+        2.0
+      ]
+    },
+    "status": "COMPLETED"
+  },
+  "secrets_exposed": "NO",
+  "status": "COMPLETE",
+  "successful_jobs": 5,
+  "thermal_trigger": {
+    "direction": "above",
+    "provenance": "CrewClock project_thermal_trigger configured before live retrieval; FortyGuard modeled temperature, not heat index.",
+    "quantity": "fortyguard_modeled_temperature",
+    "threshold_c": 32.0,
+    "threshold_units": "celsius"
+  },
+  "windows": [
+    {
+      "activity_id": "60568d12-10d6-478b-af83-7d197c1eec37",
+      "end": "08:00",
+      "feature_count": 1,
+      "path": "phoenix_2025-07-15_0600_0800.json",
+      "start": "06:00",
+      "status": "COMPLETED"
+    },
+    {
+      "activity_id": "58e409cf-3134-4427-9b5e-9be5ded00a51",
+      "end": "10:00",
+      "feature_count": 1,
+      "path": "phoenix_2025-07-15_0800_1000.json",
+      "start": "08:00",
+      "status": "COMPLETED"
+    },
+    {
+      "activity_id": "8fc2078e-a854-4e0b-9757-16043f9265b2",
+      "end": "12:00",
+      "feature_count": 1,
+      "path": "phoenix_2025-07-15_1000_1200.json",
+      "start": "10:00",
+      "status": "COMPLETED"
+    },
+    {
+      "activity_id": "33e67a0e-412a-4fe2-a761-44c281fecaa7",
+      "end": "14:00",
+      "feature_count": 1,
+      "path": "phoenix_2025-07-15_1200_1400.json",
+      "start": "12:00",
+      "status": "COMPLETED"
+    },
+    {
+      "activity_id": "94b8cb21-ec66-4308-9bf7-4a3a723fd33b",
+      "end": "16:00",
+      "feature_count": 1,
+      "path": "phoenix_2025-07-15_1400_1600.json",
+      "start": "14:00",
+      "status": "COMPLETED"
+    }
+  ],
+  "workfaces": {
+    "access": [
+      [
+        -112.01795,
+        33.43405
+      ],
+      [
+        -112.0176,
+        33.43405
+      ],
+      [
+        -112.0176,
+        33.4344
+      ],
+      [
+        -112.01795,
+        33.4344
+      ]
+    ],
+    "laydown": [
+      [
+        -112.01795,
+        33.4336
+      ],
+      [
+        -112.0176,
+        33.4336
+      ],
+      [
+        -112.0176,
+        33.43395
+      ],
+      [
+        -112.01795,
+        33.43395
+      ]
+    ],
+    "north": [
+      [
+        -112.0184,
+        33.434
+      ],
+      [
+        -112.018,
+        33.434
+      ],
+      [
+        -112.018,
+        33.4344
+      ],
+      [
+        -112.0184,
+        33.4344
+      ]
+    ],
+    "south": [
+      [
+        -112.0184,
+        33.4336
+      ],
+      [
+        -112.018,
+        33.4336
+      ],
+      [
+        -112.018,
+        33.434
+      ],
+      [
+        -112.0184,
+        33.434
+      ]
+    ]
+  }
+}

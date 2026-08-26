@@ -1,0 +1,18 @@
+{
+  "providerStatus": "RESOLVED",
+  "sanityRequest": "PASS",
+  "sanityActivityId": "60568d12-10d6-478b-af83-7d197c1eec37",
+  "decisionGradeCoverage": "PASS",
+  "workfaceGeometryValidation": "PASS",
+  "canonicalResult": "REAL_NO_FEASIBLE_IMPROVEMENT",
+  "baseline": {
+    "total": 91.5,
+    "movable": 67,
+    "fixed": 24.5
+  },
+  "proposed": null,
+  "deterministicVerification": "NOT_APPLICABLE_NO_IMPROVEMENT",
+  "feasibleAlternativeVerification": "PASS",
+  "realEvidence": true,
+  "syntheticDemoRetained": true
+}
