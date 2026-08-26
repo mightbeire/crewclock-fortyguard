@@ -1,0 +1,29 @@
+{
+  "contract_version": "crewclock.evidence-registry.v1",
+  "artifacts": [
+    {
+      "evidence_id": "phoenix_synthetic_positive_v2",
+      "classification": "SYNTHETIC_TEST",
+      "content_hash": "1a64a8928d8e8ff25841300cdb3e37bc136cacc4bc4885b12ee849ebf751e413",
+      "source": "CrewClock generated regression fixture",
+      "aoi": "synthetic-construction-aoi",
+      "timezone": "America/Phoenix",
+      "threshold": { "quantity": "fortyguard_modeled_temperature", "value_c": 32, "direction": "above" },
+      "analytic_type": "exceedance",
+      "geometry": "four synthetic polygon workfaces",
+      "coverage": "06:00-16:00 local"
+    },
+    {
+      "evidence_id": "phoenix_canonical_2025_07_15",
+      "classification": "CANONICAL_FORTYGUARD",
+      "content_hash": "7f7af007a3a4020c07b16f8de63bb01425a53d70affb966d03e6467f37d7692a",
+      "source": "evidence/fortyguard-canonical-phoenix/request_manifest.json",
+      "aoi": "Phoenix canonical project AOI",
+      "timezone": "America/Phoenix",
+      "threshold": { "quantity": "fortyguard_modeled_temperature", "value_c": 32, "direction": "above" },
+      "analytic_type": "exceedance",
+      "geometry": "four bound polygon workfaces",
+      "coverage": "2025-07-15 06:00-16:00 local"
+    }
+  ]
+}

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { CREWS, WORKFACES, type Task } from './scenario'
 import { calculateScheduledHighHeatCrewHours, type ExceedanceWindow } from './shhch'
 import { runCrewClock, type ThermalEvidence } from './engine'
+import { SYNTHETIC_POSITIVE_EVIDENCE, SYNTHETIC_POSITIVE_POLICY } from './runtime'
 
 const tile = WORKFACES[0].polygon
 
@@ -147,5 +148,15 @@ describe('CrewClock canonical decision hierarchy', () => {
   it('orders equivalent candidates deterministically', () => {
     const tasks = [task('A', '11:00', 60, '15:00'), task('B', '12:00', 60, '15:00')]
     expect(run(tasks, fullHotEvidence())).toEqual(run(tasks, fullHotEvidence()))
+  })
+
+  it('locks the submitted synthetic capability result to engine output', () => {
+    const result = runCrewClock({ thermalEvidence: SYNTHETIC_POSITIVE_EVIDENCE, policy: SYNTHETIC_POSITIVE_POLICY, scenarioLabel: 'SYNTHETIC TEST SCENARIO' })
+    const moved = result.tasks.filter(item => result.recommendation?.[item.id] !== result.original[item.id])
+    expect(result.beforeCrewHours).toBe(39)
+    expect(result.afterCrewHours).toBe(20)
+    expect(moved.map(item => item.id)).toEqual(['G1', 'G2', 'G3', 'G4', 'E1', 'E2', 'E3'])
+    expect(result.originalVerification.passedFamilies).toBe(6)
+    expect(result.recommendationVerification?.passedFamilies).toBe(6)
   })
 })

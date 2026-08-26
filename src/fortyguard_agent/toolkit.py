@@ -22,6 +22,13 @@ from .models import Provenance, ToolResult
 from .state_machine import deterministic_decision_result
 from .thermal import ThermalContractError, assert_env_params_schema, assert_heatmap_schema, env_params_role
 
+ROOT = Path(__file__).resolve().parents[2]
+APPROVED_EVIDENCE_FILES = {
+    "phoenix_canonical_2025_07_15_1000_1200": ROOT / "evidence" / "fortyguard-canonical-phoenix" / "phoenix_2025-07-15_1000_1200.json",
+    "phoenix_contextual_tcm_v1": ROOT / ".agent_cache" / "live_geographies" / "phoenix_paved_industrial.json",
+    "phoenix_unavailable_probe_v1": ROOT / "evidence" / "crewclock-live-validation" / "single-forecast-probe" / "single_forecast_probe.json",
+}
+
 
 class FortyGuardToolkit:
     """Safe adapter around the vendored FortyGuard client plus derived tools.
@@ -96,10 +103,11 @@ class FortyGuardToolkit:
 
     def get_workface_thermal_evidence(self, arguments: dict[str, Any]) -> ToolResult:
         """Return compact cached-live evidence; this tool cannot submit a request."""
-        fixture = arguments.get("fixture")
+        evidence_id = arguments.get("evidence_id")
         endpoint = "/v1/heatmap"
-        if not fixture:
-            return ToolResult({}, Provenance(source="cached", endpoint=endpoint, assumptions=("CACHED_LIVE_FORTYGUARD",)), error="cached_live_fixture_required")
+        fixture = APPROVED_EVIDENCE_FILES.get(str(evidence_id))
+        if fixture is None:
+            return ToolResult({}, Provenance(source="cached", endpoint=endpoint, assumptions=("APPROVED_EVIDENCE_REGISTRY",)), error="unknown_or_missing_evidence_id")
         loaded = self.load_fixture(fixture, endpoint=endpoint)
         if not loaded.ok:
             return ToolResult({}, Provenance(source="cached", endpoint=endpoint, assumptions=("CACHED_LIVE_FORTYGUARD",)), error=loaded.error)
@@ -109,7 +117,7 @@ class FortyGuardToolkit:
         provenance = Provenance(
             source="cached",
             endpoint=endpoint,
-            request_hash=request_hash(endpoint, {key: value for key, value in arguments.items() if key != "fixture"}),
+            request_hash=request_hash(endpoint, arguments),
             activity_id=(wrapper.get("heatmap", {}).get("activity_id") if isinstance(wrapper, dict) else None) or (wrapper.get("activity_id") if isinstance(wrapper, dict) else None),
             assumptions=("CACHED_LIVE_FORTYGUARD", "raw tile arrays omitted from model context"),
         )
@@ -174,9 +182,10 @@ class FortyGuardToolkit:
 
     def get_environmental_context(self, arguments: dict[str, Any]) -> ToolResult:
         """Cached-only optional context for the real agent runtime."""
-        fixture = arguments.get("fixture")
-        if not fixture:
-            return ToolResult({}, Provenance(source="cached", endpoint="/v1/env_params", assumptions=("CACHED_LIVE_FORTYGUARD",)), error="cached_live_fixture_required")
+        evidence_id = arguments.get("evidence_id")
+        fixture = APPROVED_EVIDENCE_FILES.get(str(evidence_id))
+        if fixture is None:
+            return ToolResult({}, Provenance(source="cached", endpoint="/v1/env_params", assumptions=("APPROVED_EVIDENCE_REGISTRY",)), error="unknown_or_missing_evidence_id")
         loaded = self.load_fixture(fixture, endpoint="/v1/env_params")
         if not loaded.ok:
             return ToolResult({}, Provenance(source="cached", endpoint="/v1/env_params", assumptions=("CACHED_LIVE_FORTYGUARD",)), error=loaded.error)

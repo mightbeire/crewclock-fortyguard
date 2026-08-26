@@ -13,6 +13,9 @@ dependencies = []
 live = ["requests>=2.31.0"]
 test = ["pytest>=8.0"]
 
+[project.scripts]
+crewclock-api = "fortyguard_agent.production_service:main"
+
 [tool.setuptools.packages.find]
 where = ["src"]
 

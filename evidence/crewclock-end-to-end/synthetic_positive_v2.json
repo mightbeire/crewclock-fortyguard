@@ -1,0 +1,26 @@
+{
+  "evidence_id": "phoenix_synthetic_positive_v2",
+  "classification": "SYNTHETIC_TEST",
+  "source": "CrewClock generated regression fixture",
+  "aoi": "synthetic-construction-aoi",
+  "date": "2026-08-27",
+  "timezone": "America/Phoenix",
+  "analytic_type": "exceedance",
+  "trigger": {
+    "quantity": "fortyguard_modeled_temperature",
+    "threshold_c": 32,
+    "direction": "above"
+  },
+  "coverage": "06:00-16:00 local",
+  "qualifying_windows": [
+    { "start": "11:00", "end": "15:00", "geometry": "four synthetic polygon workfaces" }
+  ],
+  "policy": "Desert Build Co. synthetic capability policy v2",
+  "locked_engine_result": {
+    "baseline_shhch": 39,
+    "proposed_shhch": 20,
+    "tasks_retimed": ["G1", "G2", "G3", "G4", "E1", "E2", "E3"],
+    "baseline_constraints": "6/6",
+    "proposed_constraints": "6/6"
+  }
+}

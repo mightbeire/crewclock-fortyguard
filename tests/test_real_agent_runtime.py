@@ -180,7 +180,7 @@ def test_termination_classifier_accepts_canonical_underscore_states() -> None:
 
 def test_cached_live_thermal_tool_is_compact_and_never_live() -> None:
     toolkit = FortyGuardToolkit()
-    result = toolkit.get_workface_thermal_evidence({"fixture": ".agent_cache/live_geographies/phoenix_paved_industrial.json", "workfaces": ["WF-A"], "window": "11:00-15:00"})
+    result = toolkit.get_workface_thermal_evidence({"evidence_id": "phoenix_contextual_tcm_v1", "workfaces": ["WF-A"], "window": "11:00-15:00"})
     assert result.ok
     assert result.data["source"] == "CACHED_LIVE_FORTYGUARD"
     assert result.data["coverage"] == "VALID"
@@ -192,7 +192,7 @@ def test_cached_live_thermal_tool_is_compact_and_never_live() -> None:
 
 def test_completed_empty_fixture_is_invalid_evidence() -> None:
     toolkit = FortyGuardToolkit()
-    result = toolkit.get_workface_thermal_evidence({"fixture": "evidence/crewclock-live-validation/single-forecast-probe/single_forecast_probe.json"})
+    result = toolkit.get_workface_thermal_evidence({"evidence_id": "phoenix_unavailable_probe_v1"})
     assert not result.ok
     assert result.data["state"] == "COMPLETED_BUT_EMPTY"
     assert result.data["evidence_status"] == "INVALID_EVIDENCE"
@@ -292,7 +292,7 @@ def test_final_gate_a1_valid_decision_grade_handoff_continues_to_pending_approva
 
 def test_a1_context_only_fixture_remains_non_decision_grade() -> None:
     result = FortyGuardToolkit().get_workface_thermal_evidence({
-        "fixture": ".agent_cache/live_geographies/phoenix_paved_industrial.json",
+        "evidence_id": "phoenix_contextual_tcm_v1",
         "workfaces": ["WF-A"],
         "window": "11:00-15:00",
         "analytic_type": "tcm",

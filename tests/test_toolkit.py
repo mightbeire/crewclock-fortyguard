@@ -22,4 +22,16 @@ def test_live_call_without_client_fails_explicitly() -> None:
 
 def test_registry_contains_reusable_fortyguard_tools() -> None:
     names = build_tool_registry(FortyGuardToolkit()).names()
-    assert {"get_heatmap", "get_environmental_parameters", "get_activity_status", "inspect_api_usage", "calculate_contextual_temperature_summary"}.issubset(names)
+    assert {"get_workface_thermal_evidence", "get_environmental_context", "calculate_contextual_temperature_summary"}.issubset(names)
+    assert {"get_heatmap", "get_environmental_parameters", "get_activity_status", "inspect_api_usage"}.isdisjoint(names)
+
+
+def test_model_facing_registry_rejects_arbitrary_evidence_paths() -> None:
+    registry = build_tool_registry(FortyGuardToolkit())
+    spec = registry.get("get_workface_thermal_evidence")
+    try:
+        spec.validate_arguments({"fixture": "C:/arbitrary/evidence.json"})
+    except Exception as exc:
+        assert "missing_tool_arguments" in str(exc) or "unknown_tool_arguments" in str(exc)
+    else:
+        raise AssertionError("arbitrary model-facing fixture path was accepted")

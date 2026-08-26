@@ -157,7 +157,7 @@ def _compact_result(case: Case, tool: str, arguments: dict[str, Any]) -> ToolRes
         if case.evidence == "available":
             decision_grade = case.scheduler in {"feasible_alternatives", "no_feasible_improvement", "break_rule_rejection", "cached_reuse"}
             return FortyGuardToolkit().get_workface_thermal_evidence({
-                "fixture": DECISION_GRADE_FIXTURE if decision_grade else FIXTURE,
+                "evidence_id": "phoenix_canonical_2025_07_15_1000_1200" if decision_grade else "phoenix_contextual_tcm_v1",
                 "workfaces": workfaces,
                 "window": arguments.get("window", "11:00-15:00"),
                 "analytic_type": "exceedance" if decision_grade else arguments.get("analytic_type", "tcm"),
