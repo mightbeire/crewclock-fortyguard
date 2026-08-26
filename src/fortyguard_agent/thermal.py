@@ -50,15 +50,20 @@ def _number(value: Any, field: str) -> float:
     return float(value)
 
 
-def assert_heatmap_schema(result: dict[str, Any], analytic_type: str = "tcm") -> None:
-    """Fail closed on the current documented heatmap schemas and units."""
+def assert_heatmap_schema(result: dict[str, Any], analytic_type: str = "tcm", *, allow_empty_analysis: bool = False) -> None:
+    """Fail closed on the current documented heatmap schemas and units.
+
+    A completed analytic heatmap may legitimately contain zero cells when no
+    exceedance was found.  Callers must opt into that interpretation because
+    an empty map is otherwise indistinguishable from an incomplete fixture.
+    """
     map_data = result.get("map_data")
     if not isinstance(map_data, dict) or map_data.get("type") != "FeatureCollection":
         raise ThermalContractError("heatmap_map_data_must_be_feature_collection")
     features = map_data.get("features")
     if not isinstance(features, list):
         raise ThermalContractError("heatmap_features_must_be_array")
-    if not features:
+    if not features and not (allow_empty_analysis and analytic_type != "tcm"):
         raise ThermalContractError("heatmap_empty_feature_collection")
     stats = result.get("stats_data") or {}
     if analytic_type == "tcm":
@@ -75,10 +80,14 @@ def assert_heatmap_schema(result: dict[str, Any], analytic_type: str = "tcm") ->
         return
     if analytic_type not in {"time_of_measure", "exceedance", "persistence"}:
         raise ThermalContractError(f"unsupported_heatmap_analytic_type:{analytic_type}")
-    if str(stats.get("units", "")).lower() not in {"hour", "hours"}:
-        raise ThermalContractError("heatmap_analysis_units_must_be_hours")
     if stats.get("analytic_type") not in {None, analytic_type}:
         raise ThermalContractError("heatmap_analysis_type_mismatch")
+    if not features:
+        if stats.get("n_cells") not in {0, None}:
+            raise ThermalContractError("heatmap_empty_feature_collection_count_mismatch")
+        return
+    if str(stats.get("units", "")).lower() not in {"hour", "hours"}:
+        raise ThermalContractError("heatmap_analysis_units_must_be_hours")
     for feature in features:
         _number((feature.get("properties") or {}).get("value"), "heatmap_analysis_value")
 

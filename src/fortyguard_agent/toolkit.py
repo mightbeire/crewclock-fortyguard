@@ -3,9 +3,11 @@ from __future__ import annotations
 import json
 import os
 import sys
+from datetime import datetime
 from pathlib import Path
 from statistics import mean
 from typing import Any, Iterable
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .cache import JsonCache, request_hash
 from .guardrails import FortyGuardRequestGuard, GuardrailError
@@ -19,6 +21,8 @@ from .integrity import (
     verification_result_hash,
 )
 from .models import Provenance, ToolResult
+from .site_geometry import SiteGeometryError, validate_feature_collection, validate_workfaces
+from .timezones import project_timezone
 from .state_machine import deterministic_decision_result
 from .thermal import ThermalContractError, assert_env_params_schema, assert_heatmap_schema, env_params_role
 
@@ -235,6 +239,183 @@ class FortyGuardToolkit:
             return ToolResult(self.client.get_status(activity_id), Provenance(source="live", endpoint="/v1/status/{activity_id}", activity_id=activity_id))
         except Exception as exc:
             return ToolResult({}, Provenance(source="live", endpoint="/v1/status/{activity_id}", activity_id=activity_id), error=f"{type(exc).__name__}: {str(exc)[:240]}")
+
+    def acquire_workface_thermal_evidence(self, arguments: dict[str, Any], *, on_status: Any | None = None) -> ToolResult:
+        """Acquire decision-grade evidence for one operator-created site.
+
+        This is the only high-level live acquisition surface.  Callers provide
+        validated operational facts; credentials, HTTP construction, polling,
+        cache identity, response validation, and provenance stay here.
+        """
+        endpoint = "/v1/heatmap"
+        try:
+            aoi = validate_feature_collection(arguments.get("polygon_aoi"))
+            workfaces = validate_workfaces(arguments.get("workfaces"), aoi)
+            date = str(arguments["date"])
+            parsed_date = datetime.strptime(date, "%Y-%m-%d").date()
+            today = datetime.now().date()
+            if parsed_date < datetime(2019, 1, 1).date():
+                raise SiteGeometryError("historical_coverage_starts_2019")
+            if parsed_date > today and (parsed_date - today).days > 1:
+                raise SiteGeometryError("forecast_date_outside_supported_horizon")
+            timezone_name = str(arguments["timezone"])
+            project_timezone(timezone_name)
+            start_time, end_time = str(arguments["start_time"]), str(arguments["end_time"])
+            datetime.strptime(start_time, "%H:%M")
+            datetime.strptime(end_time, "%H:%M")
+            if start_time >= end_time:
+                raise SiteGeometryError("evidence_window_end_must_follow_start")
+            if arguments.get("analytic_type") != "exceedance":
+                raise SiteGeometryError("decision_evidence_requires_exceedance")
+            if float(arguments.get("threshold")) != 32.0:
+                raise SiteGeometryError("decision_evidence_threshold_must_be_32_celsius")
+            if arguments.get("direction") != "above":
+                raise SiteGeometryError("decision_evidence_direction_must_be_above")
+            granularity = int(arguments.get("granularity", 100))
+            if granularity not in {60, 80, 100}:
+                raise SiteGeometryError("unsupported_heatmap_granularity")
+            identity = {
+                "polygon_aoi": aoi,
+                "date_time": {"start_date": date, "filter_type": 2, "start_time": start_time, "end_time": end_time, "timezone": timezone_name},
+                "granularity": granularity,
+                "analytic_type": "exceedance",
+                "threshold": 32.0,
+                "direction": "above",
+                "provider": str(arguments.get("provider", "FortyGuard")),
+                "provider_version": str(arguments.get("provider_version", "v1")),
+            }
+            local_start = datetime.fromisoformat(f"{date}T{start_time}:00")
+            request_at = local_start.replace(tzinfo=project_timezone(timezone_name, local_start))
+            self.request_guard.validate(endpoint, identity, request_at=request_at)
+            key = request_hash(endpoint, identity)
+        except (KeyError, TypeError, ValueError, ZoneInfoNotFoundError, SiteGeometryError, GuardrailError) as exc:
+            return ToolResult({}, Provenance(source="derived", endpoint=endpoint), error=f"invalid_acquisition_request:{exc}")
+
+        cached = self.cache.get(key)
+        if isinstance(cached, dict) and cached.get("request") == identity and isinstance(cached.get("data"), dict):
+            try:
+                evidence = self._normalize_acquired_heatmap(cached["data"], arguments, key, cached.get("activity_id"), "LIVE_CACHE_REUSED")
+            except ThermalContractError as exc:
+                return ToolResult({"status": "EVIDENCE_UNAVAILABLE", "thermal_evidence_valid": False}, Provenance(source="cached", endpoint=endpoint, request_hash=key), error=str(exc))
+            if on_status:
+                on_status("cache_reused", {"activity_id": cached.get("activity_id")})
+            return ToolResult(evidence, Provenance(source="cached", endpoint=endpoint, request_hash=key, activity_id=cached.get("activity_id"), assumptions=("EXACT_DECISION_IDENTITY_MATCH",)), estimated_credits=0)
+
+        if self.client is None:
+            return ToolResult({}, Provenance(source="live", endpoint=endpoint, request_hash=key), error="live_client_not_configured")
+        estimated = self.request_guard.estimate(endpoint, identity)
+        if self.request_guard.run_credits_used + estimated > self.request_guard.max_run_credits or estimated > self.request_guard.remaining_credits:
+            return ToolResult({}, Provenance(source="live", endpoint=endpoint, request_hash=key), error="fortyguard_credit_budget_rejected")
+
+        payload = {"polygon_aoi": aoi, "start_date": date, "filter_type": 2, "start_time": start_time, "end_time": end_time, "granularity": granularity, "analytic_type": "exceedance", "threshold": 32.0, "direction": "above"}
+        activity_id: str | None = None
+        try:
+            if on_status:
+                on_status("requested", {})
+            submitted = self.client.create_heatmap(**payload, wait=False, verbose=False)
+            if isinstance(submitted, str):
+                activity_id = submitted
+            elif isinstance(submitted, dict):
+                activity_id = submitted.get("activity_id") or (submitted.get("data") or {}).get("activity_id")
+            if not isinstance(activity_id, str) or not activity_id:
+                raise RuntimeError("fortyguard_activity_id_missing")
+            self.request_guard.commit(estimated)
+            if on_status:
+                on_status("processing", {"activity_id": activity_id})
+            deadline = __import__("time").monotonic() + float(arguments.get("poll_timeout_seconds", 90))
+            poll_interval = max(0.0, float(arguments.get("poll_interval_seconds", 1.0)))
+            retries_429 = 0
+            while True:
+                try:
+                    status_data = self.client.get_status(activity_id)
+                except Exception as exc:
+                    text = str(exc).lower()
+                    if "404" in text or "not visible" in text:
+                        status_data = {"status": "processing"}
+                    elif "429" in text and retries_429 < 1:
+                        retries_429 += 1
+                        if on_status:
+                            on_status("rate_limited_retry", {"activity_id": activity_id})
+                        __import__("time").sleep(min(2.0, poll_interval or 0.1))
+                        continue
+                    else:
+                        raise RuntimeError(f"fortyguard_status_poll_failed:{type(exc).__name__}") from exc
+                status = str(status_data.get("status", "processing")).lower() if isinstance(status_data, dict) else "processing"
+                if on_status:
+                    on_status(status, {"activity_id": activity_id})
+                if status in {"completed", "succeeded"}:
+                    raw = status_data.get("result", status_data) if isinstance(status_data, dict) else status_data
+                    if not isinstance(raw, dict):
+                        raise ThermalContractError("completed_result_must_be_object")
+                    evidence = self._normalize_acquired_heatmap(raw, arguments, key, activity_id, "LIVE_ACQUIRED")
+                    self.cache.put_success(key, endpoint=endpoint, request=identity, data=raw, provenance={"activity_id": activity_id, "provenance": "LIVE_ACQUIRED", "schema_version": "crewclock.fortyguard.v2", "assumptions": []})
+                    return ToolResult(evidence, Provenance(source="live", endpoint=endpoint, request_hash=key, activity_id=activity_id), estimated_credits=estimated)
+                if status in {"failed", "error"}:
+                    raise RuntimeError(f"fortyguard_activity_failed:{status}")
+                if __import__("time").monotonic() >= deadline:
+                    raise TimeoutError("fortyguard_bounded_poll_timeout")
+                __import__("time").sleep(poll_interval)
+        except ThermalContractError as exc:
+            return ToolResult({"status": "EVIDENCE_UNAVAILABLE", "thermal_evidence_valid": False, "activity_id": activity_id, "failure_classification": "MALFORMED_RESULT"}, Provenance(source="live", endpoint=endpoint, request_hash=key, activity_id=activity_id), error=str(exc), estimated_credits=estimated)
+        except Exception as exc:
+            classification = "TIMEOUT" if isinstance(exc, TimeoutError) else "PROVIDER_FAILURE"
+            return ToolResult({"status": "EVIDENCE_UNAVAILABLE", "thermal_evidence_valid": False, "activity_id": activity_id, "failure_classification": classification}, Provenance(source="live", endpoint=endpoint, request_hash=key, activity_id=activity_id), error=f"{type(exc).__name__}: {str(exc)[:180]}", estimated_credits=estimated)
+
+    @staticmethod
+    def _normalize_acquired_heatmap(raw: dict[str, Any], arguments: dict[str, Any], key: str, activity_id: str | None, status: str) -> dict[str, Any]:
+        assert_heatmap_schema(raw, "exceedance", allow_empty_analysis=True)
+        map_data = raw["map_data"]
+        features = map_data["features"]
+        date, start_time, end_time, timezone_name = str(arguments["date"]), str(arguments["start_time"]), str(arguments["end_time"]), str(arguments["timezone"])
+        # The scheduler consumes local wall-clock windows; the date and IANA
+        # timezone remain bound alongside the window for provenance.
+        start, end = start_time, end_time
+        tiles = []
+        values = []
+        for feature in features:
+            geometry = feature.get("geometry") or {}
+            rings = geometry.get("coordinates") or []
+            if geometry.get("type") != "Polygon" or not rings or len(rings[0]) < 4:
+                raise ThermalContractError("heatmap_tile_polygon_required")
+            value = float((feature.get("properties") or {}).get("value"))
+            values.append(value)
+            tiles.append({"polygon": [list(pair[:2]) for pair in rings[0][:-1]], "valueHours": value})
+        result_hash = __import__("hashlib").sha256(json.dumps(raw, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        trigger = {"thresholdC": 32, "quantity": "fortyguard_modeled_temperature", "provenance": "FORTYGUARD_EXCEEDANCE_THRESHOLD", "thresholdUnits": "celsius", "direction": "above"}
+        return {
+            "status": status,
+            "classification": status,
+            "source": "FortyGuard /v1/heatmap",
+            "evidenceClass": "DECISION_GRADE_THERMAL_EVIDENCE",
+            "exceedanceEvidenceStatus": "complete",
+            "decisionGradeThermalEvidence": True,
+            "analyticType": "exceedance",
+            "analytic_type": "exceedance",
+            "threshold": 32.0,
+            "direction": "above",
+            "granularity": int(arguments.get("granularity", 100)),
+            "activityId": activity_id,
+            "aoi": arguments["polygon_aoi"],
+            "aoiHash": key,
+            "observationDate": str(arguments["date"]),
+            "timezone": timezone_name,
+            "acquiredAt": datetime.now().astimezone().isoformat(),
+            "resultHash": result_hash,
+            "coverage": "VALID",
+            "featureCount": len(features),
+            "maxValueHours": max(values, default=0.0),
+            "meanValueHours": round(mean(values), 6) if values else 0.0,
+            "exceedanceWindows": [{
+                "analyticType": "exceedance", "start": start, "end": end,
+                "units": "hours", "status": "VALID", "qualifying": any(value > 0 for value in values),
+                "provenance": f"{status}:FortyGuard:/v1/heatmap", "aoi": key,
+                "date": str(arguments["date"]), "timezone": timezone_name,
+                "analyticSource": "FortyGuard:/v1/heatmap", "projectThermalTrigger": trigger,
+                "resultHash": result_hash, "version": "crewclock.fortyguard.v2", "tiles": tiles,
+            }],
+            "projectThermalTrigger": trigger,
+            "precision": "APPROXIMATE_OPERATOR_ANCHOR_DERIVED",
+        }
 
     def inspect_api_usage(self, arguments: dict[str, Any] | None = None) -> ToolResult:
         if self.client is None:

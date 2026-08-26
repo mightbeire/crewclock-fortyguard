@@ -39,7 +39,10 @@ export type ThermalEvidence = {
     thresholdUnits: 'celsius'
     direction: 'above'
   }
-  [key: string]: unknown
+  // Runtime evidence carries provider-specific audit metadata beyond the
+  // deterministic fields below.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [key: string]: any
 }
 export type EvidenceState = 'ready' | 'missing' | 'stale' | 'tool-failure'
 export type PolicyState = 'ready' | 'ambiguous'
@@ -462,7 +465,7 @@ const buildCrewClockRun = ({
   if (thermalEvidence.exceedanceEvidenceStatus !== 'complete') {
     return { ...base, status: 'missing-evidence', decisionKind: 'evidence-unavailable', recommendation: null, recommendationVerification: null, afterCrewHours: null, shiftedCrewHours: 0, stats: emptyStats, message: `${String(thermalEvidence.location ?? 'Project')} schedule-aligned FortyGuard-compatible exceedance evidence is not demonstrated. No recommendation issued.` }
   }
-  if (scenarioLabel !== 'SYNTHETIC TEST SCENARIO' && scenarioLabel !== 'CANONICAL_PHOENIX_REPLAY') {
+  if (scenarioLabel !== 'SYNTHETIC TEST SCENARIO' && scenarioLabel !== 'CANONICAL_PHOENIX_REPLAY' && scenarioLabel !== 'LIVE_FORTYGUARD') {
     return { ...base, status: 'missing-evidence', decisionKind: 'evidence-unavailable', recommendation: null, recommendationVerification: null, afterCrewHours: null, shiftedCrewHours: 0, stats: emptyStats, message: 'Decision-grade evidence requires an explicitly labeled replay or synthetic test scenario. No recommendation issued.' }
   }
 

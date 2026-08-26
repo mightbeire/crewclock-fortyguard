@@ -1,7 +1,7 @@
 import { calculateScheduledHighHeatCrewHours } from './shhch'
 
-export type CrewId = 'ground' | 'concrete' | 'electrical'
-export type ZoneId = 'north' | 'south' | 'laydown' | 'access'
+export type CrewId = string
+export type ZoneId = string
 export type TaskEnvironment = 'outdoor-heavy' | 'outdoor-moderate' | 'shaded-support'
 
 export type Crew = {
@@ -29,7 +29,7 @@ export type Task = {
   weatherSensitivity: { precipitation: boolean }
 }
 
-export type Workface = { id: ZoneId; label: string; polygon: Array<[number, number]> }
+export type Workface = { id: ZoneId; label: string; polygon: Array<[number, number]>; geometry_precision?: string; source?: string }
 
 export const PHOENIX_PROJECT_AOI = {
   type: 'FeatureCollection' as const,

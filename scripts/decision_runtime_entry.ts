@@ -1,14 +1,16 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { approveRecommendation, runCrewClock, type RunOptions, type ThermalEvidence } from '../src/demo/engine'
-import { EMPLOYER_POLICY, TASKS, CREWS, WORKFACES } from '../src/demo/scenario'
+import { EMPLOYER_POLICY, TASKS, CREWS, WORKFACES, type EmployerPolicy } from '../src/demo/scenario'
 import { SYNTHETIC_POSITIVE_EVIDENCE, SYNTHETIC_POSITIVE_POLICY } from '../src/demo/runtime'
 
 type Request = {
   action?: 'review' | 'approve'
-  scenario?: 'synthetic-positive' | 'canonical-replay' | 'evidence-unavailable' | 'all-indoor'
+  scenario?: 'synthetic-positive' | 'canonical-replay' | 'evidence-unavailable' | 'all-indoor' | 'new-site' | 'live-acquired'
   tasks?: typeof TASKS
   crews?: typeof CREWS
+  workfaces?: Array<{ id: string; label?: string; polygon: Array<[number, number]>; geometry_precision?: string; source?: string }>
+  thermalEvidence?: ThermalEvidence
   recommendationId?: string
   candidateHash?: string
 }
@@ -86,8 +88,15 @@ const options: RunOptions = {
   tasks,
   crews: request.crews ?? CREWS,
   policy: EMPLOYER_POLICY,
-  workfaces: WORKFACES,
+  workfaces: request.workfaces ?? WORKFACES,
   projectId: `production-${scenario}`,
+}
+
+const genericPolicy: EmployerPolicy = {
+  ...EMPLOYER_POLICY,
+  name: 'CrewClock operator shift policy',
+  status: 'operator-configured shift policy',
+  breakRules: [{ ...EMPLOYER_POLICY.breakRules[0], source: 'CREWCLOCK_DEFAULT_OPERATOR_POLICY', version: 'crewclock-default-v1' }],
 }
 
 if (scenario === 'synthetic-positive') {
@@ -100,6 +109,18 @@ if (scenario === 'synthetic-positive') {
 } else {
   options.evidenceState = 'missing'
   options.scenarioLabel = scenario === 'all-indoor' ? 'ALL_INDOOR' : 'USER_DEFINED_SHIFT'
+  if (scenario === 'new-site' || request.thermalEvidence) {
+    options.thermalEvidence = request.thermalEvidence
+    options.policy = genericPolicy
+    options.scenarioLabel = scenario === 'all-indoor' ? 'ALL_INDOOR' : 'USER_DEFINED_SHIFT'
+  }
+}
+
+if (scenario === 'live-acquired' && request.thermalEvidence) {
+  options.thermalEvidence = request.thermalEvidence
+  options.policy = genericPolicy
+  options.scenarioLabel = 'LIVE_FORTYGUARD'
+  options.evidenceState = 'ready'
 }
 
 const run = runCrewClock(options)

@@ -5,7 +5,7 @@ import type { ExceedanceWindow } from './shhch'
 export type UiEventName =
   | 'SHIFT_INSPECTION_STARTED' | 'SHIFT_INSPECTION_COMPLETED' | 'NO_THERMAL_INVESTIGATION'
   | 'THERMAL_INVESTIGATION_REQUIRED' | 'THERMAL_EVIDENCE_REQUESTED' | 'THERMAL_EVIDENCE_UNAVAILABLE'
-  | 'THERMAL_EVIDENCE_READY' | 'OPTIMIZATION_STARTED' | 'CANDIDATES_GENERATED'
+  | 'THERMAL_EVIDENCE_PROCESSING' | 'THERMAL_EVIDENCE_RETRY' | 'THERMAL_EVIDENCE_READY' | 'OPTIMIZATION_STARTED' | 'CANDIDATES_GENERATED'
   | 'VERIFICATION_STARTED' | 'VERIFICATION_FAILED' | 'VERIFICATION_PASSED'
   | 'NO_FEASIBLE_IMPROVEMENT' | 'NO_FEASIBLE_CORRECTION' | 'OPERATOR_ATTENTION_REQUIRED' | 'RUN_COMPLETED'
   | 'CURRENT_PLAN_PRESERVED' | 'RECHECK_AVAILABLE' | 'AWAITING_APPROVAL'
@@ -21,7 +21,7 @@ export type RuntimeSession = {
   provider?: Record<string, unknown>
 }
 
-export type ProductionScenario = 'synthetic-positive' | 'canonical-replay' | 'evidence-unavailable' | 'all-indoor'
+export type ProductionScenario = 'synthetic-positive' | 'canonical-replay' | 'evidence-unavailable' | 'all-indoor' | 'new-site'
 
 const syntheticBase: ExceedanceWindow = {
   analyticType: 'exceedance', start: '11:00', end: '15:00', units: 'hours', status: 'VALID',
@@ -77,9 +77,15 @@ const parseSnapshot = (value: Snapshot, fallback: RuntimeSession): RuntimeSessio
   approved: Boolean(value.approved), provider: value.provider,
 })
 
-export const startProductionReview = async (scenario: ProductionScenario, tasks: Task[], crews: Crew[]): Promise<RuntimeSession> => {
+export type ProductionShiftContext = {
+  id?: string; location: string; timezone: string; date: string; start: string; end: string
+  location_anchor: { latitude: number; longitude: number }; site_dimensions_m: { width: number; height: number }
+  aoi: Record<string, unknown>; workfaces: Array<Record<string, unknown>>
+}
+
+export const startProductionReview = async (scenario: ProductionScenario, tasks: Task[], crews: Crew[], context?: ProductionShiftContext): Promise<RuntimeSession> => {
   const fallback = emptyRuntimeSession(tasks, crews)
-  const response = await fetch('/api/reviews', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scenario, tasks, crews }) })
+  const response = await fetch('/api/reviews', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scenario, tasks, crews, ...context }) })
   if (!response.ok) throw new Error(`review_start_failed:${response.status}`)
   return parseSnapshot(await response.json(), fallback)
 }

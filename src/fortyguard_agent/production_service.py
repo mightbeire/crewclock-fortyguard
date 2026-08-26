@@ -18,6 +18,8 @@ from typing import Any
 from urllib.parse import urlparse
 
 from .providers import load_project_env
+from .site_geometry import SiteGeometryError, build_site_geometry, validate_workfaces
+from .toolkit import load_live_toolkit
 
 ROOT = Path(__file__).resolve().parents[2]
 RUNTIME = ROOT / "build" / "decision-runtime.mjs"
@@ -76,7 +78,12 @@ SCENARIO_EVIDENCE = {
     "canonical-replay": "phoenix_canonical_2025_07_15",
     "evidence-unavailable": "unavailable",
     "all-indoor": "unavailable",
+    # Runtime route marker only; this is not an evidence registration and
+    # carries no location, artifact, or expected thermal outcome.
+    "new-site": None,
 }
+
+NEW_SITE_SCENARIO = "new-site"
 
 
 def now() -> str:
@@ -243,24 +250,98 @@ def _inspection(request: dict[str, Any], scenario: str) -> dict[str, Any]:
     return {"task_count": len(tasks), "crew_count": len(request.get("crews", [])), "movable_outdoor_count": len(outdoor), "fixed_count": sum(bool(item.get("fixed")) for item in tasks if isinstance(item, dict)), "source": "SUBMITTED_SHIFT"}
 
 
+def _new_site_geometry(request: dict[str, Any]) -> dict[str, Any]:
+    anchor = request.get("location_anchor")
+    dimensions = request.get("site_dimensions_m")
+    if not isinstance(anchor, dict) or not isinstance(dimensions, dict):
+        raise SiteGeometryError("operator_latitude_longitude_and_site_dimensions_required")
+    geometry = build_site_geometry(anchor.get("latitude"), anchor.get("longitude"), dimensions.get("width"), dimensions.get("height"))
+    workfaces = validate_workfaces(request.get("workfaces", list(geometry.workfaces)), geometry.aoi)
+    expected_ids = {item["id"] for item in geometry.workfaces}
+    if {item["id"] for item in workfaces} != expected_ids:
+        raise SiteGeometryError("workfaces_must_match_derived_site_aoi")
+    tasks = request.get("tasks") if isinstance(request.get("tasks"), list) else []
+    if not tasks:
+        raise SiteGeometryError("new_site_tasks_required")
+    if any(not isinstance(item, dict) or item.get("zoneId") not in expected_ids for item in tasks):
+        raise SiteGeometryError("task_workface_must_be_bound_to_site_aoi")
+    crews = request.get("crews") if isinstance(request.get("crews"), list) else []
+    if not crews or any(not isinstance(crew, dict) or not isinstance(crew.get("name"), str) or not crew["name"].strip() or not isinstance(crew.get("headcount"), (int, float)) or isinstance(crew.get("headcount"), bool) or int(crew["headcount"]) <= 0 for crew in crews):
+        raise SiteGeometryError("real_crew_name_and_positive_headcount_required")
+    return geometry.to_dict()
+
+
+def _unavailable_thermal_evidence(request: dict[str, Any], site: dict[str, Any] | None) -> dict[str, Any]:
+    return {
+        "status": "EVIDENCE_UNAVAILABLE", "classification": "UNAVAILABLE", "source": "CREWCLOCK_USER_SHIFT_EVIDENCE_BOUNDARY",
+        "exceedanceEvidenceStatus": "none", "decisionGradeThermalEvidence": False, "analyticType": "exceedance",
+        "location": request.get("location"), "observationDate": request.get("date"), "timezone": request.get("timezone"),
+        "aoi": (site or {}).get("aoi", {"type": "FeatureCollection", "features": []}), "precision": (site or {}).get("precision"),
+        "exceedanceWindows": [], "projectThermalTrigger": {"thresholdC": 32, "quantity": "fortyguard_modeled_temperature", "provenance": "USER_DEFINED_SHIFT_TRIGGER_NOT_EVIDENCE", "thresholdUnits": "celsius", "direction": "above"},
+    }
+
+
 def execute_session(session: Session) -> None:
     try:
         evidence_id = SCENARIO_EVIDENCE.get(session.scenario)
-        if evidence_id is None or evidence_id not in EVIDENCE_REGISTRY:
+        site = _new_site_geometry(session.request) if session.scenario == NEW_SITE_SCENARIO else None
+        if session.scenario != NEW_SITE_SCENARIO and (evidence_id is None or evidence_id not in EVIDENCE_REGISTRY):
             raise ValueError("unknown_evidence_id")
         inspection = _inspection(session.request, session.scenario)
         path = orchestrate(session, inspection)
+        # The model may route, but it cannot suppress a decision-critical
+        # acquisition after deterministic inspection found movable outdoor
+        # work.  All-indoor shifts remain the only zero-call path.
+        if session.scenario == NEW_SITE_SCENARIO and inspection["movable_outdoor_count"] > 0:
+            path = "INVESTIGATE"
         if path == "NO_THERMAL_INVESTIGATION":
             session.emit("NO_THERMAL_INVESTIGATION", "No relevant movable outdoor work was found; thermal investigation was unnecessary.", tool="choose_review_path")
-            engine = run_engine({"scenario": "all-indoor", "tasks": session.request.get("tasks"), "crews": session.request.get("crews")})
+            engine = run_engine({"scenario": "all-indoor", "tasks": session.request.get("tasks"), "crews": session.request.get("crews"), "workfaces": (site or {}).get("workfaces"), "thermalEvidence": _unavailable_thermal_evidence(session.request, site) if site else None})
         else:
             session.emit("THERMAL_INVESTIGATION_REQUIRED", "The agent chose the authoritative thermal review path.", tool="choose_review_path")
-            session.emit("THERMAL_EVIDENCE_REQUESTED", f"Resolving approved evidence {evidence_id}.", tool="resolve_approved_evidence")
-            evidence = EVIDENCE_REGISTRY[evidence_id]
-            if evidence["classification"] == "EVIDENCE_UNAVAILABLE":
+            if session.scenario == NEW_SITE_SCENARIO:
+                session.emit("THERMAL_EVIDENCE_REQUESTED", "Requesting decision-grade thermal evidence for the submitted site.", tool="acquire_workface_thermal_evidence", source="EVIDENCE_ACQUISITION")
+                last_status: list[str] = []
+
+                def on_status(status: str, metadata: dict[str, Any]) -> None:
+                    if status in last_status and status not in {"processing", "completed", "succeeded"}:
+                        return
+                    last_status.append(status)
+                    if status == "processing":
+                        session.emit("THERMAL_EVIDENCE_PROCESSING", "FortyGuard is processing the site evidence.", tool="acquire_workface_thermal_evidence", source="EVIDENCE_ACQUISITION", metadata=metadata)
+                    elif status == "rate_limited_retry":
+                        session.emit("THERMAL_EVIDENCE_RETRY", "FortyGuard requested a bounded retry.", tool="acquire_workface_thermal_evidence", source="EVIDENCE_ACQUISITION", metadata=metadata)
+
+                toolkit = load_live_toolkit()
+                evidence_result = toolkit.acquire_workface_thermal_evidence({
+                    "project_id": session.request.get("id", session.session_id),
+                    "location": session.request.get("location"),
+                    "polygon_aoi": site["aoi"],
+                    "workfaces": site["workfaces"],
+                    "date": session.request.get("date"),
+                    "timezone": session.request.get("timezone"),
+                    "start_time": session.request.get("start", "06:00"),
+                    "end_time": session.request.get("end", "16:00"),
+                    "threshold": 32.0,
+                    "analytic_type": "exceedance",
+                    "direction": "above",
+                    "granularity": 100,
+                }, on_status=on_status)
+                if not evidence_result.ok:
+                    session.emit("THERMAL_EVIDENCE_UNAVAILABLE", "Decision-grade site evidence is unavailable; the current plan was preserved.", tool="acquire_workface_thermal_evidence", source="EVIDENCE_ACQUISITION", metadata={"failure_classification": evidence_result.data.get("failure_classification"), "activity_id": evidence_result.provenance.activity_id, "technical_error": evidence_result.error})
+                    engine = run_engine({"scenario": "evidence-unavailable", "tasks": session.request.get("tasks"), "crews": session.request.get("crews"), "workfaces": site["workfaces"], "thermalEvidence": _unavailable_thermal_evidence(session.request, site)})
+                else:
+                    evidence = evidence_result.data
+                    session.emit("THERMAL_EVIDENCE_READY", "Thermal evidence received and validated.", tool="acquire_workface_thermal_evidence", source="EVIDENCE_ACQUISITION", metadata={"activity_id": evidence_result.provenance.activity_id, "classification": evidence.get("classification"), "aoi_hash": evidence.get("aoiHash"), "threshold": 32.0, "direction": "above", "analytic_type": "exceedance", "granularity": 100, "cache": evidence_result.provenance.source == "cached"})
+                    session.emit("OPTIMIZATION_STARTED", "Deterministic candidate generation and selection started.", tool="generate_feasible_schedule_alternatives", source="DETERMINISTIC_TOOL")
+                    engine = run_engine({"scenario": "live-acquired", "tasks": session.request.get("tasks"), "crews": session.request.get("crews"), "workfaces": site["workfaces"], "thermalEvidence": evidence})
+            else:
+                session.emit("THERMAL_EVIDENCE_REQUESTED", f"Resolving approved evidence {evidence_id}.", tool="resolve_approved_evidence")
+                evidence = EVIDENCE_REGISTRY[evidence_id]
+            if session.scenario != NEW_SITE_SCENARIO and evidence["classification"] == "EVIDENCE_UNAVAILABLE":
                 session.emit("THERMAL_EVIDENCE_UNAVAILABLE", "Decision-grade workface evidence is unavailable; no schedule recommendation was generated.", tool="resolve_approved_evidence", source="EVIDENCE_REGISTRY")
                 engine = run_engine({"scenario": "evidence-unavailable", "tasks": session.request.get("tasks"), "crews": session.request.get("crews")})
-            else:
+            elif session.scenario != NEW_SITE_SCENARIO:
                 session.emit("THERMAL_EVIDENCE_READY", f"Approved {evidence['classification']} evidence passed manifest, geometry, threshold and coverage checks.", tool="resolve_approved_evidence", source="EVIDENCE_REGISTRY", metadata={"evidence_id": evidence_id, "classification": evidence["classification"]})
                 session.emit("OPTIMIZATION_STARTED", "Deterministic candidate generation and selection started.", tool="generate_feasible_schedule_alternatives", source="DETERMINISTIC_TOOL")
                 engine = run_engine({"scenario": session.scenario, "tasks": session.request.get("tasks"), "crews": session.request.get("crews")})
@@ -290,7 +371,7 @@ def execute_session(session: Session) -> None:
 def approve_session(session: Session, identity: dict[str, Any]) -> dict[str, Any]:
     if session.status != "AWAITING_APPROVAL" or not session.result:
         return {"approved": False, "status": "FINAL_VERIFICATION_FAILED", "error": "session_not_awaiting_approval"}
-    completed = run_engine({"action": "approve", "scenario": session.scenario, "tasks": session.request.get("tasks"), "crews": session.request.get("crews"), "recommendationId": identity.get("recommendationId"), "candidateHash": identity.get("candidateHash")})
+    completed = run_engine({"action": "approve", "scenario": session.scenario, "tasks": session.request.get("tasks"), "crews": session.request.get("crews"), "workfaces": session.result.get("workfaces"), "thermalEvidence": session.result.get("thermalEvidence"), "recommendationId": identity.get("recommendationId"), "candidateHash": identity.get("candidateHash")})
     decision = completed["decision"]
     if decision.get("approved"):
         session.status = "APPROVED"
@@ -336,7 +417,7 @@ class Handler(BaseHTTPRequestHandler):
             if self.path == "/api/reviews":
                 body = self._body()
                 scenario = str(body.get("scenario", "evidence-unavailable"))
-                if scenario not in SCENARIO_EVIDENCE:
+                if scenario not in SCENARIO_EVIDENCE and scenario != NEW_SITE_SCENARIO:
                     return self._json(400, {"error": "unknown_scenario"})
                 session = Session(uuid.uuid4().hex, scenario, body)
                 with SESSIONS_LOCK:
