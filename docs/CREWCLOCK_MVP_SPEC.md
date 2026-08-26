@@ -273,7 +273,7 @@ CrewClock should be formally locked as the hackathon MVP. The locked claim is na
 - Verification: 6/6 modeled hard-constraint families, before recommendation and after approval.
 - Approval: local, explicit, auditable, reversible with Reset, and separated from publication.
 - Guardrails: `?mode=missing-evidence`, `stale-evidence`, `tool-failure`, `ambiguous-policy`, and `no-improvement` provide deterministic fail-closed QA fixtures.
-- Network boundary: no external request path and no live FortyGuard call.
+- Network boundary: the model and browser have no raw external request path; only the trusted production backend can make the controlled FortyGuard heatmap call for an explicit user-created site. Default fixture routes remain offline.
 - Primary viewport: 1440×900; verified at 1024×768 and 390×844 without horizontal overflow.
 
 ## Foundation lock amendment (2026-08-21)

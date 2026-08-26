@@ -3,7 +3,7 @@
 ## Stage contract
 
 - Target duration: **2:20–2:40**; hard maximum **2:45**.
-- The browser uses the configured real provider through the local CrewClock API. FortyGuard calls remain zero because evidence is resolved from the saved registry.
+- The default sample uses the configured real provider through the local CrewClock API but remains offline; a user-created supported U.S. shift uses the controlled live FortyGuard acquisition path only when relevant outdoor work requires it.
 - Use the in-product **Sample project → Run sample review** path.
 - The positive sample is explicitly labelled **SYNTHETIC CAPABILITY DEMO · Not real Phoenix evidence**.
 - CrewClock presents planning evidence and a verified alternative; the superintendent remains the decision-maker.
@@ -13,7 +13,7 @@
 1. Run `npm run build:runtime`, start `npm run dev:api`, then run `npm run dev` in a second terminal and open CrewClock.
 2. Open navigation and select **Sample project**.
 3. Confirm **Run sample review** is visible. Do not type a URL parameter.
-4. Confirm **New shift** opens the supported manual shift editor. Do not run its analysis.
+4. Confirm **New shift** opens the supported manual shift editor; it requires an explicit location anchor, approximate site dimensions, workfaces, crew names and headcounts before review.
 5. Keep the browser at 1440×900 when possible and confirm `/api/health` reports a configured provider.
 
 ## Exact arc
@@ -66,7 +66,7 @@ Click **Approve plan**, then show **Shift updated**.
 
 ### 1:38–1:55 — Generality
 
-Open navigation → **New shift**. Show the location, timezone, task time, crew, workface, indoor/outdoor, and fixed/flexible fields. Do not run it.
+Open navigation → **New shift**. Show the location anchor, approximate AOI dimensions, timezone, task time, crew names/headcounts, workface, indoor/outdoor, and fixed/flexible fields. Run a new-site review only when proving the live acquisition path.
 
 > “Phoenix is the labelled sample, not the product boundary. A user-defined shift carries its own project, location, timezone, task times, crews, workfaces, and flexibility. Existing qualification and dependency rules round-trip but are not editable here. Without validated local evidence, CrewClock stays evidence-unavailable.”
 

@@ -37,11 +37,11 @@ Phoenix replay are complete.
 - fail-closed states for missing/stale evidence, tool failure, ambiguous policy, infeasible input and no better plan;
 - deterministic reset and query-addressable QA fixtures with no network dependency.
 
-The UI contains no live FortyGuard request path. The current recorded reserve for this task is `1,782,840` credits; this runtime made no FortyGuard request.
+The default sample remains offline and does not call FortyGuard. User-created supported U.S. shifts use the browser-to-Python production API; relevant outdoor work invokes the narrow trusted FortyGuard heatmap acquisition path, while all-indoor shifts make zero FortyGuard calls.
 
 ## Real agent runtime status
 
-The browser now posts one review session to the thin Python production API. A bounded two-turn Groq → TokenRouter route invokes shift inspection and chooses whether thermal investigation is needed. Approved evidence IDs resolve server-side; the model cannot supply paths or schedules. The existing TypeScript engine runs server-side as the single candidate generator, deterministic selector, sealer and verifier. Polling exposes only events that already occurred. Provider failure preserves the current plan; there is no simulated provider fallback.
+The browser now posts one review session to the thin Python production API. A bounded two-turn Groq → TokenRouter route invokes shift inspection and chooses whether thermal investigation is needed; deterministic inspection prevents relevant outdoor work from bypassing acquisition. New sites submit explicit anchor-derived AOI/workfaces to the trusted backend, which owns FortyGuard credentials, request construction, bounded polling, validation, exact cache identity and provenance. Approved evidence IDs remain server-side for sample/canonical replays; the model cannot supply paths, credentials, raw HTTP or schedules. The existing TypeScript engine runs server-side as the single candidate generator, deterministic selector, sealer and verifier. Polling exposes only events that already occurred. Provider failure preserves the current plan; there is no simulated provider fallback.
 
 See `docs/CREWCLOCK_REAL_AGENT_EVAL.md` for offline A–J protocol traces and measured counts.
 
@@ -67,7 +67,7 @@ This is a derived planning proxy. It is not a safety, health, compliance, produc
 - FortyGuard supports pre-shift spatial/temporal investigation and alternate-window screening.
 - FortyGuard is not WBGT and does not certify safety.
 - Onsite measurement, workload, PPE, acclimatization, worker condition, employer policy and professional judgment remain authoritative.
-- The default browser state is the clearly labelled synthetic capability demo. `?mode=canonical-replay` runs the saved real FortyGuard historical validation through the same real agent/API/engine path. User-created shifts without approved evidence fail closed.
+- The default browser state is the clearly labelled synthetic capability demo. `?mode=canonical-replay` runs the saved real FortyGuard historical validation through the same real agent/API/engine path. User-created shifts acquire exact-site evidence through the trusted backend and fail closed when that evidence is unavailable.
 - The 14-task work package and employer policy are realistic but synthetic.
 - Public ADOT project data is context/schema evidence, not a customer work order.
 - The federal OSHA heat rule remains proposed as of the research date.
