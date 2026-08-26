@@ -41,7 +41,7 @@ The UI contains no live FortyGuard request path. The current recorded reserve fo
 
 ## Real agent runtime status
 
-The provider-neutral orchestration layer now has a bounded Groq Chat Completions adapter for `openai/gpt-oss-120b` with local CrewClock tool calling. The model can select evidence, deterministic calculations, alternatives, verification and approval; deterministic code remains authoritative for every factual calculation and hard constraint. The raw and adapter connection gates pass, including a harmless local tool-call smoke test. The real A–J harness is strictly sequential, rate-aware and checkpointed; provider capacity is classified separately from model behavior. Rate-aware execution is infrastructure reliability, not a product feature. The deterministic provider remains the submission fallback when real evidence is incomplete.
+The browser now posts one review session to the thin Python production API. A bounded two-turn Groq → TokenRouter route invokes shift inspection and chooses whether thermal investigation is needed. Approved evidence IDs resolve server-side; the model cannot supply paths or schedules. The existing TypeScript engine runs server-side as the single candidate generator, deterministic selector, sealer and verifier. Polling exposes only events that already occurred. Provider failure preserves the current plan; there is no simulated provider fallback.
 
 See `docs/CREWCLOCK_REAL_AGENT_EVAL.md` for offline A–J protocol traces and measured counts.
 
@@ -67,7 +67,7 @@ This is a derived planning proxy. It is not a safety, health, compliance, produc
 - FortyGuard supports pre-shift spatial/temporal investigation and alternate-window screening.
 - FortyGuard is not WBGT and does not certify safety.
 - Onsite measurement, workload, PPE, acclimatization, worker condition, employer policy and professional judgment remain authoritative.
-- The default browser state is `THERMAL EVIDENCE UNAVAILABLE / PROVIDER INVESTIGATION`; it preserves the current plan and is not a current forecast. The saved historical Phoenix replay is a separate, explicit validation fixture.
+- The default browser state is the clearly labelled synthetic capability demo. `?mode=canonical-replay` runs the saved real FortyGuard historical validation through the same real agent/API/engine path. User-created shifts without approved evidence fail closed.
 - The 14-task work package and employer policy are realistic but synthetic.
 - Public ADOT project data is context/schema evidence, not a customer work order.
 - The federal OSHA heat rule remains proposed as of the research date.
@@ -78,7 +78,7 @@ This is a derived planning proxy. It is not a safety, health, compliance, produc
 1. Read `docs/CREWCLOCK_MVP_SPEC.md`.
 2. Read `docs/CREWCLOCK_DATA_MODEL.md` and `docs/CREWCLOCK_MEASUREMENT.md`.
 3. Rehearse with `docs/CREWCLOCK_DEMO_SCRIPT.md`.
-4. Run `npm run dev`, `npm run test:ui`, `npm run typecheck`, `npm run lint`, `npm run build`, and `python -m pytest -q`.
+4. Run `npm run build:runtime`, start `npm run dev:api`, then run `npm run dev` in a second terminal. Validate with `npm run test:ui`, `npm run typecheck`, `npm run lint`, `npm run build`, and `python -m pytest -q`.
 5. Read `docs/CREWCLOCK_ARCHITECTURE.md` for the implemented agent/scheduler boundary.
 6. Preserve the no-live-call rule during demos; historical evidence acquisition is a separately authorized, bounded validation step.
 

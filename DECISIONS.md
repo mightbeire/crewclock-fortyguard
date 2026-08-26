@@ -228,3 +228,10 @@ The second research pass used only cached-live responses, fixtures, primary sour
 - The evaluator is strictly sequential and checkpoints each logical trial, including an in-progress marker before the first model call. Resume hydrates capacity/accounting state and starts at the first incomplete trial.
 - Provider rate/transient/fatal failures are not behavioral failures. A genuine model mistake is classified separately and may trigger a general prompt/tool/state repair followed by targeted reruns.
 - Persisted evidence is sanitized high-level operational data only. No FortyGuard calls, secrets, provider messages or chain-of-thought are permitted.
+## 2026-08-26 — Bind the browser to the real production agent
+
+- The browser no longer imports or executes the decision runtime. It creates a Python API session and polls factual emitted events.
+- The configured real provider performs two bounded orchestration turns: inspect the shift, then choose investigation versus no-investigation. It has no schedule-authoring tool.
+- The existing TypeScript engine is bundled for server-side use and remains the single deterministic candidate generator, selector, sealer, verifier, and final re-verifier.
+- Model-facing evidence tools accept only approved manifest IDs. Arbitrary filesystem paths and low-level provider tools are absent from the production registry.
+- The rebuilt synthetic capability fixture passes 6/6 at baseline and is locked at an engine-derived 39 → 20 SHHCH with seven retimed tasks. The saved canonical real result remains 91.5 → 91.5, G4 → 13:30, and 5/6 → 6/6 constraints.

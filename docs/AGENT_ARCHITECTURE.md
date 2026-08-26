@@ -56,9 +56,9 @@ The demo shell is intentionally decoupled from product selection and the live AP
 
 - `src/demo/scenario.ts` contains sanitized cached-live measurements, explicitly synthetic operational constraints, high-level tool/action labels and a recomputable result.
 - `src/App.tsx` renders the map, agent activity sequence, before/after comparison, human approval and evidence drawer.
-- The browser cannot invoke FortyGuard. A future selected product may connect the existing Python agent trace through a narrow serialized contract, but deterministic rehearsal remains the default.
+- The browser invokes the thin CrewClock production API. The API never makes a live FortyGuard call in the submitted demo; it resolves approved saved evidence IDs and drives the server-side deterministic decision engine after a real provider orchestration decision.
 - Activity labels disclose tool/action states only. They do not expose private model reasoning.
-- Approval changes presentation state only; no external mutation occurs.
+- Approval binds to the exact sealed recommendation and triggers final deterministic re-verification. This MVP does not mutate an external scheduling system.
 
 ### Finalist showdown state contract
 

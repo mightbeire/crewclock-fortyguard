@@ -4,7 +4,7 @@
 
 The previous canonical UI was `SCRIPTED`, not a live rendering of runtime state. `src/App.tsx` advanced visible `STAGES` with a local timer and obtained audit rows from the TypeScript `agentAudit()` helper. That path has been removed from the canonical browser route.
 
-This is an honest limitation of the current interface, not a claim that the agent is absent. The production runtime is available in `src/fortyguard_agent/agent.py`: `AgentRunner` emits `AgentTrace` events for provider decisions, tool-call start/finish, deterministic terminal states, safe mode, action proposals, and provider telemetry. The offline runtime evaluations exercise that same boundary without Groq, TokenRouter, or FortyGuard calls.
+The earlier Python agent existed separately, but it did not drive the submitted browser. That split has now been removed from the product path.
 
 ## Binding decision
 
@@ -12,8 +12,8 @@ This is an honest limitation of the current interface, not a claim that the agen
 - `CURRENT_CANONICAL_UI_BINDING = REAL_RUNTIME`
 - `REAL_AGENT_EVENT_STREAM_AVAILABLE_FOR_UX = YES`
 
-The canonical route now uses `src/demo/runtime.ts`: `RuntimeSession` is produced by the deterministic runtime engine, normalized to the safe `RuntimeUiEvent` contract, and rendered by `src/App.tsx`. The Python production boundary has the corresponding `trace_to_ui_events()` projection in `src/fortyguard_agent/ui_events.py`, which consumes actual `AgentTrace` and `AgentState` values without exposing prompts, secrets, or reasoning.
+`src/demo/runtime.ts` is now only the browser API client and inert pre-run display state. It contains no scheduling decision call. `src/fortyguard_agent/production_service.py` owns the provider-backed session and emits the safe `RuntimeUiEvent` contract rendered by `src/App.tsx`.
 
-The browser event contract is high-level only: event id, run id, timestamp, stage, status, summary, source, provider, tool name, terminal state, and sanitized metadata. The canonical Phoenix path is generated from the runtime’s unavailable-evidence result and ends in current-plan preservation plus recheck availability. Synthetic positive evidence is explicitly labeled and passes through the same optimizer, verifier, identity binding, and runtime event adapter.
+The browser event contract is high-level only: event id, run id, timestamp, stage, status, summary, source, provider, tool name, terminal state, and sanitized metadata. Synthetic positive, saved canonical FortyGuard replay, evidence-unavailable, and all-indoor paths all pass through the same production session runtime. Only the applicable deterministic stages run.
 
-The visual UX pass may refine presentation, but the event plumbing is now connected: the browser consumes deterministic runtime results through `RuntimeSession` and the safe event contract. A live provider-backed AgentTrace transport is not required for this offline build and remains outside this pass; no UI event claims that Groq, TokenRouter, or FortyGuard ran.
+The closure pass replaces that intermediate deterministic browser session with the production API. `POST /api/reviews` starts a real provider-backed orchestration session; `GET /api/reviews/{id}` returns only emitted events and withholds the run result until deterministic work completes. The browser has no imported decision function and no future event array. Presentation timing begins only after an authoritative result exists.
