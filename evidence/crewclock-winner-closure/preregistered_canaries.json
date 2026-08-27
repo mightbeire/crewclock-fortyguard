@@ -1,0 +1,29 @@
+{
+  "manifest_version": "crewclock.canaries.v1",
+  "frozen_at_utc": "2026-08-27T15:55:00Z",
+  "selection_rule": "Execute in listed order and stop at the first real positive thermal improvement or after all five cases. Never change threshold, geometry, date, shift, tasks, or order after evidence is observed.",
+  "thermal_contract": {
+    "analytic_type": "exceedance",
+    "threshold_c": 32,
+    "direction": "above",
+    "window_minutes": 120,
+    "granularity": 100
+  },
+  "shared_schedule": {
+    "shift": "06:00-14:00 local",
+    "tasks": [
+      {"id": "C1", "name": "Morning site setup", "start": "06:00", "duration_minutes": 60, "workface": "site-northwest", "crew": "crew-1", "fixed": true, "environment": "outdoor"},
+      {"id": "C2", "name": "Primary outdoor installation", "start": "10:00", "duration_minutes": 120, "workface": "site-northwest", "crew": "crew-1", "fixed": false, "environment": "outdoor"},
+      {"id": "C3", "name": "Secondary outdoor installation", "start": "08:00", "duration_minutes": 120, "workface": "site-southeast", "crew": "crew-2", "fixed": false, "environment": "outdoor"},
+      {"id": "C4", "name": "Indoor material control", "start": "12:00", "duration_minutes": 60, "workface": "site-southwest", "crew": "crew-3", "fixed": false, "environment": "indoor"}
+    ],
+    "crew_headcounts": {"crew-1": 6, "crew-2": 5, "crew-3": 3}
+  },
+  "canaries": [
+    {"order": 1, "location": "Las Vegas, Nevada", "latitude": 36.1699, "longitude": -115.1398, "timezone": "America/Los_Angeles", "date": "2025-07-15", "site_width_m": 200, "site_height_m": 160},
+    {"order": 2, "location": "Houston, Texas", "latitude": 29.7604, "longitude": -95.3698, "timezone": "America/Chicago", "date": "2025-08-12", "site_width_m": 200, "site_height_m": 160},
+    {"order": 3, "location": "Miami, Florida", "latitude": 25.7617, "longitude": -80.1918, "timezone": "America/New_York", "date": "2025-08-05", "site_width_m": 200, "site_height_m": 160},
+    {"order": 4, "location": "Fresno, California", "latitude": 36.7378, "longitude": -119.7871, "timezone": "America/Los_Angeles", "date": "2025-07-22", "site_width_m": 200, "site_height_m": 160},
+    {"order": 5, "location": "Kansas City, Missouri", "latitude": 39.0997, "longitude": -94.5786, "timezone": "America/Chicago", "date": "2025-07-29", "site_width_m": 200, "site_height_m": 160}
+  ]
+}
