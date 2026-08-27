@@ -1,7 +1,10 @@
 import json
+from pathlib import Path
 
 from fortyguard_agent.models import AgentState, AgentTrace, Goal
 from fortyguard_agent.ui_events import trace_to_ui_events
+
+APP = Path(__file__).resolve().parents[1] / "src" / "App.tsx"
 
 
 def test_agent_trace_projects_to_safe_ui_events_without_reasoning_or_secrets() -> None:
@@ -21,3 +24,24 @@ def test_agent_trace_projects_to_safe_ui_events_without_reasoning_or_secrets() -
     assert telemetry["metadata"]["provider_used"] == "PRIMARY_PROVIDER"
     assert "api_key" not in telemetry["metadata"]
     assert all(set(event) >= {"event_id", "run_id", "timestamp", "stage", "status", "summary", "source", "provider", "metadata"} for event in events)
+
+
+def test_polling_effect_has_stable_session_identity_dependencies() -> None:
+    source = APP.read_text(encoding="utf-8")
+    assert "[phase, session.runId, session.status]" in source
+    assert "[phase, session])" not in source
+    assert "window.setInterval(() => { void poll() }, 250)" in source
+
+
+def test_mobile_and_approval_failure_copy_are_truthful() -> None:
+    source = APP.read_text(encoding="utf-8")
+    assert "Indoor / support work contributes 0 modeled high-heat crew-hours" in source
+    assert "Plan wasn’t applied because final verification failed." in source
+    assert "Current shift remains unchanged." in source
+    assert "REAL FORTYGUARD HISTORICAL VALIDATION" in source
+    assert "1 task retimed" in source
+    assert "crew.qualifications[0]" in source
+    assert "qualification: isSample && prior?.crewId === crew.id ? prior.qualification : 'general'" not in source
+    assert "LIVE_ACQUIRED_SEGMENTED" in source
+    assert "Live FortyGuard evidence acquired in schedule-aligned windows" in source
+    assert "alternativesTested = run.stats.candidatesConsidered > 0" in source

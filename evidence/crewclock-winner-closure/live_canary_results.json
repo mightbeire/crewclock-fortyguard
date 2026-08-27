@@ -1,0 +1,63 @@
+{
+  "manifest": "preregistered_canaries.json",
+  "manifest_commit": "d219c4b1810b7aa87cf8485e97c3a85aa6382250",
+  "execution_rule_result": "STOPPED_AT_FIRST_POSITIVE_ORDER_3",
+  "credits_before": 1719540,
+  "credits_after": 1668900,
+  "fortyguard_requests": 12,
+  "completed": 12,
+  "failed": 0,
+  "cache_reuses_during_first_execution": 0,
+  "canaries": [
+    {
+      "order": 1,
+      "location": "Las Vegas, Nevada",
+      "date": "2025-07-15",
+      "baseline_shhch": 28,
+      "proposed_shhch": 28,
+      "outcome": "NO_FEASIBLE_IMPROVEMENT",
+      "windows": [
+        {"start": "06:00", "end": "08:00", "values_hours": [2.0, 2.0], "activity_id": "0512fe7f-a955-4f8d-bf5e-8b7f07c5530e"},
+        {"start": "08:00", "end": "10:00", "values_hours": [2.0, 2.0], "activity_id": "7f948710-c7ea-425b-a51a-30409d3414a9"},
+        {"start": "10:00", "end": "12:00", "values_hours": [2.0, 2.0], "activity_id": "e561b85d-8088-4be6-beda-e77409241761"},
+        {"start": "12:00", "end": "14:00", "values_hours": [2.0, 2.0], "activity_id": "9384491f-4a7c-4194-9279-aaa6ba3c0c2f"}
+      ]
+    },
+    {
+      "order": 2,
+      "location": "Houston, Texas",
+      "date": "2025-08-12",
+      "baseline_shhch": 0,
+      "proposed_shhch": 0,
+      "outcome": "NO_ACTION_REQUIRED",
+      "windows": [
+        {"start": "06:00", "end": "08:00", "values_hours": [], "activity_id": "b5d19137-8e8a-4b74-adf3-20be9549d4a2"},
+        {"start": "08:00", "end": "10:00", "values_hours": [], "activity_id": "45fd9d70-a6f1-41af-8c1a-1ad52183f95f"},
+        {"start": "10:00", "end": "12:00", "values_hours": [], "activity_id": "4400d3bb-39e0-4771-83f5-0799424f1c94"},
+        {"start": "12:00", "end": "14:00", "values_hours": [], "activity_id": "144630a8-41fb-4733-a85d-64a50b2feb34"}
+      ]
+    },
+    {
+      "order": 3,
+      "location": "Miami, Florida",
+      "date": "2025-08-05",
+      "baseline_shhch": 21.086303,
+      "proposed_shhch": 5.032994,
+      "tasks_changed": ["C2", "C3"],
+      "constraint_families": "6/6 -> 6/6",
+      "recommendation_verification": "PASS",
+      "agent_sufficiency_decision": "PROCEED",
+      "agent_presentation_action": "PRESENT_RECOMMENDATION",
+      "human_approval": "PASS",
+      "final_reverification": "PASS",
+      "outcome": "APPROVED",
+      "windows": [
+        {"start": "06:00", "end": "08:00", "values_hours": [0.0, 0.0, 0.0, 0.0], "activity_id": "97a9adf4-0ce6-4284-8679-55730c48c5ea"},
+        {"start": "08:00", "end": "10:00", "values_hours": [1.8489, 1.8499, 1.6772, 1.6783], "activity_id": "8bcdc71e-45e7-4cc1-87aa-a85204d56a6f"},
+        {"start": "10:00", "end": "12:00", "values_hours": [2.0, 2.0, 2.0, 2.0], "activity_id": "af34c925-97dd-4b25-a7ca-55cdc32eddfd"},
+        {"start": "12:00", "end": "14:00", "values_hours": [2.0, 2.0, 2.0, 2.0], "activity_id": "c52e1e6e-2517-453f-bbf3-320c36435be3"}
+      ]
+    }
+  ],
+  "unexecuted_after_stop": ["Fresno, California", "Kansas City, Missouri"]
+}

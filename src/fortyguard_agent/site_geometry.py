@@ -8,6 +8,8 @@ workfaces.  It never geocodes a city label or claims surveyed precision.
 """
 
 from dataclasses import dataclass
+import hashlib
+import json
 import math
 from typing import Any
 
@@ -142,6 +144,10 @@ def validate_workfaces(workfaces: Any, aoi: dict[str, Any]) -> tuple[dict[str, A
     if not isinstance(workfaces, list) or not workfaces:
         raise SiteGeometryError("workfaces_required")
     validate_feature_collection(aoi)
+    aoi_ring = aoi["features"][0]["geometry"]["coordinates"][0]
+    aoi_hash = hashlib.sha256(json.dumps(aoi, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    min_x, max_x = min(pair[0] for pair in aoi_ring), max(pair[0] for pair in aoi_ring)
+    min_y, max_y = min(pair[1] for pair in aoi_ring), max(pair[1] for pair in aoi_ring)
     ids: set[str] = set()
     result: list[dict[str, Any]] = []
     for face in workfaces:
@@ -151,8 +157,20 @@ def validate_workfaces(workfaces: Any, aoi: dict[str, Any]) -> tuple[dict[str, A
         polygon = face.get("polygon")
         if not isinstance(polygon, list) or len(polygon) < 3:
             raise SiteGeometryError(f"workface_polygon_required:{face['id']}")
+        if polygon[0] == polygon[-1]:
+            polygon = polygon[:-1]
+        if len(polygon) < 3:
+            raise SiteGeometryError(f"workface_polygon_area_required:{face['id']}")
         closed = polygon + [polygon[0]]
         for pair in closed:
+            if not isinstance(pair, (list, tuple)) or len(pair) < 2:
+                raise SiteGeometryError(f"workface_coordinate_pair_invalid:{face['id']}")
             validate_anchor(pair[1], pair[0])
-        result.append({**face, "polygon": [list(pair[:2]) for pair in polygon], "geometry_precision": face.get("geometry_precision", "APPROXIMATE_OPERATOR_ANCHOR_DERIVED")})
+            if not (min_x <= pair[0] <= max_x and min_y <= pair[1] <= max_y):
+                raise SiteGeometryError(f"workface_outside_project_aoi:{face['id']}")
+        area = abs(sum(closed[i][0] * closed[i + 1][1] - closed[i + 1][0] * closed[i][1] for i in range(len(polygon))) / 2)
+        if area <= 1e-14:
+            raise SiteGeometryError(f"workface_polygon_area_required:{face['id']}")
+        normalized = [list(pair[:2]) for pair in polygon]
+        result.append({**face, "polygon": normalized, "geometry": {"type": "Polygon", "coordinates": [normalized + [normalized[0]]]}, "aoi_hash": aoi_hash, "geometry_precision": face.get("geometry_precision", "APPROXIMATE_OPERATOR_ANCHOR_DERIVED")})
     return tuple(result)

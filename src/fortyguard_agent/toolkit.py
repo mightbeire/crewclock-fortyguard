@@ -276,6 +276,7 @@ class FortyGuardToolkit:
                 raise SiteGeometryError("unsupported_heatmap_granularity")
             identity = {
                 "polygon_aoi": aoi,
+                "workface_ids": sorted(str(item["id"]) for item in workfaces),
                 "date_time": {"start_date": date, "filter_type": 2, "start_time": start_time, "end_time": end_time, "timezone": timezone_name},
                 "granularity": granularity,
                 "analytic_type": "exceedance",
@@ -381,6 +382,8 @@ class FortyGuardToolkit:
             values.append(value)
             tiles.append({"polygon": [list(pair[:2]) for pair in rings[0][:-1]], "valueHours": value})
         result_hash = __import__("hashlib").sha256(json.dumps(raw, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        aoi_hash = __import__("hashlib").sha256(json.dumps(arguments["polygon_aoi"], sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        acquired_at = datetime.now().astimezone().isoformat()
         trigger = {"thresholdC": 32, "quantity": "fortyguard_modeled_temperature", "provenance": "FORTYGUARD_EXCEEDANCE_THRESHOLD", "thresholdUnits": "celsius", "direction": "above"}
         return {
             "status": status,
@@ -396,10 +399,10 @@ class FortyGuardToolkit:
             "granularity": int(arguments.get("granularity", 100)),
             "activityId": activity_id,
             "aoi": arguments["polygon_aoi"],
-            "aoiHash": key,
+            "aoiHash": aoi_hash,
             "observationDate": str(arguments["date"]),
             "timezone": timezone_name,
-            "acquiredAt": datetime.now().astimezone().isoformat(),
+            "acquiredAt": acquired_at,
             "resultHash": result_hash,
             "coverage": "VALID",
             "featureCount": len(features),
@@ -408,10 +411,16 @@ class FortyGuardToolkit:
             "exceedanceWindows": [{
                 "analyticType": "exceedance", "start": start, "end": end,
                 "units": "hours", "status": "VALID", "qualifying": any(value > 0 for value in values),
-                "provenance": f"{status}:FortyGuard:/v1/heatmap", "aoi": key,
+                "provider": "FortyGuard", "activityId": activity_id, "acquisitionType": status,
+                "provenance": f"{status}:FortyGuard:/v1/heatmap", "aoi": aoi_hash, "aoiHash": aoi_hash,
+                "workfaceIds": sorted(str(item["id"]) for item in arguments.get("workfaces", [])),
                 "date": str(arguments["date"]), "timezone": timezone_name,
+                "localWindowStart": start, "localWindowEnd": end,
                 "analyticSource": "FortyGuard:/v1/heatmap", "projectThermalTrigger": trigger,
-                "resultHash": result_hash, "version": "crewclock.fortyguard.v2", "tiles": tiles,
+                "threshold": 32.0, "direction": "above", "granularity": int(arguments.get("granularity", 100)),
+                "geometryBinding": {"aoiHash": aoi_hash, "workfaceIds": sorted(str(item["id"]) for item in arguments.get("workfaces", []))},
+                "acquiredAt": acquired_at, "contentHash": result_hash,
+                "resultHash": result_hash, "version": "crewclock.fortyguard.v3", "tiles": tiles,
             }],
             "projectThermalTrigger": trigger,
             "precision": "APPROXIMATE_OPERATOR_ANCHOR_DERIVED",
