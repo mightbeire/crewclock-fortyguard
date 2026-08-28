@@ -97,6 +97,22 @@ describe('CrewClock deterministic demo', () => {
     expect(run.message).toContain('No defensible improvement')
   })
 
+  it('fails closed when thermal tiles do not cover an outdoor workface', () => {
+    const run = runCrewClock({
+      tasks: [{ ...TASKS[2], zoneId: 'uncovered', dependencies: [] }],
+      crews: [CREWS[0]],
+      workfaces: [{ id: 'uncovered', label: 'Uncovered workface', polygon: [[0, 0], [1, 0], [1, 1], [0, 1]] }],
+      thermalEvidence: SYNTHETIC_POSITIVE_EVIDENCE,
+      scenarioLabel: 'LIVE_FORTYGUARD',
+      projectId: 'spatial-coverage-test',
+    })
+    expect(run.status).toBe('tool-failure')
+    expect(run.decisionKind).toBe('evidence-unavailable')
+    expect(run.beforeCrewHours).toBeNull()
+    expect(run.recommendation).toBeNull()
+    expect(run.originalVerification.passedFamilies).toBe(run.originalVerification.totalFamilies)
+  })
+
   it.each([
     ['stale' as const, 'stale-evidence'],
     ['tool-failure' as const, 'tool-failure'],

@@ -468,6 +468,9 @@ const buildCrewClockRun = ({
   if (scenarioLabel !== 'SYNTHETIC TEST SCENARIO' && scenarioLabel !== 'CANONICAL_PHOENIX_REPLAY' && scenarioLabel !== 'LIVE_FORTYGUARD') {
     return { ...base, status: 'missing-evidence', decisionKind: 'evidence-unavailable', recommendation: null, recommendationVerification: null, afterCrewHours: null, shiftedCrewHours: 0, stats: emptyStats, message: 'Decision-grade evidence requires an explicitly labeled replay or synthetic test scenario. No recommendation issued.' }
   }
+  if (beforeCrewHours === null) {
+    return { ...base, status: 'tool-failure', decisionKind: 'evidence-unavailable', recommendation: null, recommendationVerification: null, afterCrewHours: null, shiftedCrewHours: 0, stats: emptyStats, message: 'Thermal evidence does not spatially cover every outdoor workface. No recommendation issued.' }
+  }
 
   const enumerations = crews.map(crew => enumerateCrew(crew.id, tasks, crews, original, thermalEvidence, workfaces, policy))
   const bestByCrew = enumerations.map(({ candidates }) => [...candidates].sort(candidateOrder(baselineValid))[0])
