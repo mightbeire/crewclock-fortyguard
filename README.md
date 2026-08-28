@@ -15,91 +15,80 @@ A superintendent enters the shift that already exists. The input includes crews,
 
 CrewClock then:
 
-1. Reviews the submitted shift.
-2. Validates all six hard constraint families before thermal acquisition.
-3. Decides whether thermal investigation is necessary.
-4. Selects the workfaces and time windows that need evidence.
-5. Uses those validated selections for the FortyGuard requests.
-6. Calculates schedule overlap with the modeled high-heat window.
-7. Tests feasible schedule alternatives.
-8. Verifies hard construction constraints.
-9. Presents one verified recommendation, or keeps the current plan when no useful change exists.
-10. Waits for superintendent approval.
-11. Verifies the exact approved schedule again before it becomes final.
+1. Validates all six hard constraint families before thermal acquisition.
+2. Lets the AI agent decide which workfaces and time windows need investigation.
+3. Uses those validated choices for FortyGuard requests.
+4. Extends evidence coverage across reachable destination windows inside the submitted shift.
+5. Calculates Scheduled High-Heat Crew-Hours (SHHCH).
+6. Tests feasible schedule alternatives.
+7. Verifies hard construction constraints.
+8. Presents one verified recommendation, or explains why no lower-overlap change can be supported.
+9. Waits for superintendent approval.
+10. Verifies the exact approved schedule again before it becomes final.
 
 If usable evidence is unavailable, CrewClock preserves the current shift. It does not invent a zero value or fabricate a recommendation.
 
 ## Why the AI agent matters
 
-The AI agent controls the investigation path. It decides whether to investigate and which workfaces and time windows matter. Those choices cause the actual evidence requests.
+The AI agent controls the investigation path. It decides whether thermal investigation is needed and which workfaces and time windows matter. Those choices cause the evidence requests.
 
-The AI does not own schedule arithmetic or final authority.
-
-Deterministic code owns:
-
-- schema validation;
-- baseline constraint validation;
-- SHHCH calculation;
-- schedule generation;
-- crew and qualification checks;
-- dependency and deadline checks;
-- fixed-commitment checks;
-- employer-control checks; and
-- final verification.
-
-The superintendent owns the final approval.
+The AI does not own schedule arithmetic or final authority. Deterministic code owns baseline validation, SHHCH, schedule generation, hard-constraint checks, and final verification. The superintendent owns approval.
 
 ## FortyGuard evidence
 
-CrewClock uses FortyGuard as the modeled environmental evidence source. Evidence is bound to the selected project workface and time window.
+CrewClock uses FortyGuard as the modeled environmental evidence source. Each request is bound to one selected workface and one selected time window.
 
-For multi-workface investigations, CrewClock requests each selected workface separately. This keeps spatial coverage explicit.
+FortyGuard heatmap activities are asynchronous. CrewClock polls activity status for up to 600 seconds so valid live activities have time to complete. Empty or unusable results remain unavailable.
 
-FortyGuard heatmap activities are asynchronous. CrewClock polls activity status for up to 600 seconds so valid live activities have time to complete. Empty or unusable results still remain unavailable; the longer polling window does not weaken evidence standards.
-
-### Live evidence lesson from the hackathon
-
-Earlier evidence-unavailable runs were initially treated as possible provider limitations. Final hardening showed that CrewClock itself used a 90-second polling timeout, while valid FortyGuard activities can take several minutes. Because of that, those earlier unavailable outcomes cannot be attributed to FortyGuard alone.
-
-CrewClock now polls for up to 600 seconds. After the fix, fresh future Palm Springs evidence completed successfully. Genuine empty or unusable provider responses still remain unavailable by design. This was an integration issue we found and corrected during the hackathon, not evidence that FortyGuard lacked the required data.
+CrewClock also acquires evidence for reachable destination windows. This matters because a task cannot be credited with lower SHHCH unless the destination window has decision-grade evidence. Unknown evidence is never treated as zero.
 
 ## SHHCH
 
-**Scheduled High-Heat Crew-Hours (SHHCH)** is a schedule-placement metric.
-
-CrewClock calculates the overlap between modeled high-heat windows, outdoor task timing, and crew size. It then sums the resulting scheduled crew-hours.
+**Scheduled High-Heat Crew-Hours (SHHCH)** is a schedule-placement metric. It measures scheduled crew-hours that overlap the configured modeled high-heat window.
 
 SHHCH is **not** a physiological exposure measure, a heat-dose measure, a medical risk score, or a statement of OSHA compliance.
 
-## Final browser acceptance
+## Primary fresh-future proof
 
-The final browser-only acceptance used a Palm Springs, California, construction shift and previously acquired live FortyGuard evidence that matched the exact site and time identity.
+On August 28, 2026, CrewClock completed a same-day future San Diego stress test through the normal browser path with fresh live FortyGuard evidence.
 
-- Baseline SHHCH: **13 crew-hours**
-- Proposed SHHCH: **4 crew-hours**
+- Baseline SHHCH: **18 crew-hours**
+- Proposed SHHCH: **9 crew-hours**
+- Reduction: **9 crew-hours / 50%**
 - Flexible tasks retimed: **3**
+- Fixed tasks changed: **0**
 - Constraint families: **6/6 → 6/6**
 - Human approval: **PASS**
-- Final deterministic verification: **PASS**
+- Final deterministic reverification: **PASS**
+- Destination evidence coverage: **PASS**
 
-The same product also passed no-change and evidence-unavailable paths.
+This run proved the complete path: future shift → AI-selected investigation → fresh FortyGuard evidence → destination-window coverage → lower-SHHCH schedule → deterministic verification → human approval → final reverification.
 
-## Fresh live future proof
+## Additional positive proof
 
-On August 28, 2026, CrewClock also completed a same-day future Palm Springs run through the normal browser path.
+A browser acceptance run in Palm Springs used previously acquired live evidence after an exact identity match and reduced SHHCH from **13 → 4** while retiming three tasks and preserving 6/6 constraints.
 
-- Future shift: **10:00–16:00 local**
-- Baseline constraints before thermal review: **6/6 PASS**
-- FortyGuard mode: **fresh live**
-- Completed schedule-aligned activities: **3**
-- Baseline SHHCH: **15 crew-hours**
-- Schedule candidates considered: **1,160**
-- Feasible candidates: **1,080**
-- Lower-SHHCH feasible candidates: **0**
+A separate real Miami integration run reduced SHHCH from **21.09 → 5.03**, about a 76% reduction, with 6/6 constraints before and after.
 
-CrewClock therefore returned `NO_FEASIBLE_IMPROVEMENT` and kept the valid current plan. This result proves the fresh-future acquisition and optimization path without forcing a schedule change when the evidence does not support one.
+## When the whole measured shift remains above the trigger
 
-Final hardening also found two issues before submission. Live acquisition could stop polling after 90 seconds even though valid FortyGuard activities can process for several minutes. Baseline constraint validation also happened too late in the flow. CrewClock now polls for up to 600 seconds and rejects invalid baselines before AI orchestration or FortyGuard acquisition. Regression tests cover both cases.
+CrewClock does not call that schedule “optimal.” If complete evidence shows the configured modeled-temperature trigger across the full measured shift window for every investigated workface, the result says:
+
+> **The full measured shift remains above the configured trigger.**
+
+It then explains that retiming inside the submitted shift cannot reduce SHHCH. CrewClock does not make a safety determination. The superintendent should use the employer heat plan to decide whether to delay, modify, or keep the work.
+
+If the evidence does not prove full-shift trigger coverage, CrewClock uses the narrower statement: **No lower-SHHCH schedule was found within this shift.**
+
+## What final testing fixed
+
+The final live tests exposed three integration defects before submission:
+
+- Live polling could stop after 90 seconds even though valid FortyGuard activities can take several minutes. CrewClock now polls for up to 600 seconds.
+- Baseline constraint validation happened too late. CrewClock now requires a valid baseline before AI orchestration or FortyGuard acquisition.
+- The scheduler did not fully propagate the submitted shift horizon into destination evidence acquisition. CrewClock now measures reachable destination windows before it credits a schedule move with lower SHHCH.
+
+Regression coverage protects these paths, including the rule that unknown destination evidence is never converted to zero.
 
 ## Run locally
 
@@ -121,19 +110,19 @@ Open the local Vite URL shown in the terminal.
 
 ## Validation
 
-The final build passed 150 Python tests, 48 Vitest tests, typecheck, lint, build, secret scan, and browser-only acceptance.
-
-Final engineering validation:
+The latest fully executed engineering gate passed:
 
 ```text
-pytest: 150 passed
-Vitest: 48 passed
+pytest: 152 passed
+Vitest: 50 passed
 typecheck: PASS
 lint: PASS
 build: PASS
 secret scan: PASS
-browser-only acceptance: PASS
+browser acceptance: PASS
 ```
+
+The final terminal-state classification refinement is covered in `src/demo/decision.test.ts`; rerun the gate above before submission lock.
 
 ## Product boundaries
 
