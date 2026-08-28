@@ -46,7 +46,17 @@ def test_segmented_bundle_preserves_distinct_window_identities() -> None:
     bundle = assemble_evidence_bundle([base, later], plan=plan, aoi_hash="aoi")
     assert [(row["start"], row["end"]) for row in bundle["exceedanceWindows"]] == [("06:00", "08:00"), ("08:00", "10:00")]
     assert bundle["activityIds"] == ["activity-a", "activity-b"]
+    assert bundle["acquisitionMode"] == "LIVE"
+    assert bundle["cacheReuseCount"] == 0
     assert bundle["evidenceBundleHash"]
+
+
+def test_segmented_bundle_preserves_exact_cache_reuse_mode() -> None:
+    cached = {"status": "LIVE_CACHE_REUSED", "granularity": 100, "exceedanceWindows": [{"start": "06:00", "end": "08:00"}], "activityId": "activity-cached", "resultHash": "hash-cached", "workface_id": "north", "window_id": "06:00-08:00", "activity_id": "activity-cached", "submitted_polygon": {"type": "FeatureCollection", "features": []}, "provider_result": {"activity_id": "activity-cached"}}
+    plan = {"decision": "INVESTIGATE", "workface_ids": ["north"], "window_ids": ["06:00-08:00"]}
+    bundle = assemble_evidence_bundle([cached], plan=plan, aoi_hash="aoi")
+    assert bundle["acquisitionMode"] == "CACHE_REUSED"
+    assert bundle["cacheReuseCount"] == 1
 
 
 def test_workface_must_be_inside_and_bound_to_aoi() -> None:

@@ -122,6 +122,8 @@ def assemble_evidence_bundle(parts: Iterable[dict[str, Any]], *, plan: dict[str,
     ]
     bundle_hash = hashlib.sha256(json.dumps({"aoi_hash": aoi_hash, "plan": plan, "identities": identities}, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
     first = rows[0]
+    cache_reuse_count = sum(row.get("status") == "LIVE_CACHE_REUSED" for row in rows)
+    acquisition_mode = "CACHE_REUSED" if cache_reuse_count == len(rows) else "LIVE" if cache_reuse_count == 0 else "MIXED"
     return {
         **first,
         "status": "LIVE_ACQUIRED_SEGMENTED",
@@ -131,6 +133,8 @@ def assemble_evidence_bundle(parts: Iterable[dict[str, Any]], *, plan: dict[str,
         "investigationPlan": plan,
         "activityIds": [row.get("activityId") for row in rows],
         "resultHashes": [row.get("resultHash") for row in rows],
+        "acquisitionMode": acquisition_mode,
+        "cacheReuseCount": cache_reuse_count,
         "evidenceRecords": evidence_records,
         "exceedanceWindows": windows,
         "coverage": "VALID_SEGMENTED",
