@@ -86,10 +86,17 @@ def validate_investigation_plan(plan: Any, facts: dict[str, Any]) -> dict[str, A
         raise InvestigationPlanError("investigation_requires_workfaces_and_windows")
     if len(faces) != len(set(faces)) or len(window_ids) != len(set(window_ids)):
         raise InvestigationPlanError("duplicate_investigation_request")
-    relevant_faces = {task.get("workface_id") for task in tasks}
+    relevant_faces = {task.get("workface_id") for task in tasks if task.get("workface_id")}
     valid_windows = {window["id"] for window in facts.get("windows", [])}
     if any(face not in relevant_faces for face in faces):
         raise InvestigationPlanError("investigation_workface_not_relevant")
+    # A decision-grade global SHHCH result cannot treat an uninvestigated
+    # outdoor workface as zero. The model chooses the bounded workfaces, but
+    # deterministic validation requires complete spatial coverage before any
+    # acquisition plan may proceed. Omitted relevant faces trigger the normal
+    # bounded correction path rather than a silent fetch-all expansion.
+    if set(faces) != relevant_faces:
+        raise InvestigationPlanError("investigation_workface_coverage_incomplete")
     if any(window not in valid_windows for window in window_ids):
         raise InvestigationPlanError("investigation_window_outside_shift")
     relevant_pairs = {(task.get("workface_id"), window) for task in tasks for window in task.get("window_ids", [])}

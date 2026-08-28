@@ -21,7 +21,7 @@ from .integrity import (
     verification_result_hash,
 )
 from .models import Provenance, ToolResult
-from .site_geometry import SiteGeometryError, validate_feature_collection, validate_workfaces
+from .site_geometry import SiteGeometryError, acquisition_aoi_for_workfaces, validate_feature_collection, validate_workfaces
 from .timezones import project_timezone
 from .state_machine import deterministic_decision_result
 from .thermal import ThermalContractError, assert_env_params_schema, assert_heatmap_schema, env_params_role
@@ -249,15 +249,27 @@ class FortyGuardToolkit:
         """
         endpoint = "/v1/heatmap"
         try:
-            aoi = validate_feature_collection(arguments.get("polygon_aoi"))
-            workfaces = validate_workfaces(arguments.get("workfaces"), aoi)
+            raw_aoi = arguments.get("polygon_aoi")
+            project_aoi_arg = arguments.get("project_aoi")
+            if project_aoi_arg is None:
+                # Backward-compatible high-level callers may still supply the
+                # project AOI directly. Production new-site acquisition passes
+                # project_aoi explicitly so selected workfaces can narrow the
+                # actual provider geometry.
+                aoi = validate_feature_collection(raw_aoi)
+                project_aoi = aoi
+                workfaces = validate_workfaces(arguments.get("workfaces"), project_aoi)
+            else:
+                project_aoi = validate_feature_collection(project_aoi_arg)
+                workfaces = validate_workfaces(arguments.get("workfaces"), project_aoi)
+                aoi = validate_feature_collection(raw_aoi, allow_multiple=True)
+                expected_acquisition_aoi = acquisition_aoi_for_workfaces(list(workfaces), project_aoi)
+                if json.dumps(aoi, sort_keys=True, separators=(",", ":")) != json.dumps(expected_acquisition_aoi, sort_keys=True, separators=(",", ":")):
+                    raise SiteGeometryError("acquisition_aoi_must_match_selected_workfaces")
             date = str(arguments["date"])
             parsed_date = datetime.strptime(date, "%Y-%m-%d").date()
-            today = datetime.now().date()
             if parsed_date < datetime(2019, 1, 1).date():
                 raise SiteGeometryError("historical_coverage_starts_2019")
-            if parsed_date > today and (parsed_date - today).days > 1:
-                raise SiteGeometryError("forecast_date_outside_supported_horizon")
             timezone_name = str(arguments["timezone"])
             project_timezone(timezone_name)
             start_time, end_time = str(arguments["start_time"]), str(arguments["end_time"])
@@ -276,6 +288,7 @@ class FortyGuardToolkit:
                 raise SiteGeometryError("unsupported_heatmap_granularity")
             identity = {
                 "polygon_aoi": aoi,
+                "project_aoi_hash": __import__("hashlib").sha256(json.dumps(project_aoi, sort_keys=True, separators=(",", ":")).encode()).hexdigest(),
                 "workface_ids": sorted(str(item["id"]) for item in workfaces),
                 "date_time": {"start_date": date, "filter_type": 2, "start_time": start_time, "end_time": end_time, "timezone": timezone_name},
                 "granularity": granularity,

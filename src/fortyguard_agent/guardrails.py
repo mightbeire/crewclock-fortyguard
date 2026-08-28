@@ -111,15 +111,17 @@ class FortyGuardRequestGuard:
         features = aoi.get("features") or []
         if not features:
             return 0.0
-        coords = ((features[0].get("geometry") or {}).get("coordinates") or [[]])[0]
-        if len(coords) < 4:
-            raise GuardrailError("invalid_polygon_aoi")
-        lat = sum(float(pair[1]) for pair in coords) / len(coords)
-        # Equirectangular approximation is sufficient for a pre-submit limit check.
-        scale_x, scale_y = 69.172 * math.cos(math.radians(lat)), 69.0
-        planar = [(float(pair[0]) * scale_x, float(pair[1]) * scale_y) for pair in coords]
-        area = abs(sum(planar[i][0] * planar[(i + 1) % len(planar)][1] - planar[(i + 1) % len(planar)][0] * planar[i][1] for i in range(len(planar))) / 2)
-        return area
+        total = 0.0
+        for feature in features:
+            coords = ((feature.get("geometry") or {}).get("coordinates") or [[]])[0]
+            if len(coords) < 4:
+                raise GuardrailError("invalid_polygon_aoi")
+            lat = sum(float(pair[1]) for pair in coords) / len(coords)
+            # Equirectangular approximation is sufficient for a pre-submit limit check.
+            scale_x, scale_y = 69.172 * math.cos(math.radians(lat)), 69.0
+            planar = [(float(pair[0]) * scale_x, float(pair[1]) * scale_y) for pair in coords]
+            total += abs(sum(planar[i][0] * planar[(i + 1) % len(planar)][1] - planar[(i + 1) % len(planar)][0] * planar[i][1] for i in range(len(planar))) / 2)
+        return total
 
     @staticmethod
     def _us_point(payload: dict[str, Any]) -> bool:
@@ -127,8 +129,14 @@ class FortyGuardRequestGuard:
             lat, lon = float(payload["latitude"]), float(payload["longitude"])
             return 24.0 <= lat <= 50.0 and -125.0 <= lon <= -66.0
         aoi = payload.get("polygon_aoi") or {}
-        coords = (((aoi.get("features") or [{}])[0].get("geometry") or {}).get("coordinates") or [[]])[0]
-        return bool(coords) and all(24.0 <= float(pair[1]) <= 50.0 and -125.0 <= float(pair[0]) <= -66.0 for pair in coords)
+        features = aoi.get("features") or []
+        if not features:
+            return False
+        for feature in features:
+            coords = ((feature.get("geometry") or {}).get("coordinates") or [[]])[0]
+            if not coords or not all(24.0 <= float(pair[1]) <= 50.0 and -125.0 <= float(pair[0]) <= -66.0 for pair in coords):
+                return False
+        return True
 
     def validate(self, endpoint: str, payload: dict[str, Any], *, request_at: datetime | None = None, now: datetime | None = None) -> int:
         if endpoint not in self.allowed_endpoints:

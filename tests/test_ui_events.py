@@ -30,7 +30,10 @@ def test_polling_effect_has_stable_session_identity_dependencies() -> None:
     source = APP.read_text(encoding="utf-8")
     assert "[phase, session.runId, session.status]" in source
     assert "[phase, session])" not in source
-    assert "window.setInterval(() => { void poll() }, 250)" in source
+    assert "window.setInterval(" not in source
+    assert "window.setTimeout(() => { void poll() }, 250)" in source
+    assert "timer = window.setTimeout" in source
+    assert "if (timer !== undefined) window.clearTimeout(timer)" in source
 
 
 def test_mobile_and_approval_failure_copy_are_truthful() -> None:
@@ -45,3 +48,10 @@ def test_mobile_and_approval_failure_copy_are_truthful() -> None:
     assert "LIVE_ACQUIRED_SEGMENTED" in source
     assert "Live FortyGuard evidence acquired in schedule-aligned windows" in source
     assert "alternativesTested = run.stats.candidatesConsidered > 0" in source
+    assert "Buffalo saved example" not in source
+    assert "Operator-created shift" in source
+    assert "status: 'CLIENT_TRANSPORT_FAILURE'" in source
+    assert "source: 'CLIENT'" in source
+    assert "No deterministic verifier result was recorded." in source
+    assert "selected_shift_outside_fortyguard_12h_forecast_horizon" in source
+    assert "Date.now() + 86_400_000" not in source

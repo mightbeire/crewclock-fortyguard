@@ -118,25 +118,28 @@ def build_site_geometry(latitude: Any, longitude: Any, width_m: Any = 200, heigh
     return SiteGeometry(aoi, workfaces, lat, lon, width, height, precision)
 
 
-def validate_feature_collection(aoi: Any) -> dict[str, Any]:
+def validate_feature_collection(aoi: Any, *, allow_multiple: bool = False) -> dict[str, Any]:
     if not isinstance(aoi, dict) or aoi.get("type") != "FeatureCollection":
         raise SiteGeometryError("aoi_must_be_feature_collection")
     features = aoi.get("features")
-    if not isinstance(features, list) or len(features) != 1:
+    if not isinstance(features, list) or not features:
+        raise SiteGeometryError("aoi_must_contain_site_feature")
+    if not allow_multiple and len(features) != 1:
         raise SiteGeometryError("aoi_must_contain_one_site_feature")
-    geometry = features[0].get("geometry") if isinstance(features[0], dict) else None
-    if not isinstance(geometry, dict) or geometry.get("type") != "Polygon":
-        raise SiteGeometryError("aoi_polygon_required")
-    rings = geometry.get("coordinates")
-    if not isinstance(rings, list) or len(rings) != 1 or not isinstance(rings[0], list) or len(rings[0]) < 4:
-        raise SiteGeometryError("aoi_polygon_ring_required")
-    ring = rings[0]
-    if ring[0] != ring[-1]:
-        raise SiteGeometryError("aoi_polygon_must_be_closed")
-    for pair in ring:
-        if not isinstance(pair, (list, tuple)) or len(pair) < 2:
-            raise SiteGeometryError("aoi_coordinate_pair_invalid")
-        validate_anchor(pair[1], pair[0])
+    for feature in features:
+        geometry = feature.get("geometry") if isinstance(feature, dict) else None
+        if not isinstance(geometry, dict) or geometry.get("type") != "Polygon":
+            raise SiteGeometryError("aoi_polygon_required")
+        rings = geometry.get("coordinates")
+        if not isinstance(rings, list) or len(rings) != 1 or not isinstance(rings[0], list) or len(rings[0]) < 4:
+            raise SiteGeometryError("aoi_polygon_ring_required")
+        ring = rings[0]
+        if ring[0] != ring[-1]:
+            raise SiteGeometryError("aoi_polygon_must_be_closed")
+        for pair in ring:
+            if not isinstance(pair, (list, tuple)) or len(pair) < 2:
+                raise SiteGeometryError("aoi_coordinate_pair_invalid")
+            validate_anchor(pair[1], pair[0])
     return aoi
 
 
@@ -174,3 +177,28 @@ def validate_workfaces(workfaces: Any, aoi: dict[str, Any]) -> tuple[dict[str, A
         normalized = [list(pair[:2]) for pair in polygon]
         result.append({**face, "polygon": normalized, "geometry": {"type": "Polygon", "coordinates": [normalized + [normalized[0]]]}, "aoi_hash": aoi_hash, "geometry_precision": face.get("geometry_precision", "APPROXIMATE_OPERATOR_ANCHOR_DERIVED")})
     return tuple(result)
+
+
+def acquisition_aoi_for_workfaces(workfaces: Any, project_aoi: dict[str, Any]) -> dict[str, Any]:
+    """Build the exact provider AOI from deterministically validated workfaces.
+
+    The model may select workface IDs, but it never authors geometry. Each
+    provider feature is copied from a workface already proven to lie inside the
+    single operator-derived project AOI. This makes accepted spatial choices
+    causally control the FortyGuard payload without weakening containment.
+    """
+    normalized = validate_workfaces(workfaces, project_aoi)
+    features: list[dict[str, Any]] = []
+    for face in normalized:
+        ring = [list(pair[:2]) for pair in face["geometry"]["coordinates"][0]]
+        features.append({
+            "type": "Feature",
+            "properties": {
+                "workface_id": face["id"],
+                "geometry_precision": face.get("geometry_precision", "APPROXIMATE_OPERATOR_ANCHOR_DERIVED"),
+            },
+            "geometry": {"type": "Polygon", "coordinates": [ring]},
+        })
+    result = {"type": "FeatureCollection", "features": features}
+    validate_feature_collection(result, allow_multiple=True)
+    return result

@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from datetime import datetime, timezone
 import pytest
 
 from fortyguard_agent import production_service as service
 from fortyguard_agent.evidence_windows import InvestigationPlanError, assemble_evidence_bundle, investigation_facts, schedule_windows, validate_investigation_plan
-from fortyguard_agent.site_geometry import SiteGeometryError, build_site_geometry, validate_workfaces
+from fortyguard_agent.site_geometry import SiteGeometryError, acquisition_aoi_for_workfaces, build_site_geometry, validate_workfaces
 
 
 def _task(task_id: str, workface: str, start: str, *, fixed: bool = False, indoor: bool = False) -> dict:
@@ -57,6 +58,61 @@ def test_workface_must_be_inside_and_bound_to_aoi() -> None:
     with pytest.raises(SiteGeometryError, match="outside_project_aoi"):
         validate_workfaces(outside, site["aoi"])
 
+
+
+def test_investigation_plan_cannot_omit_relevant_outdoor_workface() -> None:
+    windows = schedule_windows("06:00", "10:00")
+    facts = investigation_facts({"tasks": [_task("A", "north", "06:00"), _task("B", "south", "08:00")]}, windows)
+    with pytest.raises(InvestigationPlanError, match="workface_coverage_incomplete"):
+        validate_investigation_plan({"decision": "INVESTIGATE", "workface_ids": ["north"], "window_ids": ["06:00-08:00"], "reason": "partial"}, facts)
+    accepted = validate_investigation_plan({"decision": "INVESTIGATE", "workface_ids": ["north", "south"], "window_ids": ["06:00-08:00"], "reason": "bounded initial window"}, facts)
+    assert accepted["workface_ids"] == ["north", "south"]
+
+
+def test_new_site_horizon_guard_accepts_historical_and_near_future_without_mutation() -> None:
+    request = {
+        "date": "2025-07-15", "timezone": "America/New_York", "start": "06:00", "end": "10:00",
+        "tasks": [_task("A", "north", "06:00")],
+    }
+    original = deepcopy(request)
+    service.validate_new_site_review_window(request, reference_utc=datetime(2026, 8, 27, 8, 0, tzinfo=timezone.utc))
+    assert request == original
+
+    near = {**request, "date": "2026-08-27"}
+    service.validate_new_site_review_window(near, reference_utc=datetime(2026, 8, 27, 8, 0, tzinfo=timezone.utc))
+
+
+def test_new_site_horizon_guard_rejects_unsupported_future_before_review_without_mutation() -> None:
+    request = {
+        "date": "2026-08-28", "timezone": "America/New_York", "start": "06:00", "end": "10:00",
+        "tasks": [_task("A", "north", "06:00")],
+    }
+    original = deepcopy(request)
+    with pytest.raises(SiteGeometryError, match="selected_shift_outside_fortyguard_12h_forecast_horizon"):
+        service.validate_new_site_review_window(request, reference_utc=datetime(2026, 8, 27, 8, 0, tzinfo=timezone.utc))
+    assert request == original
+
+
+def test_selected_workfaces_build_exact_provider_geometry_inside_project_aoi() -> None:
+    site = build_site_geometry(35.0, -80.0, 200, 200).to_dict()
+    selected = [site["workfaces"][0], site["workfaces"][2]]
+    provider_aoi = acquisition_aoi_for_workfaces(selected, site["aoi"])
+    assert [feature["properties"]["workface_id"] for feature in provider_aoi["features"]] == [selected[0]["id"], selected[1]["id"]]
+    assert provider_aoi != site["aoi"]
+
+
+def test_model_safety_language_is_rejected_then_corrected(monkeypatch) -> None:
+    session = service.Session("agent-safety", "new-site", {})
+    run = {"status": "recommended", "baselineValid": True, "beforeCrewHours": 10, "afterCrewHours": 4, "recommendation": {"A": "06:00"}, "original": {"A": "10:00"}, "recommendationVerification": {"passed": True}}
+    actions = iter([
+        {"action": "PRESENT_RECOMMENDATION", "explanation": "The plan cuts modeled overlap while meeting safety constraints.", "request_superintendent_decision": True},
+        {"action": "PRESENT_RECOMMENDATION", "explanation": "The plan reduces scheduled high-heat crew-hours from 10 to 4 while preserving all hard operational constraints.", "request_superintendent_decision": True},
+    ])
+    monkeypatch.setattr(service, "_bounded_model_action", lambda *args, **kwargs: next(actions))
+    presentation = service.explain_structured_result(session, run)
+    assert "safety" not in presentation["explanation"].lower()
+    rejected = [event for event in session.events if event["status"] == "AGENT_DECISION_REJECTED"]
+    assert rejected and rejected[0]["metadata"]["claim_violation"] is not None
 
 def test_live_approval_reconstructs_live_evidence_branch(monkeypatch) -> None:
     captured: dict = {}

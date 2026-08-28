@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { emptyRuntimeSession, fetchProductionReview, startProductionReview, SYNTHETIC_POSITIVE_EVIDENCE } from './runtime'
+import { emptyRuntimeSession, fetchProductionReview, ProductionReviewStartError, startProductionReview, SYNTHETIC_POSITIVE_EVIDENCE } from './runtime'
 import { CREWS, TASKS } from './scenario'
 
 describe('browser production runtime boundary', () => {
@@ -19,6 +19,17 @@ describe('browser production runtime boundary', () => {
     expect(session.runId).toBe('server-session')
     expect(session.events).toHaveLength(1)
     expect(session.run.recommendation).toBeNull()
+    vi.unstubAllGlobals()
+  })
+
+  it('preserves structured review-start preflight failures without inventing runtime events', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 422, json: async () => ({ error: 'new_site_preflight_failed', reason: 'selected_shift_outside_fortyguard_12h_forecast_horizon' }) }))
+    await expect(startProductionReview('new-site', TASKS, CREWS)).rejects.toMatchObject({
+      name: 'ProductionReviewStartError',
+      status: 422,
+      code: 'new_site_preflight_failed',
+      reason: 'selected_shift_outside_fortyguard_12h_forecast_horizon',
+    } satisfies Partial<ProductionReviewStartError>)
     vi.unstubAllGlobals()
   })
 

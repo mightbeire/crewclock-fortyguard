@@ -4,7 +4,7 @@ from pathlib import Path
 
 from fortyguard_agent.cache import JsonCache
 from fortyguard_agent.guardrails import FortyGuardRequestGuard
-from fortyguard_agent.site_geometry import SiteGeometryError, build_site_geometry
+from fortyguard_agent.site_geometry import SiteGeometryError, acquisition_aoi_for_workfaces, build_site_geometry
 from fortyguard_agent.toolkit import FortyGuardToolkit
 
 
@@ -119,3 +119,29 @@ def test_completed_empty_exceedance_map_is_valid_no_overlap(tmp_path: Path) -> N
     assert result.data["featureCount"] == 0
     assert result.data["maxValueHours"] == 0
     assert result.data["exceedanceWindows"][0]["qualifying"] is False
+
+
+def test_selected_workface_geometry_is_the_actual_provider_payload_and_cache_identity(tmp_path: Path) -> None:
+    site = build_site_geometry(35.7796, -78.6382, 200, 160).to_dict()
+    selected = [site["workfaces"][0]]
+    provider_aoi = acquisition_aoi_for_workfaces(selected, site["aoi"])
+    request = _request(site)
+    request.update({
+        "polygon_aoi": provider_aoi,
+        "project_aoi": site["aoi"],
+        "workfaces": selected,
+        "workface_ids": [selected[0]["id"]],
+    })
+    client = FakeFortyGuard(site)
+    toolkit = FortyGuardToolkit(client, JsonCache(tmp_path), FortyGuardRequestGuard(remaining_credits=100_000, max_run_credits=10_000))
+    result = toolkit.acquire_workface_thermal_evidence(request)
+    assert result.ok
+    assert client.create_calls[0]["polygon_aoi"] == provider_aoi
+    assert client.create_calls[0]["polygon_aoi"] != site["aoi"]
+    assert result.data["exceedanceWindows"][0]["workfaceIds"] == [selected[0]["id"]]
+
+    mismatched = dict(request)
+    mismatched["polygon_aoi"] = site["aoi"]
+    rejected = toolkit.acquire_workface_thermal_evidence(mismatched)
+    assert not rejected.ok
+    assert "acquisition_aoi_must_match_selected_workfaces" in (rejected.error or "")

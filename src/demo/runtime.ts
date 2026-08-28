@@ -9,7 +9,7 @@ export type UiEventName =
   | 'VERIFICATION_STARTED' | 'VERIFICATION_FAILED' | 'VERIFICATION_PASSED'
   | 'NO_FEASIBLE_IMPROVEMENT' | 'NO_FEASIBLE_CORRECTION' | 'OPERATOR_ATTENTION_REQUIRED' | 'RUN_COMPLETED'
   | 'CURRENT_PLAN_PRESERVED' | 'RECHECK_AVAILABLE' | 'AWAITING_APPROVAL'
-  | 'APPROVAL_RECEIVED' | 'FINAL_VERIFICATION_FAILED' | 'APPROVED' | 'AI_ANALYSIS_UNAVAILABLE'
+  | 'APPROVAL_RECEIVED' | 'FINAL_VERIFICATION_FAILED' | 'APPROVED' | 'AI_ANALYSIS_UNAVAILABLE' | 'CLIENT_TRANSPORT_FAILURE'
 
 export type RuntimeUiEvent = {
   event_id: string; run_id: string; timestamp: string; stage: string; status: UiEventName; summary: string
@@ -22,6 +22,20 @@ export type RuntimeSession = {
 }
 
 export type ProductionScenario = 'synthetic-positive' | 'canonical-replay' | 'evidence-unavailable' | 'all-indoor' | 'new-site'
+export class ProductionReviewStartError extends Error {
+  status: number
+  code?: string
+  reason?: string
+
+  constructor(status: number, code?: string, reason?: string) {
+    super(`review_start_failed:${status}:${reason || code || 'unknown'}`)
+    this.name = 'ProductionReviewStartError'
+    this.status = status
+    this.code = code
+    this.reason = reason
+  }
+}
+
 
 const syntheticBase: ExceedanceWindow = {
   analyticType: 'exceedance', start: '11:00', end: '15:00', units: 'hours', status: 'VALID',
@@ -86,7 +100,11 @@ export type ProductionShiftContext = {
 export const startProductionReview = async (scenario: ProductionScenario, tasks: Task[], crews: Crew[], context?: ProductionShiftContext): Promise<RuntimeSession> => {
   const fallback = emptyRuntimeSession(tasks, crews)
   const response = await fetch('/api/reviews', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scenario, tasks, crews, ...context }) })
-  if (!response.ok) throw new Error(`review_start_failed:${response.status}`)
+  if (!response.ok) {
+    let body: { error?: string; reason?: string } = {}
+    try { body = await response.json() as { error?: string; reason?: string } } catch { /* response may not be JSON */ }
+    throw new ProductionReviewStartError(response.status, body.error, body.reason)
+  }
   return parseSnapshot(await response.json(), fallback)
 }
 

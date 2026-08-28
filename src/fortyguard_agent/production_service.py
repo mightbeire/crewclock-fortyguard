@@ -3,12 +3,13 @@ from __future__ import annotations
 """CrewClock's deployable browser API and authoritative production session runtime."""
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import hashlib
 import http.client
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 import threading
@@ -26,8 +27,9 @@ from .evidence_windows import (
     schedule_windows,
     validate_investigation_plan,
 )
-from .site_geometry import SiteGeometryError, build_site_geometry, validate_workfaces
+from .site_geometry import SiteGeometryError, acquisition_aoi_for_workfaces, build_site_geometry, validate_workfaces
 from .toolkit import load_live_toolkit
+from .timezones import project_timezone
 
 ROOT = Path(__file__).resolve().parents[2]
 RUNTIME = ROOT / "build" / "decision-runtime.mjs"
@@ -37,13 +39,22 @@ PROVIDER_TURN_LIMIT = 3
 PROVIDER_TIMEOUT_SECONDS = 18.0
 SYNTHETIC_ARTIFACT_HASH = "1a64a8928d8e8ff25841300cdb3e37bc136cacc4bc4885b12ee849ebf751e413"
 CANONICAL_MANIFEST_HASH = "7f7af007a3a4020c07b16f8de63bb01425a53d70affb966d03e6467f37d7692a"
+CANONICAL_MANIFEST_NORMALIZED_LF_HASH = "fe23225d3c46d248c5be907b910a7c68e42b39ffed44da2aef67ad5a17bde587"
 
 
-def _approved_hash(path: Path, expected: str) -> str:
-    actual = hashlib.sha256(path.read_bytes()).hexdigest()
-    if actual != expected:
-        raise RuntimeError(f"approved_evidence_hash_mismatch:{path.name}")
-    return expected
+def _approved_hash(path: Path, expected: str, *, normalized_lf_hash: str | None = None) -> str:
+    raw = path.read_bytes()
+    if hashlib.sha256(raw).hexdigest() == expected:
+        return expected
+    # The canonical Phoenix manifest was originally sealed from a Windows
+    # working tree whose newline bytes differ from the normalized Git blob.
+    # Accept only the explicitly sealed LF-normalized representation so fresh
+    # clones are reproducible without weakening semantic integrity checks.
+    if normalized_lf_hash is not None:
+        normalized_lf = raw.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+        if hashlib.sha256(normalized_lf).hexdigest() == normalized_lf_hash:
+            return expected
+    raise RuntimeError(f"approved_evidence_hash_mismatch:{path.name}")
 
 EVIDENCE_REGISTRY: dict[str, dict[str, Any]] = {
     "phoenix_synthetic_positive_v2": {
@@ -66,7 +77,7 @@ EVIDENCE_REGISTRY: dict[str, dict[str, Any]] = {
         "analytic_type": "exceedance",
         "geometry": "four bound polygon workfaces",
         "coverage": "06:00-16:00 local",
-        "content_hash": _approved_hash(CANONICAL_MANIFEST, CANONICAL_MANIFEST_HASH),
+        "content_hash": _approved_hash(CANONICAL_MANIFEST, CANONICAL_MANIFEST_HASH, normalized_lf_hash=CANONICAL_MANIFEST_NORMALIZED_LF_HASH),
     },
     "unavailable": {
         "classification": "EVIDENCE_UNAVAILABLE",
@@ -258,7 +269,7 @@ def orchestrate(session: Session, inspection: dict[str, Any]) -> str | dict[str,
             try:
                 session.provider = {"provider_used": provider, "model": model, "model_calls": 1, "turn_limit": PROVIDER_TURN_LIMIT, "timeout_seconds": PROVIDER_TIMEOUT_SECONDS}
                 session.emit("SHIFT_INSPECTION_STARTED", "The production agent reviewed sanitized shift facts.", tool="inspect_shift_plan")
-                json_instruction = "Return one JSON object only with decision (INVESTIGATE or NO_THERMAL_INVESTIGATION), workface_ids_csv, and window_ids_csv. Select only listed ids. Use comma-separated strings; use empty strings only for NO_THERMAL_INVESTIGATION."
+                json_instruction = "Return one JSON object only with decision (INVESTIGATE or NO_THERMAL_INVESTIGATION), workface_ids_csv, and window_ids_csv. Select only listed ids. Include every listed workface that has relevant outdoor work; window acquisition may be staged. Use comma-separated strings; use empty strings only for NO_THERMAL_INVESTIGATION."
                 payload = {
                     "model": model,
                     "messages": [
@@ -375,13 +386,29 @@ def decide_evidence_sufficiency(session: Session, plan: dict[str, Any], facts: d
     raise RuntimeError("agent_evidence_sufficiency_validation_failed")
 
 
+_UNSUPPORTED_OPERATOR_CLAIMS = (
+    r"\bsafe\b", r"\bsafer\b", r"\bsafety\b", r"\bunsafe\b",
+    r"\binjur(?:y|ies)\b", r"\bphysiolog(?:y|ical|ically)?\b",
+    r"\bexposure\b", r"\bheat dose\b", r"\bwbgt\b", r"\bosha\b",
+    r"\bcomplian(?:ce|t)\b", r"\bcertif(?:y|ied|ication)\b", r"\brisk\b",
+)
+
+
+def _operator_explanation_claim_violation(text: str) -> str | None:
+    lowered = text.lower()
+    for pattern in _UNSUPPORTED_OPERATOR_CLAIMS:
+        if re.search(pattern, lowered):
+            return pattern
+    return None
+
+
 def explain_structured_result(session: Session, run: dict[str, Any]) -> dict[str, Any]:
     expected = "PRESENT_RECOMMENDATION" if run.get("status") == "recommended" else "PRESENT_NO_CHANGE"
     tool = {"type": "function", "function": {"name": "present_structured_result", "description": "Choose how to present the deterministic result and explain it concisely.", "parameters": {"type": "object", "properties": {"action": {"type": "string", "enum": ["PRESENT_RECOMMENDATION", "PRESENT_NO_CHANGE", "ABSTAIN"]}, "explanation": {"type": "string"}, "request_superintendent_decision": {"type": "boolean"}}, "required": ["action", "explanation", "request_superintendent_decision"], "additionalProperties": False}}}
     facts = {"status": run.get("status"), "baseline_valid": run.get("baselineValid"), "baseline_shhch": run.get("beforeCrewHours"), "proposed_shhch": run.get("afterCrewHours"), "tasks_retimed": sum(1 for task_id, start in (run.get("recommendation") or {}).items() if start != run.get("original", {}).get(task_id)), "verification_passed": run.get("recommendationVerification", {}).get("passed") if isinstance(run.get("recommendationVerification"), dict) else None}
     banned_explanation_fragments = ("baseline_valid", "verification_passed", "previous_action_rejected", "status is", " true", " false", "validator")
     for attempt in range(2):
-        action = _bounded_model_action(session, tool=tool, expected="present_structured_result", facts={**facts, "previous_action_rejected": attempt > 0}, instruction="Return one JSON object only with action (PRESENT_RECOMMENDATION, PRESENT_NO_CHANGE, or ABSTAIN), explanation, and request_superintendent_decision. Write one or two operator-facing sentences of at most 45 words. State the measured change in scheduled high-heat crew-hours and number of retimed tasks when present; do not call the measurement units. Do not mention field names, booleans, status labels, validators, or rejected actions. Request a superintendent decision only for a verified recommendation. You may abstain, but never claim approval.", json_response=True)
+        action = _bounded_model_action(session, tool=tool, expected="present_structured_result", facts={**facts, "previous_action_rejected": attempt > 0}, instruction="Return one JSON object only with action (PRESENT_RECOMMENDATION, PRESENT_NO_CHANGE, or ABSTAIN), explanation, and request_superintendent_decision. Write one or two operator-facing sentences of at most 45 words. State the measured change in scheduled high-heat crew-hours and number of retimed tasks when present; do not call the measurement units. Do not mention field names, booleans, status labels, validators, or rejected actions. Never describe the result as safe, safer, safety, exposure, risk, injury prevention, WBGT, OSHA compliance/certification, or physiological protection. Use 'hard operational constraints' or 'employer-configured operational controls' instead. Request a superintendent decision only for a verified recommendation. You may abstain, but never claim approval.", json_response=True)
         explanation = action.get("explanation")
         explanation_clean = explanation.strip() if isinstance(explanation, str) else ""
         explanation_lower = explanation_clean.lower()
@@ -391,11 +418,12 @@ def explain_structured_result(session: Session, run: dict[str, Any]) -> dict[str
             and bool(explanation_clean)
             and len(explanation_clean.split()) <= 60
             and not any(fragment in explanation_lower for fragment in banned_explanation_fragments)
+            and _operator_explanation_claim_violation(explanation_clean) is None
         )
         if valid:
             session.emit("RESULT_EXPLAINED", "The agent explained the structured deterministic result.", tool="present_structured_result", metadata={"action": action["action"], "request_superintendent_decision": action["request_superintendent_decision"]})
             return {"action": action["action"], "explanation": explanation_clean, "request_superintendent_decision": action["request_superintendent_decision"]}
-        session.emit("AGENT_DECISION_REJECTED", "The result-presentation action failed deterministic validation; bounded correction requested.", tool="validate_result_presentation", source="DETERMINISTIC_VALIDATOR", metadata={"attempt": attempt + 1, "proposed_action": action.get("action")})
+        session.emit("AGENT_DECISION_REJECTED", "The result-presentation action failed deterministic validation; bounded correction requested.", tool="validate_result_presentation", source="DETERMINISTIC_VALIDATOR", metadata={"attempt": attempt + 1, "proposed_action": action.get("action"), "claim_violation": _operator_explanation_claim_violation(explanation_clean)})
     raise RuntimeError("agent_result_presentation_validation_failed")
 
 
@@ -438,6 +466,46 @@ def _new_site_geometry(request: dict[str, Any]) -> dict[str, Any]:
     return normalized
 
 
+def validate_new_site_review_window(request: dict[str, Any], *, reference_utc: datetime | None = None) -> None:
+    """Reject unsupported future coverage before a review session begins.
+
+    Movable outdoor work can be retimed anywhere in the shift, so every
+    schedule-relevant segmented window may become required. The provider's
+    +12-hour cap therefore applies to the latest relevant window start, not
+    merely the shift's first timestamp. Historical dates remain supported.
+    """
+    date_text = str(request.get("date", ""))
+    timezone_name = str(request.get("timezone", ""))
+    try:
+        shift_date = datetime.strptime(date_text, "%Y-%m-%d").date()
+    except ValueError as exc:
+        raise SiteGeometryError("shift_date_must_be_yyyy_mm_dd") from exc
+    if shift_date < datetime(2019, 1, 1).date():
+        raise SiteGeometryError("historical_coverage_starts_2019")
+    try:
+        project_timezone(timezone_name)
+        windows = schedule_windows(str(request.get("start", "")), str(request.get("end", "")))
+    except Exception as exc:
+        raise SiteGeometryError(f"invalid_shift_time_or_timezone:{type(exc).__name__}") from exc
+    facts = investigation_facts(request, windows)
+    required_ids = {window_id for task in facts.get("relevant_outdoor_tasks", []) for window_id in task.get("window_ids", [])}
+    if not required_ids:
+        return
+    by_id = {window["id"]: window for window in windows}
+    reference = reference_utc or datetime.now(timezone.utc)
+    if reference.tzinfo is None:
+        reference = reference.replace(tzinfo=timezone.utc)
+    latest_start: datetime | None = None
+    for window_id in required_ids:
+        window = by_id[window_id]
+        naive = datetime.strptime(f"{date_text} {window['start']}", "%Y-%m-%d %H:%M")
+        aware = naive.replace(tzinfo=project_timezone(timezone_name, naive))
+        if latest_start is None or aware > latest_start:
+            latest_start = aware
+    if latest_start is not None and latest_start > reference.astimezone(timezone.utc) + timedelta(hours=12):
+        raise SiteGeometryError("selected_shift_outside_fortyguard_12h_forecast_horizon")
+
+
 def _unavailable_thermal_evidence(request: dict[str, Any], site: dict[str, Any] | None) -> dict[str, Any]:
     return {
         "status": "EVIDENCE_UNAVAILABLE", "classification": "UNAVAILABLE", "source": "CREWCLOCK_USER_SHIFT_EVIDENCE_BOUNDARY",
@@ -473,7 +541,9 @@ def execute_session(session: Session) -> None:
                 plan = validate_investigation_plan(orchestration, inspection["investigation"]) if isinstance(orchestration, dict) else default_investigation_plan(inspection["investigation"])
                 selected_windows = [window for window in windows if window["id"] in plan["window_ids"]]
                 selected_faces = [face for face in site["workfaces"] if face["id"] in plan["workface_ids"]]
-                session.emit("THERMAL_EVIDENCE_REQUESTED", f"Requesting {len(selected_windows)} schedule-aligned evidence windows for {len(selected_faces)} selected workfaces.", tool="acquire_workface_thermal_evidence", source="EVIDENCE_ACQUISITION", metadata={"window_ids": plan["window_ids"], "workface_ids": plan["workface_ids"]})
+                selected_aoi = acquisition_aoi_for_workfaces(selected_faces, site["aoi"])
+                selected_aoi_hash = hashlib.sha256(json.dumps(selected_aoi, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+                session.emit("THERMAL_EVIDENCE_REQUESTED", f"Requesting {len(selected_windows)} schedule-aligned evidence windows for {len(selected_faces)} selected workfaces.", tool="acquire_workface_thermal_evidence", source="EVIDENCE_ACQUISITION", metadata={"window_ids": plan["window_ids"], "workface_ids": plan["workface_ids"], "provider_aoi_hash": selected_aoi_hash})
                 last_status: set[tuple[str, str | None]] = set()
 
                 def on_status(status: str, metadata: dict[str, Any]) -> None:
@@ -494,7 +564,8 @@ def execute_session(session: Session) -> None:
                     return toolkit.acquire_workface_thermal_evidence({
                         "project_id": session.request.get("id", session.session_id),
                         "location": session.request.get("location"),
-                        "polygon_aoi": site["aoi"],
+                        "polygon_aoi": selected_aoi,
+                        "project_aoi": site["aoi"],
                         "workfaces": selected_faces,
                         "workface_ids": plan["workface_ids"],
                         "date": session.request.get("date"),
@@ -535,9 +606,11 @@ def execute_session(session: Session) -> None:
                     session.emit("THERMAL_EVIDENCE_UNAVAILABLE", "Decision-grade site evidence is unavailable; the current plan was preserved.", tool="acquire_workface_thermal_evidence", source="EVIDENCE_ACQUISITION", metadata={"failure_classification": evidence_result.data.get("failure_classification") if evidence_result else "EMPTY_PLAN", "activity_id": evidence_result.provenance.activity_id if evidence_result else None, "technical_error": evidence_result.error if evidence_result else "no_validated_evidence_windows"})
                     engine = run_engine({"scenario": "evidence-unavailable", "tasks": session.request.get("tasks"), "crews": session.request.get("crews"), "workfaces": site["workfaces"], "thermalEvidence": _unavailable_thermal_evidence(session.request, site)})
                 else:
-                    aoi_hash = site["workfaces"][0]["aoi_hash"]
+                    project_aoi_hash = site["workfaces"][0]["aoi_hash"]
                     final_plan = {**plan, "window_ids": [window["id"] for window in acquired_windows]}
-                    evidence = assemble_evidence_bundle((result.data for result in evidence_results), plan=final_plan, aoi_hash=aoi_hash)
+                    evidence = assemble_evidence_bundle((result.data for result in evidence_results), plan=final_plan, aoi_hash=selected_aoi_hash)
+                    evidence["projectAoiHash"] = project_aoi_hash
+                    evidence["providerAoiHash"] = selected_aoi_hash
                     session.emit("THERMAL_EVIDENCE_READY", "Temporally segmented thermal evidence received, identity-bound, and validated.", tool="acquire_workface_thermal_evidence", source="EVIDENCE_ACQUISITION", metadata={"activity_ids": evidence.get("activityIds"), "classification": evidence.get("classification"), "aoi_hash": evidence.get("aoiHash"), "window_count": len(evidence["exceedanceWindows"]), "threshold": 32.0, "direction": "above", "analytic_type": "exceedance", "granularity": 100, "cache_reuses": sum(result.provenance.source == "cached" for result in evidence_results)})
                     session.emit("OPTIMIZATION_STARTED", "Deterministic candidate generation and selection started.", tool="generate_feasible_schedule_alternatives", source="DETERMINISTIC_TOOL")
                     engine = run_engine({"scenario": "live-acquired", "tasks": session.request.get("tasks"), "crews": session.request.get("crews"), "workfaces": site["workfaces"], "thermalEvidence": evidence})
@@ -641,6 +714,12 @@ class Handler(BaseHTTPRequestHandler):
                 scenario = str(body.get("scenario", "evidence-unavailable"))
                 if scenario not in SCENARIO_EVIDENCE and scenario != NEW_SITE_SCENARIO:
                     return self._json(400, {"error": "unknown_scenario"})
+                if scenario == NEW_SITE_SCENARIO:
+                    try:
+                        _new_site_geometry(body)
+                        validate_new_site_review_window(body)
+                    except SiteGeometryError as exc:
+                        return self._json(422, {"error": "new_site_preflight_failed", "reason": str(exc)})
                 session = Session(uuid.uuid4().hex, scenario, body)
                 with SESSIONS_LOCK:
                     SESSIONS[session.session_id] = session

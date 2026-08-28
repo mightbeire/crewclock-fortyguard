@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 import pytest
@@ -16,10 +17,12 @@ from fortyguard_agent.toolkit import FortyGuardToolkit
 _eval_spec = spec_from_file_location("run_real_agent_eval", Path(__file__).resolve().parents[1] / "scripts" / "run_real_agent_eval.py")
 assert _eval_spec and _eval_spec.loader
 real_agent_eval = module_from_spec(_eval_spec)
+sys.modules[_eval_spec.name] = real_agent_eval
 _eval_spec.loader.exec_module(real_agent_eval)
 _gate_spec = spec_from_file_location("run_final_real_agent_trials", Path(__file__).resolve().parents[1] / "scripts" / "run_final_real_agent_trials.py")
 assert _gate_spec and _gate_spec.loader
 final_gate = module_from_spec(_gate_spec)
+sys.modules[_gate_spec.name] = final_gate
 _gate_spec.loader.exec_module(final_gate)
 
 
