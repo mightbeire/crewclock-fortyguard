@@ -119,13 +119,15 @@ describe('CrewClock canonical decision hierarchy', () => {
     expect(result.recommendation).toBeNull()
   })
 
-  it('keeps a valid baseline when the only feasible candidates have equal SHHCH', () => {
-    const result = run([task('A', '06:00', 60, '16:00')], splitEvidence())
+  it('does not overstate a partial hot-window no-improvement result', () => {
+    const partialHotEvidence = evidence([window('06:00', '15:00', true, 9)])
+    const result = run([task('A', '11:00', 60, '16:00')], partialHotEvidence)
     expect(result.baselineValid).toBe(true)
+    expect(result.beforeCrewHours).toBeGreaterThan(0)
     expect(result.status).toBe('no-improvement')
     expect(result.decisionKind).toBe('no-improvement')
     expect(result.recommendation).toBeNull()
-    expect(result.message).not.toContain('invalid')
+    expect(terminalNoChangeCopy(result).heading).toBe('No lower-SHHCH schedule was found within this shift.')
   })
 
   it('accepts an equal-SHHCH correction when the baseline violates employer controls', () => {
@@ -192,12 +194,15 @@ describe('CrewClock canonical decision hierarchy', () => {
     expect(`${copy.heading} ${copy.detail}`).not.toMatch(/fails? a hard constraint|hard operational constraint requires attention/i)
   })
 
-  it('distinguishes positive-SHHCH no-improvement and invalid-baseline terminal copy', () => {
+  it('distinguishes full-shift modeled heat and invalid-baseline terminal copy', () => {
     const positive = run([task('A', '11:00', 60, '16:00')], fullHotEvidence())
     expect(positive.baselineValid).toBe(true)
     expect(positive.beforeCrewHours).toBeGreaterThan(0)
     expect(positive.status).toBe('no-improvement')
-    expect(terminalNoChangeCopy(positive).heading).toBe('No feasible thermal improvement found.')
+    const hotCopy = terminalNoChangeCopy(positive)
+    expect(hotCopy.heading).toBe('The full measured shift remains above the configured trigger.')
+    expect(hotCopy.detail).toContain('Retiming within this shift cannot reduce SHHCH.')
+    expect(hotCopy.detail).toContain('does not make a safety determination')
 
     const invalid = run([task('A', '11:00', 60, '12:00', true), task('B', '12:00', 60, '13:00', true)], fullHotEvidence())
     expect(invalid.baselineValid).toBe(false)
