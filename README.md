@@ -94,6 +94,8 @@ Open the local Vite URL shown in the terminal.
 
 ## Validation
 
+The final build passed 148 Python tests, 48 Vitest tests, typecheck, lint, build, secret scan, and browser-only acceptance.
+
 Final engineering validation:
 
 ```text
