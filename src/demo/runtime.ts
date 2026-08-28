@@ -81,7 +81,7 @@ export const emptyRuntimeSession = (tasks: Task[] = TASKS, crews: Crew[] = CREWS
     message: 'Review has not started.', candidateHash: null, recommendationId: null, evidenceHash: '',
     thermalEvidence: THERMAL_EVIDENCE, sourceScheduleHash: '', policyHash: '', verificationHash: null,
     artifactVersion: 'crewclock.runtime.v1', policyVersion: EMPLOYER_POLICY.name, taskStateHash: '',
-    tasks, crews, policy: EMPLOYER_POLICY, workfaces: WORKFACES,
+    tasks, crews, policy: EMPLOYER_POLICY, workfaces: WORKFACES, shiftStart: '06:00', shiftEnd: '16:00',
   },
 })
 

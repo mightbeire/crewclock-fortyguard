@@ -2,8 +2,6 @@ import {
   CREWS,
   BREAK_POLICY,
   EMPLOYER_POLICY,
-  MINUTE_END,
-  MINUTE_START,
   TASKS,
   THERMAL_EVIDENCE,
   WORKFACES,
@@ -123,6 +121,8 @@ export type CrewClockRun = {
   crews: Crew[]
   policy: EmployerPolicy
   workfaces: Workface[]
+  shiftStart: string
+  shiftEnd: string
 }
 
 export const timeToMinutes = (time: string) => {
@@ -243,6 +243,8 @@ export const verifySchedule = (
   baseline: Schedule = originalSchedule(tasks),
   breakReservations: BreakReservation[] = [],
   policy: EmployerPolicy = EMPLOYER_POLICY,
+  shiftStart = '06:00',
+  shiftEnd = '16:00',
 ): Verification => {
   if (!Array.isArray(tasks) || tasks.length === 0) return schemaFailure('tasks must be a non-empty array')
   if (!schedule || typeof schedule !== 'object' || Array.isArray(schedule)) return schemaFailure('schedule must be an object')
@@ -262,7 +264,10 @@ export const verifySchedule = (
     return crewTasks.flatMap((task, index) => crewTasks.slice(index + 1).map(other => ({ task, other })))
   })
   const outdoorTasks = tasks.filter(task => task.environment !== 'shaded-support')
-  const validTimes = tasks.every(task => validTime(schedule[task.id]) && timeToMinutes(schedule[task.id]) >= MINUTE_START && timeToMinutes(schedule[task.id]) <= MINUTE_END)
+  const shiftStartMinutes = timeToMinutes(shiftStart)
+  const shiftEndMinutes = timeToMinutes(shiftEnd)
+  const validHorizon = validTime(shiftStart) && validTime(shiftEnd) && shiftEndMinutes > shiftStartMinutes
+  const validTimes = validHorizon && tasks.every(task => validTime(schedule[task.id]) && timeToMinutes(schedule[task.id]) >= shiftStartMinutes && timeToMinutes(schedule[task.id]) <= shiftEndMinutes)
   const fixedPass = validTimes && fixedTasks.every(task => schedule[task.id] === baseline[task.id])
   const dependenciesPass = dependencyEdges.every(({ dependency, task }) => {
     const predecessor = tasks.find(item => item.id === dependency)
@@ -275,9 +280,9 @@ export const verifySchedule = (
   )
   const deadlinesPass = validTimes && tasks.every(task => {
     const start = schedule[task.id]
-    return Boolean(start) && timeToMinutes(start) >= MINUTE_START &&
+    return Boolean(start) && timeToMinutes(start) >= shiftStartMinutes &&
       timeToMinutes(start) + task.durationMinutes <= timeToMinutes(task.deadline) &&
-      timeToMinutes(start) + task.durationMinutes <= MINUTE_END
+      timeToMinutes(start) + task.durationMinutes <= shiftEndMinutes
   })
   const availabilityPass = validTimes && sameCrewPairs.every(({ task, other }) => {
     const taskStart = schedule[task.id]
@@ -329,6 +334,8 @@ const enumerateCrew = (
   thermalEvidence: ThermalEvidence,
   workfaces: Workface[],
   policy: EmployerPolicy,
+  shiftStart: string,
+  shiftEnd: string,
 ): { candidates: CrewCandidate[]; considered: number } => {
   const crewTasks = tasks.filter(task => task.crewId === crewId)
   const fixed = crewTasks.filter(task => task.fixed)
@@ -341,7 +348,7 @@ const enumerateCrew = (
     if (index === movable.length) {
       considered += 1
       const full = { ...partial }
-      const verification = verifySchedule(full, crewTasks, crews, baseline, [], policy)
+      const verification = verifySchedule(full, crewTasks, crews, baseline, [], policy, shiftStart, shiftEnd)
       const crewRelevant = verification.families.filter(family => family.id !== 'fixed')
       if (crewRelevant.every(family => family.passed)) {
         candidates.push({
@@ -354,8 +361,10 @@ const enumerateCrew = (
     }
 
     const task = movable[index]
-    const latest = Math.min(timeToMinutes(task.deadline) - task.durationMinutes, MINUTE_END - task.durationMinutes)
-    for (let start = MINUTE_START; start <= latest; start += 30) {
+    const shiftStartMinutes = timeToMinutes(shiftStart)
+    const shiftEndMinutes = timeToMinutes(shiftEnd)
+    const latest = Math.min(timeToMinutes(task.deadline) - task.durationMinutes, shiftEndMinutes - task.durationMinutes)
+    for (let start = shiftStartMinutes; start <= latest; start += 30) {
       const conflicts = crewTasks.some(other => {
         if (other.id === task.id || !partial[other.id]) return false
         const otherStart = timeToMinutes(partial[other.id])
@@ -387,6 +396,9 @@ export type RunOptions = {
   policy?: EmployerPolicy
   workfaces?: Workface[]
   projectId?: string
+  /** The submitted shift horizon is the scheduler's only reachable-time boundary. */
+  shiftStart?: string
+  shiftEnd?: string
 }
 
 const buildCrewClockRun = ({
@@ -399,6 +411,8 @@ const buildCrewClockRun = ({
   policy = EMPLOYER_POLICY,
   workfaces = WORKFACES,
   projectId = 'CC-PHX-0716-v1',
+  shiftStart = '06:00',
+  shiftEnd = '16:00',
 }: RunOptions = {}): CrewClockRun => {
   const taskRows = tasks as unknown
   const crewRows = crews as unknown
@@ -422,16 +436,16 @@ const buildCrewClockRun = ({
   if (!validRuntimeSchema) {
     const safeTasks = Array.isArray(taskRows) ? taskRows.filter(task => task && typeof task === 'object') as Task[] : []
     const safeCrews = Array.isArray(crewRows) ? crewRows.filter(crew => crew && typeof crew === 'object') as Crew[] : []
-    const verification = verifySchedule({}, safeTasks, safeCrews, {}, [], policy)
+    const verification = verifySchedule({}, safeTasks, safeCrews, {}, [], policy, shiftStart, shiftEnd)
     const evidenceHash = evidenceBundleHash(thermalEvidence)
     const taskStateHash = projectStateHash(safeTasks, safeCrews)
     return {
-      status: 'infeasible-original', decisionKind: 'infeasible-original', baselineValid: false, original: {}, recommendation: null, investigation: { investigatedTaskIds: [], skippedIndoorTaskIds: [], retainedFixedTaskIds: [], workfaceIds: [] }, originalVerification: verification, recommendationVerification: null, beforeCrewHours: null, afterCrewHours: null, shiftedCrewHours: 0, stats: { candidatesConsidered: 0, feasibleCandidates: 0, rejectedCandidates: 0 }, deterministicId: projectId, message: 'INVALID_SCHEDULE_SCHEMA: runtime input was malformed; current plan preserved.', candidateHash: null, recommendationId: null, evidenceHash, thermalEvidence, sourceScheduleHash: '', policyHash: policyContentHash(policy), verificationHash: null, artifactVersion: ARTIFACT_VERSION, policyVersion: String(policy.name), taskStateHash, tasks: safeTasks, crews: safeCrews, policy, workfaces,
+      status: 'infeasible-original', decisionKind: 'infeasible-original', baselineValid: false, original: {}, recommendation: null, investigation: { investigatedTaskIds: [], skippedIndoorTaskIds: [], retainedFixedTaskIds: [], workfaceIds: [] }, originalVerification: verification, recommendationVerification: null, beforeCrewHours: null, afterCrewHours: null, shiftedCrewHours: 0, stats: { candidatesConsidered: 0, feasibleCandidates: 0, rejectedCandidates: 0 }, deterministicId: projectId, message: 'INVALID_SCHEDULE_SCHEMA: runtime input was malformed; current plan preserved.', candidateHash: null, recommendationId: null, evidenceHash, thermalEvidence, sourceScheduleHash: '', policyHash: policyContentHash(policy), verificationHash: null, artifactVersion: ARTIFACT_VERSION, policyVersion: String(policy.name), taskStateHash, tasks: safeTasks, crews: safeCrews, policy, workfaces, shiftStart, shiftEnd,
     }
   }
   const original = originalSchedule(tasks)
   const investigation = selectThermalInvestigation(tasks)
-  const originalVerification = verifySchedule(original, tasks, crews, original, [], policy)
+  const originalVerification = verifySchedule(original, tasks, crews, original, [], policy, shiftStart, shiftEnd)
   const baselineValid = originalVerification.passed
   const beforeCrewHours = peakWindowCrewHoursFor(original, tasks, crews, thermalEvidence, workfaces)
   const emptyStats = { candidatesConsidered: 0, feasibleCandidates: 0, rejectedCandidates: 0 }
@@ -440,7 +454,7 @@ const buildCrewClockRun = ({
   const sourceHash = sourceScheduleHash(original) ?? ''
   const policyHash = policyContentHash(policy)
   const policyVersion = String(policy.name)
-  const base = { original, investigation, originalVerification, baselineValid, beforeCrewHours, deterministicId: projectId, candidateHash: null, recommendationId: null, evidenceHash, thermalEvidence, sourceScheduleHash: sourceHash, policyHash, verificationHash: null, artifactVersion: ARTIFACT_VERSION, policyVersion, taskStateHash, tasks, crews, policy, workfaces }
+  const base = { original, investigation, originalVerification, baselineValid, beforeCrewHours, deterministicId: projectId, candidateHash: null, recommendationId: null, evidenceHash, thermalEvidence, sourceScheduleHash: sourceHash, policyHash, verificationHash: null, artifactVersion: ARTIFACT_VERSION, policyVersion, taskStateHash, tasks, crews, policy, workfaces, shiftStart, shiftEnd }
 
   if (scenarioLabel === 'USER_DEFINED_SHIFT' && thermalEvidence.exceedanceEvidenceStatus !== 'complete') {
     return { ...base, status: 'missing-evidence', decisionKind: 'evidence-unavailable', recommendation: null, recommendationVerification: null, afterCrewHours: null, shiftedCrewHours: 0, stats: emptyStats, message: `${String(thermalEvidence.location ?? 'Project')} has no validated schedule-aligned thermal evidence. No recommendation issued.` }
@@ -472,7 +486,7 @@ const buildCrewClockRun = ({
     return { ...base, status: 'tool-failure', decisionKind: 'evidence-unavailable', recommendation: null, recommendationVerification: null, afterCrewHours: null, shiftedCrewHours: 0, stats: emptyStats, message: 'Thermal evidence does not spatially cover every outdoor workface. No recommendation issued.' }
   }
 
-  const enumerations = crews.map(crew => enumerateCrew(crew.id, tasks, crews, original, thermalEvidence, workfaces, policy))
+  const enumerations = crews.map(crew => enumerateCrew(crew.id, tasks, crews, original, thermalEvidence, workfaces, policy, shiftStart, shiftEnd))
   const bestByCrew = enumerations.map(({ candidates }) => [...candidates].sort(candidateOrder(baselineValid))[0])
   const feasibleCandidates = enumerations.reduce((sum, item) => sum + item.candidates.length, 0)
   const candidatesConsidered = enumerations.reduce((sum, item) => sum + item.considered, 0)
@@ -485,7 +499,7 @@ const buildCrewClockRun = ({
     return { ...base, status, decisionKind: status, recommendation: null, recommendationVerification: null, afterCrewHours: baselineValid ? beforeCrewHours : null, shiftedCrewHours: 0, stats, message }
   }
   const recommendation = bestByCrew.reduce<Schedule>((schedule, candidate) => ({ ...schedule, ...candidate?.schedule }), {})
-  const recommendationVerification = verifySchedule(recommendation, tasks, crews, original, [], policy)
+  const recommendationVerification = verifySchedule(recommendation, tasks, crews, original, [], policy, shiftStart, shiftEnd)
   const afterCrewHours = recommendationVerification.passed ? peakWindowCrewHoursFor(recommendation, tasks, crews, thermalEvidence, workfaces) : beforeCrewHours
   const shiftedCrewHours = beforeCrewHours !== null && afterCrewHours !== null ? beforeCrewHours - afterCrewHours : 0
   const scheduleChanged = tasks.some(task => recommendation[task.id] !== original[task.id])
@@ -591,7 +605,7 @@ export const approveRecommendation = (run: CrewClockRun, identity?: { recommenda
   if (run.evidenceHash !== sealed.evidenceHash || run.taskStateHash !== sealed.taskStateHash || run.sourceScheduleHash !== sealed.sourceScheduleHash || run.policyHash !== sealed.policyHash || run.verificationHash !== sealed.verificationHash || run.artifactVersion !== sealed.artifactVersion || currentEvidenceHash !== sealed.evidenceHash || currentTaskStateHash !== sealed.taskStateHash || currentSourceHash !== sealed.sourceScheduleHash || currentPolicyHash !== sealed.policyHash || currentRecommendationId !== sealed.recommendationId || sealed.artifactVersion !== ARTIFACT_VERSION) {
     return { ...received, state: 'FINAL_VERIFICATION_FAILED' as const, approved: false, plan: run.original, verification: run.originalVerification, auditAction: 'Approval blocked; recommendation context is stale' }
   }
-  const verification = verifySchedule(run.recommendation, run.tasks, run.crews, run.original, [], run.policy)
+  const verification = verifySchedule(run.recommendation, run.tasks, run.crews, run.original, [], run.policy, run.shiftStart, run.shiftEnd)
   const finalVerificationHash = verificationResultHash({
     status: 'VERIFIED',
     valid: verification.passed,

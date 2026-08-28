@@ -11,6 +11,8 @@ type Request = {
   crews?: typeof CREWS
   workfaces?: Array<{ id: string; label?: string; polygon: Array<[number, number]>; geometry_precision?: string; source?: string }>
   thermalEvidence?: ThermalEvidence
+  start?: string
+  end?: string
   recommendationId?: string
   candidateHash?: string
 }
@@ -90,6 +92,8 @@ const options: RunOptions = {
   policy: EMPLOYER_POLICY,
   workfaces: request.workfaces ?? WORKFACES,
   projectId: `production-${scenario}`,
+  shiftStart: request.start,
+  shiftEnd: request.end,
 }
 
 if (request.action === 'validate-baseline') {
@@ -98,7 +102,7 @@ if (request.action === 'validate-baseline') {
     name: 'CrewClock operator shift policy',
     status: 'operator-configured shift policy',
     breakRules: [{ ...EMPLOYER_POLICY.breakRules[0], source: 'CREWCLOCK_DEFAULT_OPERATOR_POLICY', version: 'crewclock-default-v1' }],
-  })
+  }, request.start ?? '06:00', request.end ?? '16:00')
   process.stdout.write(JSON.stringify({ verification }))
   process.exit(0)
 }

@@ -133,6 +133,40 @@ def test_new_site_submits_one_request_per_selected_workface_and_window(monkeypat
     assert all(call["polygon_aoi"]["features"][0]["properties"]["workface_id"] == call["workface_id"] for call in calls)
 
 
+def test_new_site_acquires_reachable_terminal_destination_window(monkeypatch) -> None:
+    site = build_site_geometry(32.7157, -117.1611, 200, 200).to_dict()
+    request = {
+        "id": "terminal-destination-test", "location": "San Diego, California", "timezone": "America/Los_Angeles",
+        "date": "2026-08-28", "start": "12:00", "end": "17:00", "aoi": site["aoi"], "workfaces": site["workfaces"],
+        "location_anchor": {"latitude": 32.7157, "longitude": -117.1611}, "site_dimensions_m": {"width": 200, "height": 200},
+        "crews": [{"id": "crew-1", "name": "Crew 1", "headcount": 6, "qualifications": ["general"]}],
+        "tasks": [{"id": "T1", "zoneId": site["workfaces"][0]["id"], "originalStart": "12:00", "durationMinutes": 90, "deadline": "17:00", "crewId": "crew-1", "qualification": "general", "dependencies": [], "fixed": False, "environment": "outdoor-moderate"}],
+    }
+    calls: list[dict] = []
+
+    class FakeToolkit:
+        def acquire_workface_thermal_evidence(self, arguments, *, on_status=None):
+            calls.append(arguments)
+            start, end = arguments["window_id"].split("-")
+            data = {
+                "status": "LIVE_ACQUIRED", "classification": "LIVE_ACQUIRED", "granularity": 100,
+                "workface_id": arguments["workface_id"], "window_id": arguments["window_id"], "activity_id": f"activity-{arguments['window_id']}",
+                "submitted_polygon": arguments["polygon_aoi"], "provider_result": {"pair": arguments["window_id"]},
+                "resultHash": f"hash-{arguments['window_id']}",
+                "exceedanceWindows": [{"analyticType": "exceedance", "start": start, "end": end, "status": "VALID", "units": "hours", "qualifying": False, "provider": "FortyGuard", "activityId": f"activity-{arguments['window_id']}", "workfaceIds": [arguments["workface_id"]], "workface_id": arguments["workface_id"], "window_id": arguments["window_id"], "aoi": "pair", "aoiHash": "pair", "date": request["date"], "timezone": request["timezone"], "analyticSource": "FortyGuard:/v1/heatmap", "projectThermalTrigger": {"thresholdC": 32, "quantity": "fortyguard_modeled_temperature", "thresholdUnits": "celsius", "direction": "above"}, "resultHash": f"hash-{arguments['window_id']}", "version": "v3", "provenance": "LIVE", "tiles": [{"polygon": site["workfaces"][0]["polygon"], "valueHours": 0}] }],
+            }
+            return ToolResult(data, Provenance(source="mock", endpoint="/v1/heatmap", activity_id=data["activity_id"]))
+
+    monkeypatch.setattr(service, "orchestrate", lambda current, inspection: {"decision": "INVESTIGATE", "workface_ids": [site["workfaces"][0]["id"]], "window_ids": ["12:00-14:00", "14:00-16:00", "15:00-17:00"]})
+    monkeypatch.setattr(service, "load_live_toolkit", lambda: FakeToolkit())
+    monkeypatch.setattr(service, "decide_evidence_sufficiency", lambda *args, **kwargs: {"decision": "PROCEED", "window_ids": [], "reason": "complete"})
+    monkeypatch.setattr(service, "run_engine", lambda payload: ({"verification": {"passed": True, "passedFamilies": 6, "totalFamilies": 6, "families": []}} if payload.get("action") == "validate-baseline" else _run("no-improvement", before_crew_hours=0)))
+    monkeypatch.setattr(service, "explain_structured_result", lambda session, run: {"action": "PRESENT_NO_CHANGE", "explanation": "No change.", "request_superintendent_decision": False})
+
+    service.execute_session(service.Session("terminal-destination", "new-site", request))
+    assert {call["window_id"] for call in calls} == {"12:00-14:00", "14:00-16:00", "15:00-17:00"}
+
+
 def test_invalid_new_site_baseline_stops_before_agent_and_fortyguard(monkeypatch) -> None:
     site = build_site_geometry(33.8303, -116.5453, 200, 200).to_dict()
     request = {

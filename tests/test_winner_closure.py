@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 import pytest
 
 from fortyguard_agent import production_service as service
-from fortyguard_agent.evidence_windows import InvestigationPlanError, assemble_evidence_bundle, investigation_facts, schedule_windows, validate_investigation_plan
+from fortyguard_agent.evidence_windows import InvestigationPlanError, assemble_evidence_bundle, investigation_facts, reachable_schedule_windows, schedule_windows, validate_investigation_plan
 from fortyguard_agent.site_geometry import SiteGeometryError, acquisition_aoi_for_workface, acquisition_aoi_for_workfaces, build_site_geometry, validate_workfaces
 
 
@@ -18,6 +18,14 @@ def test_arbitrary_shift_segments_into_two_hours_with_partial_final_window() -> 
         {"id": "06:15-08:15", "start": "06:15", "end": "08:15"},
         {"id": "08:15-10:15", "start": "08:15", "end": "10:15"},
         {"id": "10:15-11:00", "start": "10:15", "end": "11:00"},
+    ]
+
+
+def test_reachable_windows_add_a_full_terminal_destination_window() -> None:
+    assert reachable_schedule_windows("12:00", "17:00") == [
+        {"id": "12:00-14:00", "start": "12:00", "end": "14:00"},
+        {"id": "14:00-16:00", "start": "14:00", "end": "16:00"},
+        {"id": "15:00-17:00", "start": "15:00", "end": "17:00"},
     ]
 
 

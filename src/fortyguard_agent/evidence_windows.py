@@ -32,6 +32,33 @@ def schedule_windows(start: str, end: str, *, minutes: int = 120) -> list[dict[s
     return result
 
 
+def reachable_schedule_windows(start: str, end: str, *, minutes: int = 120) -> list[dict[str, str]]:
+    """Return bounded evidence windows that cover the complete shift horizon.
+
+    ``schedule_windows`` is intentionally a simple contiguous partition and is
+    retained for compatibility.  A short final partition cannot evaluate a
+    movable task whose valid destination ends at the shift boundary, however.
+    Replace the short tail with one full-size terminal window when the shift is
+    not an exact multiple; it is the only extra interval needed to measure that
+    reachable destination without requesting unrelated site data.
+    """
+    windows = schedule_windows(start, end, minutes=minutes)
+    if not windows or len(windows) == 1:
+        return windows
+    try:
+        shift_end = datetime.strptime(end, "%H:%M")
+        terminal_start = shift_end - timedelta(minutes=minutes)
+    except ValueError as exc:
+        raise InvestigationPlanError("shift_time_must_be_hh_mm") from exc
+    terminal = {"id": f"{terminal_start.strftime('%H:%M')}-{end}", "start": terminal_start.strftime("%H:%M"), "end": end}
+    if terminal["id"] not in {window["id"] for window in windows}:
+        # Replace the short tail. The preceding full window overlaps the
+        # terminal interval, so this keeps the bounded request cardinality
+        # unchanged while making the destination itself decision-grade.
+        windows[-1] = terminal
+    return windows
+
+
 def _minutes(value: str) -> int:
     parsed = datetime.strptime(value, "%H:%M")
     return parsed.hour * 60 + parsed.minute

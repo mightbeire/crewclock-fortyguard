@@ -76,6 +76,49 @@ describe('CrewClock canonical decision hierarchy', () => {
     expect(result.recommendationVerification?.passed).toBe(true)
   })
 
+  it('uses the submitted shift horizon to move flexible work into measured lower-exceedance time', () => {
+    const destinationEvidence = evidence([
+      window('12:00', '14:00', true, 2),
+      window('14:00', '16:00', false, 0),
+      window('15:00', '17:00', false, 0),
+    ])
+    const movable: Task = { ...task('MOVABLE', '12:00', 90, '17:00'), name: 'Heavy outdoor work' }
+    const fixed: Task = { ...task('FIXED', '14:00', 60, '15:00', true), name: 'Fixed commitment', crewId: 'ground' }
+    const result = runCrewClock({
+      tasks: [movable, fixed],
+      crews: [CREWS[0]],
+      workfaces: [WORKFACES[0]],
+      thermalEvidence: destinationEvidence,
+      scenarioLabel: 'SYNTHETIC TEST SCENARIO',
+      shiftStart: '12:00',
+      shiftEnd: '17:00',
+    })
+    expect(result.baselineValid).toBe(true)
+    expect(result.beforeCrewHours).toBe(9)
+    expect(result.status).toBe('recommended')
+    expect(result.recommendation?.MOVABLE).toBe('15:00')
+    expect(result.afterCrewHours).toBe(0)
+    expect(result.recommendation?.FIXED).toBe(result.original.FIXED)
+    expect(result.recommendationVerification?.passed).toBe(true)
+    expect(result.recommendationVerification?.passedFamilies).toBe(6)
+  })
+
+  it('fails closed when a reachable destination interval is unknown', () => {
+    const partialEvidence = evidence([window('12:00', '14:00', true, 2)])
+    const result = runCrewClock({
+      tasks: [task('MOVABLE', '12:00', 90, '17:00')],
+      crews: [CREWS[0]],
+      workfaces: [WORKFACES[0]],
+      thermalEvidence: partialEvidence,
+      scenarioLabel: 'SYNTHETIC TEST SCENARIO',
+      shiftStart: '12:00',
+      shiftEnd: '17:00',
+    })
+    expect(result.beforeCrewHours).toBe(9)
+    expect(result.status).toBe('no-improvement')
+    expect(result.recommendation).toBeNull()
+  })
+
   it('keeps a valid baseline when the only feasible candidates have equal SHHCH', () => {
     const result = run([task('A', '06:00', 60, '16:00')], splitEvidence())
     expect(result.baselineValid).toBe(true)

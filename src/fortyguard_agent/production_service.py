@@ -24,7 +24,7 @@ from .evidence_windows import (
     assemble_evidence_bundle,
     default_investigation_plan,
     investigation_facts,
-    schedule_windows,
+    reachable_schedule_windows,
     validate_investigation_plan,
 )
 from .site_geometry import SiteGeometryError, acquisition_aoi_for_workface, build_site_geometry, validate_workfaces
@@ -484,7 +484,7 @@ def validate_new_site_review_window(request: dict[str, Any], *, reference_utc: d
         raise SiteGeometryError("historical_coverage_starts_2019")
     try:
         project_timezone(timezone_name)
-        windows = schedule_windows(str(request.get("start", "")), str(request.get("end", "")))
+        windows = reachable_schedule_windows(str(request.get("start", "")), str(request.get("end", "")))
     except Exception as exc:
         raise SiteGeometryError(f"invalid_shift_time_or_timezone:{type(exc).__name__}") from exc
     facts = investigation_facts(request, windows)
@@ -523,9 +523,9 @@ def execute_session(session: Session) -> None:
         if session.scenario != NEW_SITE_SCENARIO and (evidence_id is None or evidence_id not in EVIDENCE_REGISTRY):
             raise ValueError("unknown_evidence_id")
         inspection = _inspection(session.request, session.scenario)
-        windows = schedule_windows(session.request.get("start", "06:00"), session.request.get("end", "16:00")) if session.scenario == NEW_SITE_SCENARIO else []
+        windows = reachable_schedule_windows(session.request.get("start", "06:00"), session.request.get("end", "16:00")) if session.scenario == NEW_SITE_SCENARIO else []
         if session.scenario == NEW_SITE_SCENARIO:
-            baseline = run_engine({"action": "validate-baseline", "scenario": "new-site", "tasks": session.request.get("tasks"), "crews": session.request.get("crews"), "workfaces": site["workfaces"]})["verification"]
+            baseline = run_engine({"action": "validate-baseline", "scenario": "new-site", "tasks": session.request.get("tasks"), "crews": session.request.get("crews"), "workfaces": site["workfaces"], "start": session.request.get("start"), "end": session.request.get("end")})["verification"]
             session.emit("BASELINE_VALIDATION_PASSED" if baseline.get("passed") else "BASELINE_VALIDATION_FAILED", f"Baseline hard constraints: {baseline.get('passedFamilies', 0)}/{baseline.get('totalFamilies', 6)} families passed.", tool="validate_baseline", source="DETERMINISTIC_VERIFIER", metadata={"families": baseline.get("families", [])})
             if not baseline.get("passed"):
                 failed = [family.get("label") for family in baseline.get("families", []) if not family.get("passed")]
@@ -635,7 +635,7 @@ def execute_session(session: Session) -> None:
                     evidence["providerAoiHashes"] = selected_aoi_hashes
                     session.emit("THERMAL_EVIDENCE_READY", "Temporally segmented thermal evidence received, identity-bound, and validated.", tool="acquire_workface_thermal_evidence", source="EVIDENCE_ACQUISITION", metadata={"activity_ids": evidence.get("activityIds"), "classification": evidence.get("classification"), "aoi_hash": evidence.get("aoiHash"), "window_count": len(evidence["exceedanceWindows"]), "threshold": 32.0, "direction": "above", "analytic_type": "exceedance", "granularity": 100, "cache_reuses": sum(result.provenance.source == "cached" for result in evidence_results)})
                     session.emit("OPTIMIZATION_STARTED", "Deterministic candidate generation and selection started.", tool="generate_feasible_schedule_alternatives", source="DETERMINISTIC_TOOL")
-                    engine = run_engine({"scenario": "live-acquired", "tasks": session.request.get("tasks"), "crews": session.request.get("crews"), "workfaces": site["workfaces"], "thermalEvidence": evidence})
+                    engine = run_engine({"scenario": "live-acquired", "tasks": session.request.get("tasks"), "crews": session.request.get("crews"), "workfaces": site["workfaces"], "thermalEvidence": evidence, "start": session.request.get("start"), "end": session.request.get("end")})
             else:
                 session.emit("THERMAL_EVIDENCE_REQUESTED", f"Resolving approved evidence {evidence_id}.", tool="resolve_approved_evidence")
                 evidence = EVIDENCE_REGISTRY[evidence_id]
@@ -688,7 +688,7 @@ def approve_session(session: Session, identity: dict[str, Any]) -> dict[str, Any
     if session.status != "AWAITING_APPROVAL" or not session.result:
         return {"approved": False, "status": "FINAL_VERIFICATION_FAILED", "error": "session_not_awaiting_approval"}
     reconstruction_scenario = "live-acquired" if session.scenario == NEW_SITE_SCENARIO and session.result.get("thermalEvidence", {}).get("classification") == "LIVE_ACQUIRED_SEGMENTED" else session.scenario
-    completed = run_engine({"action": "approve", "scenario": reconstruction_scenario, "tasks": session.request.get("tasks"), "crews": session.request.get("crews"), "workfaces": session.result.get("workfaces"), "thermalEvidence": session.result.get("thermalEvidence"), "recommendationId": identity.get("recommendationId"), "candidateHash": identity.get("candidateHash")})
+    completed = run_engine({"action": "approve", "scenario": reconstruction_scenario, "tasks": session.request.get("tasks"), "crews": session.request.get("crews"), "workfaces": session.result.get("workfaces"), "thermalEvidence": session.result.get("thermalEvidence"), "recommendationId": identity.get("recommendationId"), "candidateHash": identity.get("candidateHash"), "start": session.request.get("start"), "end": session.request.get("end")})
     decision = completed["decision"]
     if decision.get("approved"):
         session.status = "APPROVED"
