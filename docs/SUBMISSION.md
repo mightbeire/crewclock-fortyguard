@@ -4,18 +4,38 @@
 **Primary track:** Agentic AI  
 **Secondary track:** Industrial & Enterprise
 
-CrewClock helps construction superintendents adjust an upcoming shift around hyperlocal modeled heat without breaking the schedule.
+## Problem
 
-A superintendent starts with the work that already exists: crews, headcounts, workfaces, task times, fixed commitments, qualifications, dependencies, deadlines, and employer controls. CrewClock’s AI agent reviews that shift and decides whether thermal investigation is necessary. If it is, the agent selects the relevant workfaces and time windows. Those validated selections control the FortyGuard requests.
+Tomorrow’s jobsite can be hot while the day is already locked around crews, inspections, deliveries, equipment, and deadlines. A heat alert tells a superintendent it is hot. It does not answer the operational question: what work can move, where can it move, and will the new sequence still work?
 
-CrewClock then converts the returned FortyGuard evidence into a schedule-placement metric called Scheduled High-Heat Crew-Hours, or SHHCH. SHHCH measures how many scheduled crew-hours overlap the configured modeled high-heat window. It is not a medical exposure measure, a heat-dose measure, or a statement of OSHA compliance.
+The problem has national scale. U.S. construction spending reached about $2.17 trillion at an annual rate in June 2026, and construction employed about 8.34 million people in July. EPA projects that high-temperature days could cost outdoor U.S. workers up to 34 labor hours per worker each year and contribute to as much as $46 billion in lost wages by mid-century. CrewClock closes the gap between knowing heat is coming and knowing what to do.
 
-The agent does not control schedule arithmetic. Deterministic code calculates SHHCH, generates schedule alternatives, and checks hard constraints. Fixed work stays fixed. Crew availability, qualifications, dependencies, deadlines, and employer controls must still pass. The agent explains the verified result and stops at a human decision point. The superintendent can approve the proposed plan or keep the current shift. After approval, CrewClock verifies the exact schedule again before it becomes final.
+## User
 
-In the final browser acceptance test for Palm Springs, California, CrewClock used previously acquired live FortyGuard evidence that matched the exact site and time identity. It reduced SHHCH from 13 crew-hours to 4 crew-hours by retiming three flexible tasks. All six constraint families passed before and after the change. The superintendent approved the recommendation in the browser, and the final deterministic verification passed.
+CrewClock is built for the construction superintendent who coordinates the next shift. It helps find movable outdoor work, test a better sequence, and see why the proposed change works.
 
-CrewClock also supports truthful no-change and evidence-unavailable outcomes. If no better feasible plan exists, it keeps the current schedule. If usable evidence is unavailable, it does not invent a zero value or fabricate a recommendation.
+The superintendent uses CrewClock; the contractor has a reason to pay for it. A first deployment can run on one project in approval-only mode. Later versions can import schedules from Procore or Primavera. Contractors can measure planning time, SHHCH, overtime, idle labor, schedule variance, and plan reliability.
 
-The result is not another weather dashboard. CrewClock connects workface-level thermal evidence to the actual construction shift, lets an AI agent decide what evidence to investigate, uses deterministic checks for operational correctness, and keeps the superintendent in control.
+## FortyGuard usage
 
-**Word count:** 321 words, excluding the title and metadata.
+FortyGuard is the environmental intelligence that makes CrewClock’s core decision possible.
+
+The agent selects the workfaces and schedule windows that need thermal investigation. CrewClock sends those selections to FortyGuard through `POST /v1/heatmap`, using polygon AOIs, exact date and time windows, a 32 °C project threshold, and the `exceedance` analytic. CrewClock retrieves the result through `GET /v1/status/{activity_id}`.
+
+CrewClock combines FortyGuard’s exceedance evidence with workface geometry, outdoor task timing, and crew headcount to calculate Scheduled High-Heat Crew-Hours (SHHCH). Deterministic code searches alternatives and verifies fixed commitments, dependencies, qualifications, deadlines, crew availability, and employer controls. Without usable FortyGuard evidence, CrewClock will not make a thermal rescheduling recommendation.
+
+## Measured result
+
+In our final browser-only Palm Springs acceptance test, CrewClock cut SHHCH from 13 crew-hours to 4. That is 9 fewer scheduled crew-hours inside modeled high-heat windows, a 69 percent reduction in schedule overlap.
+
+CrewClock retimed three flexible tasks while all six constraint families remained valid. Fixed commitments stayed fixed. The superintendent approved the recommendation, and CrewClock completed final deterministic reverification.
+
+In a separate real Miami integration test, CrewClock reduced SHHCH from 21.09 to 5.03 crew-hours, about a 76 percent reduction. Both results showed the same behavior: use local thermal evidence to find a lower-overlap schedule without letting the AI override hard operational constraints.
+
+When usable evidence was unavailable, CrewClock preserved the original schedule instead of inventing a zero. The final build passed 196 automated tests, build and type checks, secret scanning, and independent browser acceptance.
+
+CrewClock does not stop at “How hot will it be?” It answers the harder question: “Given tomorrow’s actual work, what should move, what must stay, and does the new plan still work?”
+
+That is what FortyGuard makes actionable: hyperlocal environmental intelligence becomes a measurable, constraint-checked construction decision, while the superintendent keeps final authority.
+
+**Word count:** 495 words, including section headings and excluding the title and team metadata.
