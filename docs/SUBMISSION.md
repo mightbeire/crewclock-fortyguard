@@ -32,7 +32,7 @@ CrewClock retimed three flexible tasks while all six constraint families remaine
 
 In a separate real Miami integration test, CrewClock reduced SHHCH from 21.09 to 5.03 crew-hours, about a 76 percent reduction. Both results showed the same behavior: use local thermal evidence to find a lower-overlap schedule without letting the AI override hard operational constraints.
 
-When usable evidence was unavailable, CrewClock preserved the original schedule instead of inventing a zero. The final build passed 196 automated tests, build and type checks, secret scanning, and independent browser acceptance.
+When usable evidence was unavailable, CrewClock preserved the original schedule instead of inventing a zero. The final build passed 198 automated tests, build and type checks, secret scanning, and independent browser acceptance.
 
 CrewClock does not stop at “How hot will it be?” It answers the harder question: “Given tomorrow’s actual work, what should move, what must stay, and does the new plan still work?”
 
