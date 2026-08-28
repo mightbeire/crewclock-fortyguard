@@ -57,6 +57,12 @@ For multi-workface investigations, CrewClock requests each selected workface sep
 
 FortyGuard heatmap activities are asynchronous. CrewClock polls activity status for up to 600 seconds so valid live activities have time to complete. Empty or unusable results still remain unavailable; the longer polling window does not weaken evidence standards.
 
+### Live evidence lesson from the hackathon
+
+Earlier evidence-unavailable runs were initially treated as possible provider limitations. Final hardening showed that CrewClock itself used a 90-second polling timeout, while valid FortyGuard activities can take several minutes. Because of that, those earlier unavailable outcomes cannot be attributed to FortyGuard alone.
+
+CrewClock now polls for up to 600 seconds. After the fix, fresh future Palm Springs evidence completed successfully. Genuine empty or unusable provider responses still remain unavailable by design. This was an integration issue we found and corrected during the hackathon, not evidence that FortyGuard lacked the required data.
+
 ## SHHCH
 
 **Scheduled High-Heat Crew-Hours (SHHCH)** is a schedule-placement metric.
