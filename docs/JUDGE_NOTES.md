@@ -12,7 +12,7 @@ The AI does not calculate SHHCH, generate final schedule times, approve a recomm
 
 ## What deterministic code does
 
-Deterministic code validates inputs, calculates SHHCH, generates schedule alternatives, checks hard constraints, and verifies the approved result.
+Deterministic code validates inputs and the baseline plan, calculates SHHCH, generates schedule alternatives, checks hard constraints, and verifies the approved result.
 
 This split is intentional. The AI controls the investigation. Deterministic code controls arithmetic and operational correctness.
 
@@ -32,6 +32,24 @@ Palm Springs, California:
 - Human approval: **PASS**
 - Final deterministic verification: **PASS**
 - Evidence: previously acquired live FortyGuard evidence, reused after an exact identity match
+
+## Fresh future proof
+
+On August 28, 2026, CrewClock ran a same-day future Palm Springs shift through the normal browser path with fresh live FortyGuard evidence.
+
+- Baseline constraints: **6/6 PASS** before thermal acquisition
+- Fresh completed activities: **3**
+- Baseline SHHCH: **15 crew-hours**
+- Candidates considered: **1,160**
+- Feasible candidates: **1,080**
+- Lower-SHHCH feasible candidates: **0**
+- Result: `NO_FEASIBLE_IMPROVEMENT`
+
+The current plan remained unchanged because the optimizer proved that no valid candidate reduced SHHCH. This shows that CrewClock can use fresh future evidence without forcing a schedule change.
+
+## What changed during final hardening?
+
+Two defects were found and fixed before submission. Live polling could end after 90 seconds even though valid FortyGuard activities can take several minutes. CrewClock now polls for up to 600 seconds. Baseline constraints are also checked before AI orchestration or evidence acquisition. Regression tests cover both fixes.
 
 ## Why the metric is valid for this MVP
 
