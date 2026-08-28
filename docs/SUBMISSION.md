@@ -32,10 +32,10 @@ CrewClock retimed three flexible tasks while all six constraint families remaine
 
 In a separate real Miami integration test, CrewClock reduced SHHCH from 21.09 to 5.03 crew-hours, about a 76 percent reduction. Both results showed the same behavior: use local thermal evidence to find a lower-overlap schedule without letting the AI override hard operational constraints.
 
-When usable evidence was unavailable, CrewClock preserved the original schedule instead of inventing a zero. The final build passed 198 automated tests, build and type checks, secret scanning, and independent browser acceptance.
+Earlier live runs exposed a 90-second CrewClock polling bug; after a 600-second fix, fresh future evidence completed correctly. Genuine unavailable results still preserve the schedule. The final build passed 198 automated tests and browser acceptance.
 
 CrewClock does not stop at “How hot will it be?” It answers the harder question: “Given tomorrow’s actual work, what should move, what must stay, and does the new plan still work?”
 
 That is what FortyGuard makes actionable: hyperlocal environmental intelligence becomes a measurable, constraint-checked construction decision, while the superintendent keeps final authority.
 
-**Word count:** 495 words, including section headings and excluding the title and team metadata.
+**Word count:** 497 words, including section headings and excluding the title and team metadata.
