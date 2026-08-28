@@ -16,15 +16,16 @@ A superintendent enters the shift that already exists. The input includes crews,
 CrewClock then:
 
 1. Reviews the submitted shift.
-2. Decides whether thermal investigation is necessary.
-3. Selects the workfaces and time windows that need evidence.
-4. Uses those validated selections for the FortyGuard requests.
-5. Calculates schedule overlap with the modeled high-heat window.
-6. Tests feasible schedule alternatives.
-7. Verifies hard construction constraints.
-8. Presents one verified recommendation, or keeps the current plan when no useful change exists.
-9. Waits for superintendent approval.
-10. Verifies the exact approved schedule again before it becomes final.
+2. Validates all six hard constraint families before thermal acquisition.
+3. Decides whether thermal investigation is necessary.
+4. Selects the workfaces and time windows that need evidence.
+5. Uses those validated selections for the FortyGuard requests.
+6. Calculates schedule overlap with the modeled high-heat window.
+7. Tests feasible schedule alternatives.
+8. Verifies hard construction constraints.
+9. Presents one verified recommendation, or keeps the current plan when no useful change exists.
+10. Waits for superintendent approval.
+11. Verifies the exact approved schedule again before it becomes final.
 
 If usable evidence is unavailable, CrewClock preserves the current shift. It does not invent a zero value or fabricate a recommendation.
 
@@ -37,6 +38,7 @@ The AI does not own schedule arithmetic or final authority.
 Deterministic code owns:
 
 - schema validation;
+- baseline constraint validation;
 - SHHCH calculation;
 - schedule generation;
 - crew and qualification checks;
@@ -52,6 +54,8 @@ The superintendent owns the final approval.
 CrewClock uses FortyGuard as the modeled environmental evidence source. Evidence is bound to the selected project workface and time window.
 
 For multi-workface investigations, CrewClock requests each selected workface separately. This keeps spatial coverage explicit.
+
+FortyGuard heatmap activities are asynchronous. CrewClock polls activity status for up to 600 seconds so valid live activities have time to complete. Empty or unusable results still remain unavailable; the longer polling window does not weaken evidence standards.
 
 ## SHHCH
 
@@ -72,17 +76,24 @@ The final browser-only acceptance used a Palm Springs, California, construction 
 - Human approval: **PASS**
 - Final deterministic verification: **PASS**
 
-The same product also passed no-change and evidence-unavailable paths. A fresh Austin, Texas, run returned no usable thermal evidence, and CrewClock correctly preserved the current schedule.
+The same product also passed no-change and evidence-unavailable paths.
 
-## Fresh live provider feedback
+## Fresh live future proof
 
-On August 28, 2026, CrewClock ran a one-shot production-path test for an operator-created Sacramento, California, shift. The real agent selected four workfaces and schedule windows. Those choices passed deterministic validation and caused **16 real workface-scoped FortyGuard requests**.
+On August 28, 2026, CrewClock also completed a same-day future Palm Springs run through the normal browser path.
 
-The request path worked, but none of the returned activities produced enough schedule-aligned decision-grade evidence for SHHCH. CrewClock therefore returned `EVIDENCE_UNAVAILABLE` and kept all eight tasks unchanged. It did not convert missing evidence into zero and did not create a recommendation.
+- Future shift: **10:00–16:00 local**
+- Baseline constraints before thermal review: **6/6 PASS**
+- FortyGuard mode: **fresh live**
+- Completed schedule-aligned activities: **3**
+- Baseline SHHCH: **15 crew-hours**
+- Schedule candidates considered: **1,160**
+- Feasible candidates: **1,080**
+- Lower-SHHCH feasible candidates: **0**
 
-This result is useful platform feedback rather than an application failure. CrewClock had valid API access and completed the expected integration path. The exact provider-side reason for the unavailable evidence is unknown. Clearer coverage metadata, explicit empty-result reason codes, or a coverage-completeness indicator would make this case easier for downstream applications to classify.
+CrewClock therefore returned `NO_FEASIBLE_IMPROVEMENT` and kept the valid current plan. This result proves the fresh-future acquisition and optimization path without forcing a schedule change when the evidence does not support one.
 
-Palm Springs and Miami demonstrate the positive path when usable FortyGuard evidence is available. Sacramento demonstrates the required fail-closed path when it is not.
+Final hardening also found two issues before submission. Live acquisition could stop polling after 90 seconds even though valid FortyGuard activities can process for several minutes. Baseline constraint validation also happened too late in the flow. CrewClock now polls for up to 600 seconds and rejects invalid baselines before AI orchestration or FortyGuard acquisition. Regression tests cover both cases.
 
 ## Run locally
 
@@ -104,12 +115,12 @@ Open the local Vite URL shown in the terminal.
 
 ## Validation
 
-The final build passed 148 Python tests, 48 Vitest tests, typecheck, lint, build, secret scan, and browser-only acceptance.
+The final build passed 150 Python tests, 48 Vitest tests, typecheck, lint, build, secret scan, and browser-only acceptance.
 
 Final engineering validation:
 
 ```text
-pytest: 148 passed
+pytest: 150 passed
 Vitest: 48 passed
 typecheck: PASS
 lint: PASS
