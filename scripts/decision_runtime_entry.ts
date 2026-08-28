@@ -1,11 +1,11 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { approveRecommendation, runCrewClock, type RunOptions, type ThermalEvidence } from '../src/demo/engine'
+import { approveRecommendation, originalSchedule, runCrewClock, verifySchedule, type RunOptions, type ThermalEvidence } from '../src/demo/engine'
 import { EMPLOYER_POLICY, TASKS, CREWS, WORKFACES, type EmployerPolicy } from '../src/demo/scenario'
 import { SYNTHETIC_POSITIVE_EVIDENCE, SYNTHETIC_POSITIVE_POLICY } from '../src/demo/runtime'
 
 type Request = {
-  action?: 'review' | 'approve'
+  action?: 'review' | 'approve' | 'validate-baseline'
   scenario?: 'synthetic-positive' | 'canonical-replay' | 'evidence-unavailable' | 'all-indoor' | 'new-site' | 'live-acquired'
   tasks?: typeof TASKS
   crews?: typeof CREWS
@@ -90,6 +90,17 @@ const options: RunOptions = {
   policy: EMPLOYER_POLICY,
   workfaces: request.workfaces ?? WORKFACES,
   projectId: `production-${scenario}`,
+}
+
+if (request.action === 'validate-baseline') {
+  const verification = verifySchedule(originalSchedule(tasks), tasks, request.crews ?? CREWS, originalSchedule(tasks), [], {
+    ...EMPLOYER_POLICY,
+    name: 'CrewClock operator shift policy',
+    status: 'operator-configured shift policy',
+    breakRules: [{ ...EMPLOYER_POLICY.breakRules[0], source: 'CREWCLOCK_DEFAULT_OPERATOR_POLICY', version: 'crewclock-default-v1' }],
+  })
+  process.stdout.write(JSON.stringify({ verification }))
+  process.exit(0)
 }
 
 const genericPolicy: EmployerPolicy = {

@@ -525,6 +525,23 @@ def execute_session(session: Session) -> None:
         inspection = _inspection(session.request, session.scenario)
         windows = schedule_windows(session.request.get("start", "06:00"), session.request.get("end", "16:00")) if session.scenario == NEW_SITE_SCENARIO else []
         if session.scenario == NEW_SITE_SCENARIO:
+            baseline = run_engine({"action": "validate-baseline", "scenario": "new-site", "tasks": session.request.get("tasks"), "crews": session.request.get("crews"), "workfaces": site["workfaces"]})["verification"]
+            session.emit("BASELINE_VALIDATION_PASSED" if baseline.get("passed") else "BASELINE_VALIDATION_FAILED", f"Baseline hard constraints: {baseline.get('passedFamilies', 0)}/{baseline.get('totalFamilies', 6)} families passed.", tool="validate_baseline", source="DETERMINISTIC_VERIFIER", metadata={"families": baseline.get("families", [])})
+            if not baseline.get("passed"):
+                failed = [family.get("label") for family in baseline.get("families", []) if not family.get("passed")]
+                session.result = {
+                    "status": "no-feasible-correction", "decisionKind": "no-feasible-correction", "baselineValid": False,
+                    "originalVerification": baseline, "recommendationVerification": None, "recommendation": None,
+                    "beforeCrewHours": None, "afterCrewHours": None, "shiftedCrewHours": 0,
+                    "tasks": session.request.get("tasks", []), "crews": session.request.get("crews", []), "workfaces": site["workfaces"],
+                    "original": {task.get("id"): task.get("originalStart") for task in session.request.get("tasks", []) if isinstance(task, dict)},
+                    "thermalEvidence": _unavailable_thermal_evidence(session.request, site),
+                    "stats": {"candidatesConsidered": 0, "feasibleCandidates": 0, "rejectedCandidates": 0},
+                    "message": f"Baseline rejected before thermal investigation. Failed hard constraint families: {', '.join(failed) or 'unknown'}.",
+                }
+                session.status = "NO_FEASIBLE_CORRECTION"
+                session.emit("NO_FEASIBLE_CORRECTION", session.result["message"], tool="validate_baseline", source="DETERMINISTIC_VERIFIER", metadata={"failed_families": failed})
+                return
             inspection["investigation"] = investigation_facts(session.request, windows)
         try:
             orchestration = orchestrate(session, inspection)

@@ -59,7 +59,7 @@ def test_all_indoor_skips_evidence_and_optimization(monkeypatch) -> None:
 def test_terminal_events_distinguish_zero_shhch_from_invalid_baseline(monkeypatch) -> None:
     zero = service.Session("run-zero", "synthetic-positive", {})
     monkeypatch.setattr(service, "orchestrate", lambda current, inspection: "INVESTIGATE")
-    monkeypatch.setattr(service, "run_engine", lambda payload: _run("no-improvement", before_crew_hours=0))
+    monkeypatch.setattr(service, "run_engine", lambda payload: ({"verification": {"passed": True, "passedFamilies": 6, "totalFamilies": 6, "families": []}} if payload.get("action") == "validate-baseline" else _run("no-improvement", before_crew_hours=0)))
     service.execute_session(zero)
     assert zero.status == "NO_FEASIBLE_IMPROVEMENT"
     assert zero.events[-1]["summary"] == "No thermal schedule change needed."
@@ -121,7 +121,7 @@ def test_new_site_submits_one_request_per_selected_workface_and_window(monkeypat
     monkeypatch.setattr(service, "orchestrate", lambda current, inspection: {"decision": "INVESTIGATE", "workface_ids": [face["id"] for face in faces], "window_ids": ["06:00-08:00", "08:00-10:00"]})
     monkeypatch.setattr(service, "load_live_toolkit", lambda: FakeToolkit())
     monkeypatch.setattr(service, "decide_evidence_sufficiency", lambda *args, **kwargs: {"decision": "PROCEED", "window_ids": [], "reason": "complete"})
-    monkeypatch.setattr(service, "run_engine", lambda payload: _run("no-improvement", before_crew_hours=0))
+    monkeypatch.setattr(service, "run_engine", lambda payload: ({"verification": {"passed": True, "passedFamilies": 6, "totalFamilies": 6, "families": []}} if payload.get("action") == "validate-baseline" else _run("no-improvement", before_crew_hours=0)))
     monkeypatch.setattr(service, "explain_structured_result", lambda session, run: {"action": "PRESENT_NO_CHANGE", "explanation": "No change.", "request_superintendent_decision": False})
 
     session = service.Session("pair-cardinality", "new-site", request)
@@ -131,3 +131,24 @@ def test_new_site_submits_one_request_per_selected_workface_and_window(monkeypat
     assert {(call["workface_id"], call["window_id"]) for call in calls} == {(face["id"], window) for face in faces for window in ("06:00-08:00", "08:00-10:00")}
     assert all(len(call["polygon_aoi"]["features"]) == 1 for call in calls)
     assert all(call["polygon_aoi"]["features"][0]["properties"]["workface_id"] == call["workface_id"] for call in calls)
+
+
+def test_invalid_new_site_baseline_stops_before_agent_and_fortyguard(monkeypatch) -> None:
+    site = build_site_geometry(33.8303, -116.5453, 200, 200).to_dict()
+    request = {
+        "id": "invalid-baseline", "location": "Palm Springs, California", "timezone": "America/Los_Angeles",
+        "date": "2026-08-28", "start": "06:00", "end": "14:00", "aoi": site["aoi"], "workfaces": site["workfaces"],
+        "location_anchor": {"latitude": 33.8303, "longitude": -116.5453}, "site_dimensions_m": {"width": 200, "height": 200},
+        "crews": [{"id": "crew-1", "name": "Crew 1", "headcount": 4, "qualifications": ["general"]}],
+        "tasks": [{"id": "T1", "name": "Conflicting work", "zoneId": site["workfaces"][0]["id"], "originalStart": "10:00", "durationMinutes": 120, "deadline": "11:00", "crewId": "crew-1", "qualification": "general", "dependencies": [], "fixed": False, "environment": "outdoor-moderate"}],
+    }
+    verification = {"passed": False, "passedFamilies": 5, "totalFamilies": 6, "families": [{"label": "Deadlines + bounds", "passed": False}]}
+    monkeypatch.setattr(service, "run_engine", lambda payload: {"verification": verification})
+    monkeypatch.setattr(service, "orchestrate", lambda *args: (_ for _ in ()).throw(AssertionError("agent must not run")))
+    monkeypatch.setattr(service, "load_live_toolkit", lambda: (_ for _ in ()).throw(AssertionError("FortyGuard must not run")))
+    session = service.Session("invalid-baseline", "new-site", request)
+    service.execute_session(session)
+    assert session.status == "NO_FEASIBLE_CORRECTION"
+    assert session.result["baselineValid"] is False
+    assert session.result["beforeCrewHours"] is None
+    assert [event["status"] for event in session.events] == ["BASELINE_VALIDATION_FAILED", "NO_FEASIBLE_CORRECTION"]

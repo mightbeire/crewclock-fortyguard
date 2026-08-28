@@ -343,7 +343,11 @@ class FortyGuardToolkit:
             self.request_guard.commit(estimated)
             if on_status:
                 on_status("processing", {"activity_id": activity_id})
-            deadline = __import__("time").monotonic() + float(arguments.get("poll_timeout_seconds", 90))
+            # FortyGuard activities are asynchronous and valid live runs have
+            # taken several minutes. Match the official client's 600-second
+            # lifecycle default; callers may still lower this explicitly in
+            # bounded tests or operational diagnostics.
+            deadline = __import__("time").monotonic() + float(arguments.get("poll_timeout_seconds", 600))
             poll_interval = max(0.0, float(arguments.get("poll_interval_seconds", 1.0)))
             retries_429 = 0
             while True:

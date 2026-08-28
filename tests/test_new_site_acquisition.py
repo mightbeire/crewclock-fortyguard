@@ -6,6 +6,7 @@ from fortyguard_agent.cache import JsonCache
 from fortyguard_agent.guardrails import FortyGuardRequestGuard
 from fortyguard_agent.site_geometry import SiteGeometryError, acquisition_aoi_for_workface, build_site_geometry
 from fortyguard_agent.toolkit import FortyGuardToolkit
+import time
 
 
 def _request(site: dict, *, date: str = "2025-07-15") -> dict:
@@ -63,6 +64,14 @@ class NonOverlappingFortyGuard(FakeFortyGuard):
         return {"status": "Completed", "result": {"map_data": {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [polygon]}, "properties": {"value": 9.0}}]}, "stats_data": {"analytic_type": "exceedance", "units": "hours", "n_cells": 1}}}
 
 
+class SlowValidFortyGuard(FakeFortyGuard):
+    def get_status(self, activity_id: str) -> dict:
+        self.status_calls += 1
+        if self.status_calls <= 100:
+            return {"status": "processing"}
+        return super().get_status(activity_id)
+
+
 def test_site_geometry_is_closed_bounded_and_explicit() -> None:
     site = build_site_geometry(35.7796, -78.6382, 200, 160)
     ring = site.aoi["features"][0]["geometry"]["coordinates"][0]
@@ -106,6 +115,20 @@ def test_live_acquisition_submits_polls_validates_and_caches(tmp_path: Path) -> 
     changed = toolkit.acquire_workface_thermal_evidence(_request(site, date="2025-07-16"))
     assert changed.ok
     assert len(client.create_calls) == 2
+
+
+def test_live_acquisition_waits_beyond_previous_ninety_second_cutoff(tmp_path: Path, monkeypatch) -> None:
+    site = build_site_geometry(35.7796, -78.6382, 200, 160).to_dict()
+    client = SlowValidFortyGuard(site)
+    ticks = iter(range(1000))
+    monkeypatch.setattr(time, "monotonic", lambda: next(ticks))
+    monkeypatch.setattr(time, "sleep", lambda _: None)
+    toolkit = FortyGuardToolkit(client, JsonCache(tmp_path), FortyGuardRequestGuard(remaining_credits=100_000, max_run_credits=10_000))
+    request = _request(site)
+    request["poll_interval_seconds"] = 0
+    result = toolkit.acquire_workface_thermal_evidence(request)
+    assert result.ok
+    assert client.status_calls > 90
 
 
 def test_failed_activity_is_unavailable_not_zero_heat(tmp_path: Path) -> None:
