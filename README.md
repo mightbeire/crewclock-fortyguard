@@ -74,6 +74,16 @@ The final browser-only acceptance used a Palm Springs, California, construction 
 
 The same product also passed no-change and evidence-unavailable paths. A fresh Austin, Texas, run returned no usable thermal evidence, and CrewClock correctly preserved the current schedule.
 
+## Fresh live provider feedback
+
+On August 28, 2026, CrewClock ran a one-shot production-path test for an operator-created Sacramento, California, shift. The real agent selected four workfaces and schedule windows. Those choices passed deterministic validation and caused **16 real workface-scoped FortyGuard requests**.
+
+The request path worked, but none of the returned activities produced enough schedule-aligned decision-grade evidence for SHHCH. CrewClock therefore returned `EVIDENCE_UNAVAILABLE` and kept all eight tasks unchanged. It did not convert missing evidence into zero and did not create a recommendation.
+
+This result is useful platform feedback rather than an application failure. CrewClock had valid API access and completed the expected integration path. The exact provider-side reason for the unavailable evidence is unknown. Clearer coverage metadata, explicit empty-result reason codes, or a coverage-completeness indicator would make this case easier for downstream applications to classify.
+
+Palm Springs and Miami demonstrate the positive path when usable FortyGuard evidence is available. Sacramento demonstrates the required fail-closed path when it is not.
+
 ## Run locally
 
 Create a local environment file from `.env.example`, then add your own provider keys. Do not commit `.env`.
