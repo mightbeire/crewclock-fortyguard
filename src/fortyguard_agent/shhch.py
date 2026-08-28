@@ -185,8 +185,12 @@ def calculate_scheduled_high_heat_crew_hours(schedule: Any, workfaces: Any, exce
             continue
         # Full schedule coverage is required.  Qualifying windows are then
         # normalized as a union; overlapping windows cannot double count.
+        scoped_normalized = [item for item in normalized if not item[2].get("workface_ids", item[2].get("workfaceIds")) or face_id in item[2].get("workface_ids", item[2].get("workfaceIds", [])) or item[2].get("workface_id") == face_id]
+        if not scoped_normalized:
+            errors.append(f"uncovered_task_interval:{task_id}")
+            continue
         boundaries = {start, end}
-        for window_start, window_end, _, _ in normalized:
+        for window_start, window_end, _, _ in scoped_normalized:
             boundaries.add(max(start, window_start)); boundaries.add(min(end, window_end))
         points = sorted(point for point in boundaries if start <= point <= end)
         if any(not any(window_start <= left and right <= window_end for window_start, window_end, _, _ in normalized) for left, right in zip(points, points[1:]) if right > left):
@@ -198,7 +202,7 @@ def calculate_scheduled_high_heat_crew_hours(schedule: Any, workfaces: Any, exce
             if right <= left:
                 continue
             rates: list[tuple[float, str]] = []
-            for window_start, window_end, window, provenance in normalized:
+            for window_start, window_end, window, provenance in scoped_normalized:
                 if window_start <= left and right <= window_end:
                     window_duration = (window_end - window_start).total_seconds() / 3600
                     weighted = area_weighted_tile_value(face_map[face_id], window.get("tiles", window.get("features", [])), "value")

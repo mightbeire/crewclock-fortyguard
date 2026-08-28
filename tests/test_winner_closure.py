@@ -6,7 +6,7 @@ import pytest
 
 from fortyguard_agent import production_service as service
 from fortyguard_agent.evidence_windows import InvestigationPlanError, assemble_evidence_bundle, investigation_facts, schedule_windows, validate_investigation_plan
-from fortyguard_agent.site_geometry import SiteGeometryError, acquisition_aoi_for_workfaces, build_site_geometry, validate_workfaces
+from fortyguard_agent.site_geometry import SiteGeometryError, acquisition_aoi_for_workface, acquisition_aoi_for_workfaces, build_site_geometry, validate_workfaces
 
 
 def _task(task_id: str, workface: str, start: str, *, fixed: bool = False, indoor: bool = False) -> dict:
@@ -40,8 +40,8 @@ def test_invalid_model_plan_is_rejected_not_silently_replaced() -> None:
 
 
 def test_segmented_bundle_preserves_distinct_window_identities() -> None:
-    base = {"status": "LIVE_ACQUIRED", "granularity": 100, "exceedanceWindows": [{"start": "06:00", "end": "08:00"}], "activityId": "activity-a", "resultHash": "hash-a"}
-    later = {**base, "activityId": "activity-b", "resultHash": "hash-b", "exceedanceWindows": [{"start": "08:00", "end": "10:00"}]}
+    base = {"status": "LIVE_ACQUIRED", "granularity": 100, "exceedanceWindows": [{"start": "06:00", "end": "08:00"}], "activityId": "activity-a", "resultHash": "hash-a", "workface_id": "north", "window_id": "06:00-08:00", "activity_id": "activity-a", "submitted_polygon": {"type": "FeatureCollection", "features": []}, "provider_result": {"activity_id": "activity-a"}}
+    later = {**base, "activityId": "activity-b", "activity_id": "activity-b", "resultHash": "hash-b", "window_id": "08:00-10:00", "provider_result": {"activity_id": "activity-b"}, "exceedanceWindows": [{"start": "08:00", "end": "10:00"}]}
     plan = {"decision": "INVESTIGATE", "workface_ids": ["north"], "window_ids": ["06:00-08:00", "08:00-10:00"]}
     bundle = assemble_evidence_bundle([base, later], plan=plan, aoi_hash="aoi")
     assert [(row["start"], row["end"]) for row in bundle["exceedanceWindows"]] == [("06:00", "08:00"), ("08:00", "10:00")]
@@ -95,10 +95,13 @@ def test_new_site_horizon_guard_rejects_unsupported_future_before_review_without
 
 def test_selected_workfaces_build_exact_provider_geometry_inside_project_aoi() -> None:
     site = build_site_geometry(35.0, -80.0, 200, 200).to_dict()
-    selected = [site["workfaces"][0], site["workfaces"][2]]
-    provider_aoi = acquisition_aoi_for_workfaces(selected, site["aoi"])
-    assert [feature["properties"]["workface_id"] for feature in provider_aoi["features"]] == [selected[0]["id"], selected[1]["id"]]
+    selected = site["workfaces"][0]
+    provider_aoi = acquisition_aoi_for_workface(selected, site["aoi"])
+    assert [feature["properties"]["workface_id"] for feature in provider_aoi["features"]] == [selected["id"]]
+    assert len(provider_aoi["features"]) == 1
     assert provider_aoi != site["aoi"]
+    with pytest.raises(SiteGeometryError, match="acquisition_requires_one_workface"):
+        acquisition_aoi_for_workfaces([site["workfaces"][0], site["workfaces"][2]], site["aoi"])
 
 
 def test_model_safety_language_is_rejected_then_corrected(monkeypatch) -> None:

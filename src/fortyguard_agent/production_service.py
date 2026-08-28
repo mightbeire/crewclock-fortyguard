@@ -27,7 +27,7 @@ from .evidence_windows import (
     schedule_windows,
     validate_investigation_plan,
 )
-from .site_geometry import SiteGeometryError, acquisition_aoi_for_workfaces, build_site_geometry, validate_workfaces
+from .site_geometry import SiteGeometryError, acquisition_aoi_for_workface, build_site_geometry, validate_workfaces
 from .toolkit import load_live_toolkit
 from .timezones import project_timezone
 
@@ -541,9 +541,12 @@ def execute_session(session: Session) -> None:
                 plan = validate_investigation_plan(orchestration, inspection["investigation"]) if isinstance(orchestration, dict) else default_investigation_plan(inspection["investigation"])
                 selected_windows = [window for window in windows if window["id"] in plan["window_ids"]]
                 selected_faces = [face for face in site["workfaces"] if face["id"] in plan["workface_ids"]]
-                selected_aoi = acquisition_aoi_for_workfaces(selected_faces, site["aoi"])
-                selected_aoi_hash = hashlib.sha256(json.dumps(selected_aoi, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
-                session.emit("THERMAL_EVIDENCE_REQUESTED", f"Requesting {len(selected_windows)} schedule-aligned evidence windows for {len(selected_faces)} selected workfaces.", tool="acquire_workface_thermal_evidence", source="EVIDENCE_ACQUISITION", metadata={"window_ids": plan["window_ids"], "workface_ids": plan["workface_ids"], "provider_aoi_hash": selected_aoi_hash})
+                selected_aoi_hashes = {
+                    face["id"]: hashlib.sha256(json.dumps(acquisition_aoi_for_workface(face, site["aoi"]), sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+                    for face in selected_faces
+                }
+                provider_aoi_hash = hashlib.sha256(json.dumps(selected_aoi_hashes, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+                session.emit("THERMAL_EVIDENCE_REQUESTED", f"Requesting {len(selected_windows) * len(selected_faces)} workface-scoped evidence requests for {len(selected_faces)} selected workfaces across {len(selected_windows)} selected windows.", tool="acquire_workface_thermal_evidence", source="EVIDENCE_ACQUISITION", metadata={"window_ids": plan["window_ids"], "workface_ids": plan["workface_ids"], "provider_aoi_hashes": selected_aoi_hashes, "request_count": len(selected_windows) * len(selected_faces)})
                 last_status: set[tuple[str, str | None]] = set()
 
                 def on_status(status: str, metadata: dict[str, Any]) -> None:
@@ -558,16 +561,19 @@ def execute_session(session: Session) -> None:
 
                 toolkit = load_live_toolkit()
                 evidence_results = []
-                acquired_windows: list[dict[str, str]] = []
+                requested_pairs: set[tuple[str, str]] = set()
 
-                def acquire_window(window: dict[str, str]):
+                def acquire_pair(face: dict[str, Any], window: dict[str, str]):
+                    selected_aoi = acquisition_aoi_for_workface(face, site["aoi"])
                     return toolkit.acquire_workface_thermal_evidence({
                         "project_id": session.request.get("id", session.session_id),
                         "location": session.request.get("location"),
                         "polygon_aoi": selected_aoi,
                         "project_aoi": site["aoi"],
-                        "workfaces": selected_faces,
-                        "workface_ids": plan["workface_ids"],
+                        "workfaces": [face],
+                        "workface_ids": [face["id"]],
+                        "workface_id": face["id"],
+                        "window_id": window["id"],
                         "date": session.request.get("date"),
                         "timezone": session.request.get("timezone"),
                         "start_time": window["start"],
@@ -578,25 +584,23 @@ def execute_session(session: Session) -> None:
                         "granularity": 100,
                     }, on_status=on_status)
 
-                for window in selected_windows:
-                    result = acquire_window(window)
-                    evidence_results.append(result)
-                    acquired_windows.append(window)
-                    if not result.ok:
-                        break
-                if evidence_results and all(result.ok for result in evidence_results):
-                    sufficiency = decide_evidence_sufficiency(session, plan, inspection["investigation"], [window["id"] for window in acquired_windows])
-                    if sufficiency["decision"] == "REQUEST_MISSING":
+                def acquire_pairs(window_ids: list[str]) -> None:
+                    for face in selected_faces:
                         for window in windows:
-                            if window["id"] not in sufficiency["window_ids"]:
+                            if window["id"] not in window_ids or (face["id"], window["id"]) in requested_pairs:
                                 continue
-                            result = acquire_window(window)
-                            evidence_results.append(result)
-                            acquired_windows.append(window)
-                            if not result.ok:
-                                break
+                            requested_pairs.add((face["id"], window["id"]))
+                            evidence_results.append(acquire_pair(face, window))
+
+                acquire_pairs(plan["window_ids"])
+                if evidence_results and all(result.ok for result in evidence_results):
+                    acquired_window_ids = [window["id"] for window in selected_windows]
+                    sufficiency = decide_evidence_sufficiency(session, plan, inspection["investigation"], acquired_window_ids)
+                    if sufficiency["decision"] == "REQUEST_MISSING":
+                        acquire_pairs(sufficiency["window_ids"])
                         if all(result.ok for result in evidence_results):
-                            sufficiency = decide_evidence_sufficiency(session, plan, inspection["investigation"], [window["id"] for window in acquired_windows])
+                            acquired_window_ids = [window["id"] for window in windows if all((face["id"], window["id"]) in requested_pairs for face in selected_faces)]
+                            sufficiency = decide_evidence_sufficiency(session, plan, inspection["investigation"], acquired_window_ids)
                     if sufficiency["decision"] == "ABSTAIN":
                         raise RuntimeError("agent_abstained_after_evidence_review")
                     if sufficiency["decision"] != "PROCEED":
@@ -607,10 +611,11 @@ def execute_session(session: Session) -> None:
                     engine = run_engine({"scenario": "evidence-unavailable", "tasks": session.request.get("tasks"), "crews": session.request.get("crews"), "workfaces": site["workfaces"], "thermalEvidence": _unavailable_thermal_evidence(session.request, site)})
                 else:
                     project_aoi_hash = site["workfaces"][0]["aoi_hash"]
-                    final_plan = {**plan, "window_ids": [window["id"] for window in acquired_windows]}
-                    evidence = assemble_evidence_bundle((result.data for result in evidence_results), plan=final_plan, aoi_hash=selected_aoi_hash)
+                    acquired_window_ids = [window["id"] for window in windows if all((face["id"], window["id"]) in requested_pairs for face in selected_faces)]
+                    final_plan = {**plan, "window_ids": acquired_window_ids}
+                    evidence = assemble_evidence_bundle((result.data for result in evidence_results), plan=final_plan, aoi_hash=provider_aoi_hash)
                     evidence["projectAoiHash"] = project_aoi_hash
-                    evidence["providerAoiHash"] = selected_aoi_hash
+                    evidence["providerAoiHashes"] = selected_aoi_hashes
                     session.emit("THERMAL_EVIDENCE_READY", "Temporally segmented thermal evidence received, identity-bound, and validated.", tool="acquire_workface_thermal_evidence", source="EVIDENCE_ACQUISITION", metadata={"activity_ids": evidence.get("activityIds"), "classification": evidence.get("classification"), "aoi_hash": evidence.get("aoiHash"), "window_count": len(evidence["exceedanceWindows"]), "threshold": 32.0, "direction": "above", "analytic_type": "exceedance", "granularity": 100, "cache_reuses": sum(result.provenance.source == "cached" for result in evidence_results)})
                     session.emit("OPTIMIZATION_STARTED", "Deterministic candidate generation and selection started.", tool="generate_feasible_schedule_alternatives", source="DETERMINISTIC_TOOL")
                     engine = run_engine({"scenario": "live-acquired", "tasks": session.request.get("tasks"), "crews": session.request.get("crews"), "workfaces": site["workfaces"], "thermalEvidence": evidence})

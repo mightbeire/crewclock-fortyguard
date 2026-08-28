@@ -21,10 +21,10 @@ from .integrity import (
     verification_result_hash,
 )
 from .models import Provenance, ToolResult
-from .site_geometry import SiteGeometryError, acquisition_aoi_for_workfaces, validate_feature_collection, validate_workfaces
+from .site_geometry import SiteGeometryError, acquisition_aoi_for_workface, validate_feature_collection, validate_workfaces
 from .timezones import project_timezone
 from .state_machine import deterministic_decision_result
-from .thermal import ThermalContractError, assert_env_params_schema, assert_heatmap_schema, env_params_role
+from .thermal import area_weighted_tile_value, ThermalContractError, assert_env_params_schema, assert_heatmap_schema, env_params_role
 
 ROOT = Path(__file__).resolve().parents[2]
 APPROVED_EVIDENCE_FILES = {
@@ -251,21 +251,20 @@ class FortyGuardToolkit:
         try:
             raw_aoi = arguments.get("polygon_aoi")
             project_aoi_arg = arguments.get("project_aoi")
-            if project_aoi_arg is None:
-                # Backward-compatible high-level callers may still supply the
-                # project AOI directly. Production new-site acquisition passes
-                # project_aoi explicitly so selected workfaces can narrow the
-                # actual provider geometry.
-                aoi = validate_feature_collection(raw_aoi)
-                project_aoi = aoi
-                workfaces = validate_workfaces(arguments.get("workfaces"), project_aoi)
-            else:
-                project_aoi = validate_feature_collection(project_aoi_arg)
-                workfaces = validate_workfaces(arguments.get("workfaces"), project_aoi)
-                aoi = validate_feature_collection(raw_aoi, allow_multiple=True)
-                expected_acquisition_aoi = acquisition_aoi_for_workfaces(list(workfaces), project_aoi)
-                if json.dumps(aoi, sort_keys=True, separators=(",", ":")) != json.dumps(expected_acquisition_aoi, sort_keys=True, separators=(",", ":")):
-                    raise SiteGeometryError("acquisition_aoi_must_match_selected_workfaces")
+            project_aoi = validate_feature_collection(project_aoi_arg or raw_aoi)
+            workfaces = validate_workfaces(arguments.get("workfaces"), project_aoi)
+            if len(workfaces) != 1:
+                raise SiteGeometryError("acquisition_requires_one_workface")
+            workface_id = str(arguments.get("workface_id", ""))
+            if workface_id != workfaces[0]["id"]:
+                raise SiteGeometryError("acquisition_workface_id_mismatch")
+            window_id = str(arguments.get("window_id", ""))
+            if not window_id:
+                raise SiteGeometryError("acquisition_window_id_required")
+            aoi = validate_feature_collection(raw_aoi)
+            expected_acquisition_aoi = acquisition_aoi_for_workface(workfaces[0], project_aoi)
+            if json.dumps(aoi, sort_keys=True, separators=(",", ":")) != json.dumps(expected_acquisition_aoi, sort_keys=True, separators=(",", ":")):
+                raise SiteGeometryError("acquisition_aoi_must_match_selected_workface")
             date = str(arguments["date"])
             parsed_date = datetime.strptime(date, "%Y-%m-%d").date()
             if parsed_date < datetime(2019, 1, 1).date():
@@ -289,7 +288,9 @@ class FortyGuardToolkit:
             identity = {
                 "polygon_aoi": aoi,
                 "project_aoi_hash": __import__("hashlib").sha256(json.dumps(project_aoi, sort_keys=True, separators=(",", ":")).encode()).hexdigest(),
-                "workface_ids": sorted(str(item["id"]) for item in workfaces),
+                "workface_id": workface_id,
+                "window_id": window_id,
+                "workface_ids": [workface_id],
                 "date_time": {"start_date": date, "filter_type": 2, "start_time": start_time, "end_time": end_time, "timezone": timezone_name},
                 "granularity": granularity,
                 "analytic_type": "exceedance",
@@ -310,7 +311,12 @@ class FortyGuardToolkit:
             try:
                 evidence = self._normalize_acquired_heatmap(cached["data"], arguments, key, cached.get("activity_id"), "LIVE_CACHE_REUSED")
             except ThermalContractError as exc:
-                return ToolResult({"status": "EVIDENCE_UNAVAILABLE", "thermal_evidence_valid": False}, Provenance(source="cached", endpoint=endpoint, request_hash=key), error=str(exc))
+                return ToolResult({
+                    "status": "EVIDENCE_UNAVAILABLE", "thermal_evidence_valid": False,
+                    "workface_id": str(arguments["workface_id"]), "window_id": str(arguments["window_id"]),
+                    "activity_id": cached.get("activity_id"), "submitted_polygon": aoi,
+                    "provider_result": cached["data"],
+                }, Provenance(source="cached", endpoint=endpoint, request_hash=key, activity_id=cached.get("activity_id")), error=str(exc))
             if on_status:
                 on_status("cache_reused", {"activity_id": cached.get("activity_id")})
             return ToolResult(evidence, Provenance(source="cached", endpoint=endpoint, request_hash=key, activity_id=cached.get("activity_id"), assumptions=("EXACT_DECISION_IDENTITY_MATCH",)), estimated_credits=0)
@@ -323,6 +329,7 @@ class FortyGuardToolkit:
 
         payload = {"polygon_aoi": aoi, "start_date": date, "filter_type": 2, "start_time": start_time, "end_time": end_time, "granularity": granularity, "analytic_type": "exceedance", "threshold": 32.0, "direction": "above"}
         activity_id: str | None = None
+        raw: dict[str, Any] | None = None
         try:
             if on_status:
                 on_status("requested", {})
@@ -370,7 +377,11 @@ class FortyGuardToolkit:
                     raise TimeoutError("fortyguard_bounded_poll_timeout")
                 __import__("time").sleep(poll_interval)
         except ThermalContractError as exc:
-            return ToolResult({"status": "EVIDENCE_UNAVAILABLE", "thermal_evidence_valid": False, "activity_id": activity_id, "failure_classification": "MALFORMED_RESULT"}, Provenance(source="live", endpoint=endpoint, request_hash=key, activity_id=activity_id), error=str(exc), estimated_credits=estimated)
+            return ToolResult({
+                "status": "EVIDENCE_UNAVAILABLE", "thermal_evidence_valid": False, "failure_classification": "MALFORMED_RESULT",
+                "workface_id": str(arguments["workface_id"]), "window_id": str(arguments["window_id"]),
+                "activity_id": activity_id, "submitted_polygon": aoi, "provider_result": raw,
+            }, Provenance(source="live", endpoint=endpoint, request_hash=key, activity_id=activity_id), error=str(exc), estimated_credits=estimated)
         except Exception as exc:
             classification = "TIMEOUT" if isinstance(exc, TimeoutError) else "PROVIDER_FAILURE"
             return ToolResult({"status": "EVIDENCE_UNAVAILABLE", "thermal_evidence_valid": False, "activity_id": activity_id, "failure_classification": classification}, Provenance(source="live", endpoint=endpoint, request_hash=key, activity_id=activity_id), error=f"{type(exc).__name__}: {str(exc)[:180]}", estimated_credits=estimated)
@@ -380,12 +391,17 @@ class FortyGuardToolkit:
         assert_heatmap_schema(raw, "exceedance", allow_empty_analysis=True)
         map_data = raw["map_data"]
         features = map_data["features"]
+        if not features:
+            raise ThermalContractError("heatmap_empty_feature_collection")
+        aoi = arguments["polygon_aoi"]
         date, start_time, end_time, timezone_name = str(arguments["date"]), str(arguments["start_time"]), str(arguments["end_time"]), str(arguments["timezone"])
         # The scheduler consumes local wall-clock windows; the date and IANA
         # timezone remain bound alongside the window for provenance.
         start, end = start_time, end_time
         tiles = []
         values = []
+        overlapping_values = []
+        target_workface = [tuple(map(float, pair[:2])) for pair in arguments["workfaces"][0]["polygon"]]
         for feature in features:
             geometry = feature.get("geometry") or {}
             rings = geometry.get("coordinates") or []
@@ -393,7 +409,16 @@ class FortyGuardToolkit:
                 raise ThermalContractError("heatmap_tile_polygon_required")
             value = float((feature.get("properties") or {}).get("value"))
             values.append(value)
-            tiles.append({"polygon": [list(pair[:2]) for pair in rings[0][:-1]], "valueHours": value})
+            polygon = [list(pair[:2]) for pair in rings[0][:-1]]
+            tile = {"polygon": polygon, "valueHours": value}
+            tiles.append(tile)
+            try:
+                area_weighted_tile_value(target_workface, [feature], "value")
+            except ThermalContractError:
+                continue
+            overlapping_values.append(value)
+        if not overlapping_values:
+            raise ThermalContractError("workface_does_not_overlap_heatmap_tiles")
         result_hash = __import__("hashlib").sha256(json.dumps(raw, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
         aoi_hash = __import__("hashlib").sha256(json.dumps(arguments["polygon_aoi"], sort_keys=True, separators=(",", ":")).encode()).hexdigest()
         acquired_at = datetime.now().astimezone().isoformat()
@@ -417,21 +442,32 @@ class FortyGuardToolkit:
             "timezone": timezone_name,
             "acquiredAt": acquired_at,
             "resultHash": result_hash,
-            "coverage": "VALID",
+            "coverage": "VALID_OVERLAPPING_WORKFACE",
             "featureCount": len(features),
-            "maxValueHours": max(values, default=0.0),
-            "meanValueHours": round(mean(values), 6) if values else 0.0,
+            "overlappingFeatureCount": len(overlapping_values),
+            "maxValueHours": max(overlapping_values),
+            "meanValueHours": round(mean(overlapping_values), 6),
+            "workface_id": str(arguments["workface_id"]),
+            "window_id": str(arguments["window_id"]),
+            "activity_id": activity_id,
+            "submitted_polygon": aoi,
+            "provider_result": raw,
             "exceedanceWindows": [{
                 "analyticType": "exceedance", "start": start, "end": end,
-                "units": "hours", "status": "VALID", "qualifying": any(value > 0 for value in values),
+                "units": "hours", "status": "VALID", "qualifying": any(value > 0 for value in overlapping_values),
                 "provider": "FortyGuard", "activityId": activity_id, "acquisitionType": status,
                 "provenance": f"{status}:FortyGuard:/v1/heatmap", "aoi": aoi_hash, "aoiHash": aoi_hash,
-                "workfaceIds": sorted(str(item["id"]) for item in arguments.get("workfaces", [])),
+                "workfaceIds": [str(arguments["workface_id"])],
+                "workface_id": str(arguments["workface_id"]),
+                "window_id": str(arguments["window_id"]),
+                "activity_id": activity_id,
+                "submitted_polygon": aoi,
+                "provider_result": raw,
                 "date": str(arguments["date"]), "timezone": timezone_name,
                 "localWindowStart": start, "localWindowEnd": end,
                 "analyticSource": "FortyGuard:/v1/heatmap", "projectThermalTrigger": trigger,
                 "threshold": 32.0, "direction": "above", "granularity": int(arguments.get("granularity", 100)),
-                "geometryBinding": {"aoiHash": aoi_hash, "workfaceIds": sorted(str(item["id"]) for item in arguments.get("workfaces", []))},
+                "geometryBinding": {"aoiHash": aoi_hash, "workfaceIds": [str(arguments["workface_id"])]},
                 "acquiredAt": acquired_at, "contentHash": result_hash,
                 "resultHash": result_hash, "version": "crewclock.fortyguard.v3", "tiles": tiles,
             }],

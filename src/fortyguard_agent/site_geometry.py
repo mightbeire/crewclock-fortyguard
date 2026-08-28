@@ -179,26 +179,33 @@ def validate_workfaces(workfaces: Any, aoi: dict[str, Any]) -> tuple[dict[str, A
     return tuple(result)
 
 
-def acquisition_aoi_for_workfaces(workfaces: Any, project_aoi: dict[str, Any]) -> dict[str, Any]:
-    """Build the exact provider AOI from deterministically validated workfaces.
-
-    The model may select workface IDs, but it never authors geometry. Each
-    provider feature is copied from a workface already proven to lie inside the
-    single operator-derived project AOI. This makes accepted spatial choices
-    causally control the FortyGuard payload without weakening containment.
-    """
-    normalized = validate_workfaces(workfaces, project_aoi)
-    features: list[dict[str, Any]] = []
-    for face in normalized:
-        ring = [list(pair[:2]) for pair in face["geometry"]["coordinates"][0]]
-        features.append({
+def acquisition_aoi_for_workface(workface: dict[str, Any], project_aoi: dict[str, Any]) -> dict[str, Any]:
+    """Build one exact provider AOI for one deterministically validated face."""
+    normalized = validate_workfaces([workface], project_aoi)
+    face = normalized[0]
+    ring = [list(pair[:2]) for pair in face["geometry"]["coordinates"][0]]
+    result = {
+        "type": "FeatureCollection",
+        "features": [{
             "type": "Feature",
             "properties": {
                 "workface_id": face["id"],
                 "geometry_precision": face.get("geometry_precision", "APPROXIMATE_OPERATOR_ANCHOR_DERIVED"),
             },
             "geometry": {"type": "Polygon", "coordinates": [ring]},
-        })
-    result = {"type": "FeatureCollection", "features": features}
-    validate_feature_collection(result, allow_multiple=True)
+        }],
+    }
+    validate_feature_collection(result)
     return result
+
+
+def acquisition_aoi_for_workfaces(workfaces: Any, project_aoi: dict[str, Any]) -> dict[str, Any]:
+    """Reject ambiguous multi-workface provider AOIs.
+
+    FortyGuard acquisition is intentionally singular: callers must submit one
+    request per validated workface and time window.
+    """
+    normalized = validate_workfaces(workfaces, project_aoi)
+    if len(normalized) != 1:
+        raise SiteGeometryError("acquisition_requires_one_workface")
+    return acquisition_aoi_for_workface(normalized[0], project_aoi)

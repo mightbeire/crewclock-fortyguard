@@ -4,16 +4,21 @@ from pathlib import Path
 
 from fortyguard_agent.cache import JsonCache
 from fortyguard_agent.guardrails import FortyGuardRequestGuard
-from fortyguard_agent.site_geometry import SiteGeometryError, acquisition_aoi_for_workfaces, build_site_geometry
+from fortyguard_agent.site_geometry import SiteGeometryError, acquisition_aoi_for_workface, build_site_geometry
 from fortyguard_agent.toolkit import FortyGuardToolkit
 
 
 def _request(site: dict, *, date: str = "2025-07-15") -> dict:
+    workface = site["workfaces"][0]
     return {
         "project_id": "new-site-test",
         "location": "Raleigh, North Carolina",
-        "polygon_aoi": site["aoi"],
-        "workfaces": site["workfaces"],
+        "polygon_aoi": acquisition_aoi_for_workface(workface, site["aoi"]),
+        "project_aoi": site["aoi"],
+        "workfaces": [workface],
+        "workface_ids": [workface["id"]],
+        "workface_id": workface["id"],
+        "window_id": "06:00-08:00",
         "date": date,
         "timezone": "America/New_York",
         "start_time": "06:00",
@@ -50,6 +55,12 @@ class FakeFortyGuard:
 class EmptyCompletedFortyGuard(FakeFortyGuard):
     def get_status(self, activity_id: str) -> dict:
         return {"status": "Completed", "result": {"map_data": {"type": "FeatureCollection", "features": []}, "stats_data": {"analytic_type": "exceedance", "n_cells": 0}}}
+
+
+class NonOverlappingFortyGuard(FakeFortyGuard):
+    def get_status(self, activity_id: str) -> dict:
+        polygon = [[pair[0], pair[1] + 0.01] for pair in self.site["aoi"]["features"][0]["geometry"]["coordinates"][0]]
+        return {"status": "Completed", "result": {"map_data": {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [polygon]}, "properties": {"value": 9.0}}]}, "stats_data": {"analytic_type": "exceedance", "units": "hours", "n_cells": 1}}}
 
 
 def test_site_geometry_is_closed_bounded_and_explicit() -> None:
@@ -108,29 +119,40 @@ def test_failed_activity_is_unavailable_not_zero_heat(tmp_path: Path) -> None:
     assert result.data.get("total_scheduled_high_heat_crew_hours") is None
 
 
-def test_completed_empty_exceedance_map_is_valid_no_overlap(tmp_path: Path) -> None:
+def test_completed_empty_exceedance_map_is_unavailable_not_zero(tmp_path: Path) -> None:
     site = build_site_geometry(35.7796, -78.6382, 200, 160).to_dict()
     client = EmptyCompletedFortyGuard(site)
     toolkit = FortyGuardToolkit(client, JsonCache(tmp_path), FortyGuardRequestGuard(remaining_credits=100_000, max_run_credits=10_000))
     result = toolkit.acquire_workface_thermal_evidence(_request(site))
-    assert result.ok
-    assert result.data["status"] == "LIVE_ACQUIRED"
-    assert result.data["decisionGradeThermalEvidence"] is True
-    assert result.data["featureCount"] == 0
-    assert result.data["maxValueHours"] == 0
-    assert result.data["exceedanceWindows"][0]["qualifying"] is False
+    assert not result.ok
+    assert result.data["status"] == "EVIDENCE_UNAVAILABLE"
+    assert result.data["thermal_evidence_valid"] is False
+    assert result.data["workface_id"] == site["workfaces"][0]["id"]
+    assert result.data["window_id"] == "06:00-08:00"
+
+
+def test_completed_tiles_without_workface_overlap_are_unavailable(tmp_path: Path) -> None:
+    site = build_site_geometry(35.7796, -78.6382, 200, 160).to_dict()
+    client = NonOverlappingFortyGuard(site)
+    toolkit = FortyGuardToolkit(client, JsonCache(tmp_path), FortyGuardRequestGuard(remaining_credits=100_000, max_run_credits=10_000))
+    result = toolkit.acquire_workface_thermal_evidence(_request(site))
+    assert not result.ok
+    assert result.data["status"] == "EVIDENCE_UNAVAILABLE"
+    assert "workface_does_not_overlap_heatmap_tiles" in (result.error or "")
 
 
 def test_selected_workface_geometry_is_the_actual_provider_payload_and_cache_identity(tmp_path: Path) -> None:
     site = build_site_geometry(35.7796, -78.6382, 200, 160).to_dict()
     selected = [site["workfaces"][0]]
-    provider_aoi = acquisition_aoi_for_workfaces(selected, site["aoi"])
+    provider_aoi = acquisition_aoi_for_workface(selected[0], site["aoi"])
     request = _request(site)
     request.update({
         "polygon_aoi": provider_aoi,
         "project_aoi": site["aoi"],
         "workfaces": selected,
         "workface_ids": [selected[0]["id"]],
+        "workface_id": selected[0]["id"],
+        "window_id": "06:00-08:00",
     })
     client = FakeFortyGuard(site)
     toolkit = FortyGuardToolkit(client, JsonCache(tmp_path), FortyGuardRequestGuard(remaining_credits=100_000, max_run_credits=10_000))
@@ -144,4 +166,4 @@ def test_selected_workface_geometry_is_the_actual_provider_payload_and_cache_ide
     mismatched["polygon_aoi"] = site["aoi"]
     rejected = toolkit.acquire_workface_thermal_evidence(mismatched)
     assert not rejected.ok
-    assert "acquisition_aoi_must_match_selected_workfaces" in (rejected.error or "")
+    assert "acquisition_aoi_must_match_selected_workface" in (rejected.error or "")

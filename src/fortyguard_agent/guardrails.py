@@ -69,7 +69,11 @@ class FortyGuardRequestGuard:
     """Local, deterministic guard before a request can reach FortyGuard."""
 
     remaining_credits: int = 1_795_500
-    max_run_credits: int = 25_000
+    # A workface-scoped review can legitimately cover four workfaces across
+    # five two-hour windows. The request unit is now one pair, so the run cap
+    # must cover the bounded 20-request maximum rather than the old
+    # multi-workface five-request shape.
+    max_run_credits: int = 100_000
     run_credits_used: int = 0
     max_heatmap_area_mi2: float = 10.0
     forecast_horizon_hours: int = 12

@@ -109,6 +109,12 @@ def assemble_evidence_bundle(parts: Iterable[dict[str, Any]], *, plan: dict[str,
     rows = list(parts)
     if not rows:
         raise InvestigationPlanError("evidence_parts_required")
+    evidence_records = []
+    for row in rows:
+        required = ("workface_id", "window_id", "activity_id", "submitted_polygon", "provider_result")
+        if any(key not in row for key in required):
+            raise InvestigationPlanError("evidence_record_identity_required")
+        evidence_records.append({key: row[key] for key in required})
     windows = [window for row in rows for window in row.get("exceedanceWindows", [])]
     identities = [
         {"activity_id": row.get("activityId"), "result_hash": row.get("resultHash"), "window": [window.get("start"), window.get("end")]}
@@ -125,6 +131,7 @@ def assemble_evidence_bundle(parts: Iterable[dict[str, Any]], *, plan: dict[str,
         "investigationPlan": plan,
         "activityIds": [row.get("activityId") for row in rows],
         "resultHashes": [row.get("resultHash") for row in rows],
+        "evidenceRecords": evidence_records,
         "exceedanceWindows": windows,
         "coverage": "VALID_SEGMENTED",
         "granularity": first.get("granularity", 100),
