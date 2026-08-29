@@ -2,79 +2,94 @@
 
 ## Demo target
 
-- Target duration: **2:10–2:25**.
-- Hard limit: **under 3 minutes**.
-- Use the verified Palm Springs browser path for a stable recording.
-- State that this path reuses previously acquired live FortyGuard evidence after an exact identity match.
+- Target duration: **2:45–2:55**.
+- Hard stop: **2:58**. Leave a small upload/editing buffer under the three-minute limit.
+- Use the verified Palm Springs browser path for the stable on-screen walkthrough.
+- State clearly that the Palm Springs demo reuses previously acquired live FortyGuard evidence after an exact site-and-time identity match.
 - Do not depend on a fresh provider call during the recording.
-- Keep the superintendent approval step visible.
-- Use the fresh-future San Diego result as the final proof point.
+- Keep the superintendent approval and final reverification visible.
+- Close with the fresh-future San Diego proof: **18 → 9 SHHCH, 3 flexible tasks moved, 0 fixed tasks moved, 6/6 → 6/6, approval PASS, final reverification PASS**.
 
-## 0:00–0:15 — The problem
+## 0:00–0:22 — Problem and user
 
-Show the Palm Springs shift before the recommendation.
+Show the upcoming Palm Springs shift before review.
 
-> “A construction superintendent cannot move outdoor work just because a forecast looks hot. Crews, fixed commitments, qualifications, dependencies, and deadlines still have to work. CrewClock turns hyperlocal thermal evidence into a verified pre-shift decision.”
+> “Construction superintendents already have to coordinate crews, inspections, deliveries, equipment, qualifications, and deadlines. Heat adds another constraint, but a weather alert still does not tell them what work can actually move. NIOSH already recommends task and schedule changes as a workplace heat control. CrewClock turns that idea into a pre-shift operational decision.”
 
-## 0:15–0:35 — The agent investigates
+## 0:22–0:48 — What the agent does
 
-Start the review once. Show the activity state briefly.
+Start **Review shift** and briefly show the live activity stream.
 
-> “The AI agent decides which workfaces and time windows need investigation. Those validated choices control the FortyGuard requests. Deterministic code owns schedule arithmetic and hard constraints.”
+> “The AI agent first inspects the real shift and decides whether thermal investigation is needed. It selects the workfaces and time windows that matter. Those choices control the evidence path. The AI does not calculate the schedule or approve its own recommendation.”
 
-## 0:35–0:55 — The recommendation
+## 0:48–1:18 — Make FortyGuard central
 
-Let **I found a better sequence** appear. Show the schedule and moved task blocks.
+Open or pause on the FortyGuard evidence step and the workface/time coverage.
 
-> “CrewClock measures the current task windows and the reachable destination windows, then tests feasible alternatives. Fixed work stays anchored. Here, three flexible tasks move while all six constraint families still pass.”
+> “This is where FortyGuard becomes central to CrewClock. For each selected polygon workface and schedule window, CrewClock requests FortyGuard heatmap evidence using the project’s 32-degree modeled-temperature trigger and the exceedance analytic. It also measures reachable destination windows, because moving a task only counts if we have evidence for where it may move. Missing evidence never becomes zero.”
 
-## 0:55–1:15 — The measured change
+> “CrewClock then binds FortyGuard’s modeled exceedance evidence to the actual outdoor task time, workface, and crew headcount. That produces Scheduled High-Heat Crew-Hours, or SHHCH.”
 
-Point to **13h → 4h**.
+## 1:18–1:43 — Show the recommendation
 
-> “Scheduled High-Heat Crew-Hours falls from 13 to 4. That is nine fewer scheduled crew-hours inside the modeled high-heat window. SHHCH is a schedule-placement metric. It is not a medical exposure score or a safety certification.”
+Let **I found a better sequence** appear. Show the moved task blocks.
 
-## 1:15–1:35 — Show the proof
+> “Deterministic scheduling code now searches feasible alternatives. Fixed commitments stay anchored. Dependencies, qualifications, deadlines, crew availability, and employer controls still have to pass. In this verified Palm Springs path, three flexible tasks move and all six constraint families remain valid.”
 
-Open **Why this plan?** Show the FortyGuard evidence card and proof chain.
+## 1:43–2:03 — Show the measured change
 
-> “This demo reuses previously acquired live FortyGuard evidence after an exact site-and-time identity match. CrewClock never treats an unmeasured destination as zero.”
+Point to **13h → 4h** and the evidence chain.
 
-## 1:35–1:55 — Human authority
+> “SHHCH falls from 13 to 4 crew-hours. That is nine fewer scheduled crew-hours inside modeled high-heat windows. SHHCH is deliberately narrow: it is a schedule-placement metric, not a physiological exposure score, medical-risk prediction, or safety certification.”
+
+## 2:03–2:25 — Human authority and final verification
 
 Show **Approve plan** and **Keep current shift**.
 
-> “CrewClock stops here. The superintendent keeps final authority.”
+> “CrewClock stops before changing the shift. The superintendent keeps final authority.”
 
-Click **Approve plan**. Show **APPROVED · VERIFIED**.
+Click **Approve plan**. Keep **APPROVED · VERIFIED** visible.
 
-> “After approval, CrewClock verifies the exact recommendation again before the shift becomes final.”
+> “After approval, CrewClock verifies the exact recommendation again against the same schedule, evidence, policy, and hard constraints before it becomes final.”
 
-## 1:55–2:15 — Close with fresh-future proof
+## 2:25–2:43 — Strongest fresh-live proof
 
-> “We also proved this on a fresh future San Diego shift. CrewClock used fresh live FortyGuard evidence, reduced SHHCH from 18 to 9, moved three flexible tasks, kept fixed work unchanged, preserved all six constraint families, and passed approval and final reverification.”
+Keep the approved state visible, or briefly show the final San Diego evidence screenshot if it is already prepared for the recording.
 
-> “CrewClock connects environmental evidence to an operational decision while the superintendent keeps control.”
+> “We then proved the full path on a genuinely future San Diego shift using fresh live FortyGuard evidence. CrewClock reduced SHHCH from 18 to 9, a 50 percent reduction, moved three flexible tasks, moved zero fixed tasks, preserved all six constraint families, received superintendent approval, and passed final deterministic reverification.”
 
-## Optional boundary proof
+## 2:43–2:55 — Boundary and close
 
-Use only if the recording remains below three minutes.
+> “And CrewClock does not force a change. If the complete measured shift stays above the configured trigger, it says retiming inside that shift cannot reduce SHHCH and returns the decision to the superintendent and employer heat plan. If evidence is unavailable, it fails closed.”
 
-> “A no-change result does not mean CrewClock calls the schedule optimal. If the complete measured shift remains above the configured trigger, CrewClock says that retiming inside the shift cannot reduce SHHCH and directs the superintendent back to the employer heat plan. If evidence is missing, it preserves the shift and says the evidence is unavailable.”
+> “CrewClock answers the question a weather dashboard cannot: given tomorrow’s actual work, what should move, what must stay, and does the new plan still work?”
+
+## Recording rules
+
+- Speak naturally. Do not rush to hit every word exactly.
+- Prioritize the visible product over reading the script verbatim.
+- Keep cursor movement deliberate and avoid opening technical consoles.
+- Do not wait on a fresh FortyGuard call during the recording.
+- Do not call SHHCH “exposure,” “risk,” “heat dose,” or “safety.”
+- If the take reaches **2:58**, cut the final sentence rather than exceed three minutes.
 
 ## Judge questions
 
 ### Why use AI?
 
-> “The agent decides whether investigation is needed and which workfaces and time windows need evidence. Those choices control the evidence path. Deterministic code owns schedule arithmetic and verification.”
+> “The agent decides whether investigation is needed and which workfaces and time windows need evidence. Those choices materially control the FortyGuard evidence path. Deterministic code owns schedule arithmetic and verification.”
+
+### Why is FortyGuard essential?
+
+> “Without FortyGuard, CrewClock has no decision-grade environmental evidence for the workface and time windows. FortyGuard supplies the modeled exceedance evidence that CrewClock binds to task timing and crew size. Without usable FortyGuard evidence, CrewClock will not issue a thermal rescheduling recommendation.”
 
 ### Why is this not a weather dashboard?
 
-> “CrewClock connects workface-level evidence to the actual construction shift. It measures reachable destination windows, tests alternatives against hard constraints, and presents one verified decision to the superintendent.”
+> “A dashboard reports conditions. CrewClock connects workface-level FortyGuard evidence to the actual construction shift, searches feasible schedule alternatives, checks six hard operational constraint families, and hands one verified decision to the superintendent.”
 
 ### What is the strongest live proof?
 
-> “On August 28, 2026, a fresh-future San Diego run reduced SHHCH from 18 to 9. Three flexible tasks moved. Fixed work did not move. Constraints stayed 6/6. Human approval and final reverification passed.”
+> “On August 28, 2026, a fresh-future San Diego run reduced SHHCH from 18 to 9. Three flexible tasks moved, fixed work did not move, constraints stayed 6/6, and both human approval and final reverification passed.”
 
 ### What is SHHCH?
 
@@ -82,8 +97,8 @@ Use only if the recording remains below three minutes.
 
 ### What if the whole measured shift is above the trigger?
 
-> “CrewClock says there is no lower-overlap time inside the measured shift. It does not claim the schedule is optimal or make a safety determination. The superintendent uses the employer heat plan to decide whether to delay, modify, or keep the work.”
+> “CrewClock says there is no lower-overlap time inside the measured shift. It does not call the schedule optimal or make a safety determination. The superintendent uses the employer heat plan to decide whether to delay, modify, or keep the work.”
 
 ### What happens when evidence is missing?
 
-> “CrewClock preserves the current schedule and reports that evidence is unavailable. It does not fabricate a recommendation.”
+> “CrewClock preserves the current schedule and reports that evidence is unavailable. It does not fabricate a recommendation or convert missing evidence into zero.”
