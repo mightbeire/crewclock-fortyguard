@@ -21,6 +21,10 @@ CrewClock is a pre-shift operations agent for construction superintendents. It u
 | Primary San Diego evidence | [`evidence/san-diego-final-positive/`](evidence/san-diego-final-positive) |
 | Independent Tucson evidence | [`evidence/fresh-live-positive-2026-08-29/`](evidence/fresh-live-positive-2026-08-29) |
 
+## Proof boundary
+
+The authoritative fresh-live proof is the **San Diego run shown in the final 2:48 video and committed evidence**. Tucson independently validates the same decision pattern with a separate fresh-live run. The public hosted prototype is the interactive judge surface for CrewClock's product flow, deterministic verification, human-decision boundary, saved replay/capability paths, and fail-closed behavior; it should not be interpreted as repeating the San Diego fresh-live acquisition on demand. Operator-created shifts preserve the current plan whenever deployment-side decision-grade evidence is unavailable.
+
 ## The problem
 
 A superintendent starts with a shift that already contains crews, tasks, workfaces, fixed commitments, and deadlines. A weather alert does not answer which task can move, where it can move, or whether the new sequence still works.
@@ -123,7 +127,8 @@ flowchart LR
 ## Run locally
 
 ```bash
-npm install
+npm ci
+python -m pip install -e ".[test,live]"
 npm run build
 python -m pytest -q
 npm run test:ui
@@ -159,7 +164,7 @@ The repository uses these variable names. Add values only to a local, ignored `.
 
 ## Tests and gates
 
-The latest local verification passed: 152 Python tests, 49 Vitest tests, typecheck, lint, and production build. The public demo and backend replay path were also verified for the accepted flow.
+The latest local verification passed: 152 Python tests, 49 Vitest tests, typecheck, lint, and production build. The public hosted prototype and saved replay paths were also verified for the accepted interaction flow. Fresh-live FortyGuard proof is preserved separately in the authoritative San Diego evidence and independent Tucson validation above.
 
 ## Repository map
 
