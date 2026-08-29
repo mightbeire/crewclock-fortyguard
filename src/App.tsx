@@ -188,7 +188,12 @@ export default function App() {
     try {
       const context = shift.sample ? undefined : { id: shift.id, location: shift.location, timezone: shift.timezone, date: shift.date, start: shift.start, end: shift.end, location_anchor: shift.location_anchor!, site_dimensions_m: shift.site_dimensions_m!, aoi: shift.aoi!, workfaces: (shift.workfaces ?? []).map(face => ({ ...face })) }
       const started = await startProductionReview(scenario, cloneTasks(shift.tasks), cloneCrews(shift.crews), context)
-      setSession(started); setPhase('review')
+      setSession(started)
+      if (started.status !== 'RUNNING') {
+        setEventIndex(Math.max(0, started.events.length - 1))
+        if (isPositive(started)) { setPhase('transform'); setShowProposed(false); setMovementSettled(false) }
+        else setPhase('decision')
+      } else setPhase('review')
     }
     catch (cause) {
       if (cause instanceof ProductionReviewStartError && cause.reason === 'selected_shift_outside_fortyguard_12h_forecast_horizon') {
