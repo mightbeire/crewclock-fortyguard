@@ -2,15 +2,24 @@
 
 ## CrewClock — FortyGuard Hackathon 2026
 
-CrewClock is a pre-shift agent for construction superintendents. It uses workface-level heat evidence to find a lower-overlap task sequence without breaking the existing plan.
+CrewClock is a pre-shift operations agent for construction superintendents. It uses workface-level heat evidence to find a lower-overlap task sequence without breaking the existing plan.
 
-**Live demo:** [crewclock.oluwatomireoluwa.chatgpt.site](https://crewclock.oluwatomireoluwa.chatgpt.site)
+**Primary track:** Industrial & Enterprise  
+**Secondary track:** Agentic AI
 
-**Demo video:** YouTube URL pending
+## Submission deliverables
 
-**Primary track:** Agentic AI
-
-**Secondary track:** Industrial & Enterprise
+| Deliverable | Direct link |
+| --- | --- |
+| Working demo / prototype | [Open CrewClock](https://crewclock.oluwatomireoluwa.chatgpt.site) |
+| Code repository | [GitHub — `mightbeire/crewclock-fortyguard`](https://github.com/mightbeire/crewclock-fortyguard) |
+| Short video presentation | **YouTube URL pending — added after final upload** |
+| Written project summary | [`docs/SUBMISSION.md`](docs/SUBMISSION.md) |
+| FortyGuard API usage documentation | [`docs/FORTYGUARD_INTEGRATION.md`](docs/FORTYGUARD_INTEGRATION.md) |
+| Demo and measured results | [`docs/DEMO_AND_RESULTS.md`](docs/DEMO_AND_RESULTS.md) |
+| FortyGuard availability research | [`docs/FORTYGUARD_AVAILABILITY_RESEARCH.md`](docs/FORTYGUARD_AVAILABILITY_RESEARCH.md) |
+| Primary San Diego evidence | [`evidence/san-diego-final-positive/`](evidence/san-diego-final-positive) |
+| Independent Tucson evidence | [`evidence/fresh-live-positive-2026-08-29/`](evidence/fresh-live-positive-2026-08-29) |
 
 ## The problem
 
@@ -135,17 +144,17 @@ Create `.env` from `.env.example` for provider-backed local flows. Keep all valu
 
 The repository uses these variable names. Add values only to a local, ignored `.env` file or the deployment secret store.
 
-`FORTYGUARD_API_KEY`
-`FORTYGUARD_BASE_URL`
-`GROQ_API_KEY`
-`GROQ_MODEL`
-`TOKENROUTER_API_KEY`
-`TOKENROUTER_BASE_URL`
-`TOKENROUTER_MODEL`
-`LLM_PRIMARY_PROVIDER`
-`LLM_SECONDARY_PROVIDER`
-`LLM_INTERACTIVE_TIMEOUT_MS`
-`LLM_MAX_INTERACTIVE_TOTAL_MS`
+`FORTYGUARD_API_KEY`  
+`FORTYGUARD_BASE_URL`  
+`GROQ_API_KEY`  
+`GROQ_MODEL`  
+`TOKENROUTER_API_KEY`  
+`TOKENROUTER_BASE_URL`  
+`TOKENROUTER_MODEL`  
+`LLM_PRIMARY_PROVIDER`  
+`LLM_SECONDARY_PROVIDER`  
+`LLM_INTERACTIVE_TIMEOUT_MS`  
+`LLM_MAX_INTERACTIVE_TOTAL_MS`  
 `LLM_MAX_INTERACTIVE_MODEL_TURNS`
 
 ## Tests and gates
@@ -158,6 +167,7 @@ The latest local verification passed: 152 Python tests, 49 Vitest tests, typeche
 - `scripts/` — runtime generation, site packaging, and local API entry points.
 - `tests/` — Python integration and policy tests.
 - `docs/` — judge-facing technical, submission, and engineering-research documents.
+- `docs/FORTYGUARD_INTEGRATION.md` — definitive documentation of FortyGuard API usage in CrewClock.
 - `docs/FORTYGUARD_AVAILABILITY_RESEARCH.md` — controlled 84-request availability study across 13 U.S. coordinates.
 - `evidence/san-diego-final-positive/` — authoritative run summary and focused screenshots.
 - `evidence/fresh-live-positive-2026-08-29/` — fresh-live validation run summary and browser evidence screenshots.
