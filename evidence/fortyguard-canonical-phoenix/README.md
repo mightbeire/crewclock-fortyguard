@@ -55,7 +55,12 @@ repaired in the canonical result.
 - `canonical_outcome.json`: compact machine-readable outcome.
 - `README.md`: scope and interpretation of this package.
 
-No API key or secret is included. The canonical product demo remains the
-clearly labelled synthetic-positive rehearsal; this package is the separate
-real FortyGuard historical replay and does not claim physiological exposure
+No API key or secret is included. This Phoenix package is retained as historical
+engineering evidence and a saved real-FortyGuard replay; it is not the final
+submission hero run. The authoritative submission demonstration is the
+**San Diego, August 28, 2026 fresh-live run (18 → 9 SHHCH)** in
+[`../san-diego-final-positive/`](../san-diego-final-positive/), with the
+**Tucson, August 29 fresh-live run (60 → 24 SHHCH)** in
+[`../fresh-live-positive-2026-08-29/`](../fresh-live-positive-2026-08-29/) as
+independent validation. None of these results claims physiological exposure
 reduction, safety, or OSHA compliance.
