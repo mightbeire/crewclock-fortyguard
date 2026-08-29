@@ -1,4 +1,6 @@
 .env
+.env.*
+!.env.example
 .venv/
 venv/
 __pycache__/
@@ -16,3 +18,23 @@ coverage.xml
 outputs/
 .agent_cache/
 reference/extracted/
+
+# Browser and demo artifacts
+playwright-report/
+test-results/
+playwright/.cache/
+browser-profile/
+browser-profiles/
+*.mp4
+*.webm
+evidence/tmp/
+evidence/temporary/
+
+# Local secrets and tool state
+.secrets/
+.credentials/
+*.local
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
