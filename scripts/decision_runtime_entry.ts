@@ -92,8 +92,8 @@ const options: RunOptions = {
   policy: EMPLOYER_POLICY,
   workfaces: request.workfaces ?? WORKFACES,
   projectId: `production-${scenario}`,
-  shiftStart: request.start || undefined,
-  shiftEnd: request.end || undefined,
+  shiftStart: request.start,
+  shiftEnd: request.end,
 }
 
 if (request.action === 'validate-baseline') {

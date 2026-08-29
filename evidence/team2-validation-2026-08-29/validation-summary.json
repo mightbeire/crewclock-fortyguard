@@ -20,44 +20,73 @@
     "proposed_shhch": 20,
     "reduction_shhch": 19,
     "percent_reduction": 48.7,
-    "tasks_moved": 3,
+    "tasks_moved": 7,
     "fixed_tasks_moved": 0,
     "constraint_families_verified": "6/6",
-    "superintendent_approval": "RECORDED",
-    "final_deterministic_reverification": "PASS"
+    "superintendent_approval": "APPROVED",
+    "final_deterministic_reverification": "PASS",
+    "fortyguard_evidence_class": "SYNTHETIC_TEST_SCENARIO"
   },
-  "curated_screenshots": [
+  "screenshot_provenance": [
     {
-      "file": "01-baseline-schedule.png",
+      "filename": "01-baseline-schedule.png",
+      "scenario_id": "T2-011",
+      "fixture_type": "SYNTHETIC VALID",
+      "fortyguard_evidence_class": "SYNTHETIC_TEST_SCENARIO",
+      "shhch_before": null,
+      "shhch_after": null,
+      "tasks_moved": 0,
+      "capture_source": "Live browser navigation of completed upcoming shift view",
+      "truthfulness_status": "VERIFIED",
       "caption": "Baseline Schedule & Watchpoint Context"
     },
     {
-      "file": "02-fortyguard-evidence-audit.png",
-      "caption": "Live FortyGuard Evidence & Audit Proof Drawer"
+      "filename": "02-fortyguard-evidence-audit.png",
+      "scenario_id": "T2-011",
+      "fixture_type": "SYNTHETIC VALID",
+      "fortyguard_evidence_class": "SYNTHETIC_TEST_SCENARIO",
+      "shhch_before": 39,
+      "shhch_after": 20,
+      "tasks_moved": 7,
+      "capture_source": "Live browser navigation of Why This Plan proof drawer",
+      "truthfulness_status": "VERIFIED",
+      "caption": "Evidence Audit & Why This Plan Proof Drawer"
     },
     {
-      "file": "03-verified-transformation-decision.png",
+      "filename": "03-verified-transformation-decision.png",
+      "scenario_id": "T2-011",
+      "fixture_type": "SYNTHETIC VALID",
+      "fortyguard_evidence_class": "SYNTHETIC_TEST_SCENARIO",
+      "shhch_before": 39,
+      "shhch_after": 20,
+      "tasks_moved": 7,
+      "capture_source": "Live browser navigation of decision and schedule transformation scene",
+      "truthfulness_status": "VERIFIED",
       "caption": "Deterministic Transformation & Constraint Verification"
     },
     {
-      "file": "04-superintendent-approval-verified.png",
-      "caption": "Human Approval Recorded & Final Reverification Pass"
+      "filename": "04-superintendent-approval-verified.png",
+      "scenario_id": "T2-011",
+      "fixture_type": "SYNTHETIC VALID",
+      "fortyguard_evidence_class": "SYNTHETIC_TEST_SCENARIO",
+      "shhch_before": null,
+      "shhch_after": null,
+      "tasks_moved": 7,
+      "capture_source": "Live browser navigation of approved and reverified result scene",
+      "truthfulness_status": "VERIFIED",
+      "caption": "Superintendent Approval Recorded & Final Reverification Pass"
     },
     {
-      "file": "05-invalid-baseline-rejection.png",
-      "caption": "Adversarial Control: Double-Booked Crew Baseline Rejection"
-    },
-    {
-      "file": "06-fail-closed-evidence-unavailable.png",
-      "caption": "Fail-Closed Safety: Evidence Unavailable Preserves Shift"
-    },
-    {
-      "file": "07-all-indoor-work-handling.png",
-      "caption": "Operational Handling: All-Indoor Work Leaves Schedule Intact"
-    },
-    {
-      "file": "08-fixed-work-anchored.png",
-      "caption": "Constraint Preservation: Fixed Outdoor Work Strictly Anchored"
+      "filename": "05-all-indoor-work-handling.png",
+      "scenario_id": "T2-004",
+      "fixture_type": "SYNTHETIC VALID",
+      "fortyguard_evidence_class": "EVIDENCE_UNAVAILABLE",
+      "shhch_before": null,
+      "shhch_after": null,
+      "tasks_moved": 0,
+      "capture_source": "Live browser navigation of all-indoor support shift watchpoint",
+      "truthfulness_status": "VERIFIED",
+      "caption": "Operational Handling: All-Indoor Support Shift (0 Outdoor Tasks)"
     }
   ]
 }
