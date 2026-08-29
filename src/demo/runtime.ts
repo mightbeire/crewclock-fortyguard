@@ -19,6 +19,7 @@ export type RuntimeUiEvent = {
 export type RuntimeSession = {
   run: CrewClockRun; runId: string; events: RuntimeUiEvent[]; approved: boolean; status: string
   provider?: Record<string, unknown>
+  scenario?: ProductionScenario
 }
 
 export type ProductionScenario = 'synthetic-positive' | 'canonical-replay' | 'evidence-unavailable' | 'all-indoor' | 'new-site'
@@ -66,7 +67,7 @@ export const SYNTHETIC_POSITIVE_POLICY = {
 const baseline = (tasks: Task[]) => Object.fromEntries(tasks.map(task => [task.id, task.originalStart]))
 
 export const emptyRuntimeSession = (tasks: Task[] = TASKS, crews: Crew[] = CREWS): RuntimeSession => ({
-  runId: '', events: [], approved: false, status: 'IDLE',
+  runId: '', events: [], approved: false, status: 'IDLE', scenario: undefined,
   run: {
     status: 'missing-evidence', decisionKind: 'evidence-unavailable', baselineValid: false,
     original: baseline(tasks), recommendation: null,
@@ -85,10 +86,10 @@ export const emptyRuntimeSession = (tasks: Task[] = TASKS, crews: Crew[] = CREWS
   },
 })
 
-type Snapshot = { sessionId: string; status: string; events?: RuntimeUiEvent[]; run?: CrewClockRun | null; approved?: boolean; provider?: Record<string, unknown> }
+type Snapshot = { sessionId: string; status: string; events?: RuntimeUiEvent[]; run?: CrewClockRun | null; approved?: boolean; provider?: Record<string, unknown>; scenario?: ProductionScenario }
 const parseSnapshot = (value: Snapshot, fallback: RuntimeSession): RuntimeSession => ({
   runId: value.sessionId, status: value.status, events: value.events ?? [], run: value.run ?? fallback.run,
-  approved: Boolean(value.approved), provider: value.provider,
+  approved: Boolean(value.approved), provider: value.provider, scenario: value.scenario ?? fallback.scenario,
 })
 
 export type ProductionShiftContext = {
@@ -117,12 +118,24 @@ export const fetchProductionReview = async (session: RuntimeSession): Promise<Ru
 export const approveProductionReview = async (session: RuntimeSession): Promise<RuntimeSession> => {
   const response = await fetch(`/api/reviews/${encodeURIComponent(session.runId)}/approve`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ recommendationId: session.run.recommendationId, candidateHash: session.run.candidateHash }),
+    body: JSON.stringify({
+      sessionId: session.runId,
+      scenario: session.scenario,
+      tasks: session.run.tasks,
+      crews: session.run.crews,
+      workfaces: session.run.workfaces,
+      thermalEvidence: session.run.thermalEvidence,
+      start: session.run.shiftStart,
+      end: session.run.shiftEnd,
+      recommendationId: session.run.recommendationId,
+      candidateHash: session.run.candidateHash,
+    }),
   })
   if (!response.ok) throw new Error(`approval_failed:${response.status}`)
   const body = await response.json()
-  return parseSnapshot(body.session, session)
+  return parseSnapshot(body.session ?? body, session)
 }
 
 export const emittedRuntimeEvents = (session: RuntimeSession) => session.events
 export const visibleRuntimeEvent = (event: RuntimeUiEvent) => event.summary
+
