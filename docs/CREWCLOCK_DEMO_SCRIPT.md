@@ -4,107 +4,131 @@
 
 - Target duration: **2:48–2:55**.
 - Hard stop: **2:58**.
-- Build the demo around one story: **a superintendent has a locked shift, heat changes the decision, CrewClock shows what can move without breaking the plan**.
+- The submission portal requires the **project actually working**. Slides do not count.
+- Keep the real CrewClock application visible from **0:00 to the final frame**.
+- Do not use title slides, architecture slides, external screenshots, or presentation cards.
 - Use the verified Palm Springs browser path for the stable on-screen walkthrough.
 - State clearly that the Palm Springs walkthrough reuses previously acquired live FortyGuard evidence after an exact site-and-time identity match.
-- Do not depend on a fresh provider call during the recording.
-- Use the fresh-future San Diego run as the strongest proof point near the end.
+- Do not depend on a fresh provider call during recording.
+- The fresh-future San Diego run is supporting proof in narration, not a slide cutaway.
 
-## 0:00–0:20 — Make the judge care
+## 0:00–0:16 — Cold open: the contradiction
 
-Show the upcoming shift before review. Do not begin on a title slide.
+Start **inside CrewClock** with the Palm Springs shift already loaded. The schedule itself should fill the screen. Do not show a logo card first.
 
-> “Tomorrow’s construction shift is already locked around crews, equipment, inspections, qualifications, and deadlines. Then the heat changes. A superintendent does not need another weather alert. They need to know: **what can I move without breaking tomorrow’s job?**”
+> “This construction schedule is valid. **That is the problem.** Every operational constraint can pass, and the shift can still place crew-hours inside modeled high-heat windows.”
 
-Pause for one beat.
+Point briefly at the actual schedule.
 
-> “That is what CrewClock answers.”
+> “A superintendent cannot just move work around and hope the rest of the day survives. CrewClock has to find a lower-overlap plan **without breaking the job.**”
 
-## 0:20–0:38 — Show the user and promise
+Immediately click **Review shift**.
 
-Keep the shift visible. Point briefly at the existing task plan.
+## 0:16–0:34 — State the promise while the product starts working
 
-> “CrewClock is built for the construction superintendent coordinating the next shift. It takes the plan that already exists, finds the outdoor work that can actually move, and turns hyperlocal environmental evidence into one constraint-checked decision.”
+Keep the live application visible as the review begins.
 
-Click **Review shift**.
+> “CrewClock is an AI pre-shift operations agent for construction superintendents. It starts with the schedule that already exists, finds the outdoor work that can actually move, and turns hyperlocal thermal evidence into one verified decision.”
 
-## 0:38–1:05 — Let the agent investigate
+## 0:34–1:04 — Show the agent making consequential choices
 
-Show the live activity stream. Keep this moving; do not narrate every event.
+Let the real runtime activity progress. Do not read every event.
 
-> “The agent first inspects the shift. It decides whether thermal investigation is needed and which workfaces and time windows matter. Those choices control what evidence CrewClock requests. The AI is choosing the investigation path — not inventing schedule times and not approving its own answer.”
+> “The agent first inspects the shift. It decides whether thermal investigation is needed, which workfaces matter, and which time windows need evidence. Those choices are consequential: they determine what CrewClock asks FortyGuard to investigate.”
 
-## 1:05–1:30 — Make FortyGuard visibly indispensable
+> “The AI does not invent the schedule math, and it cannot approve its own answer.”
 
-Pause on the evidence stage or open the evidence view enough to show workface and time coverage.
+## 1:04–1:32 — Make FortyGuard visibly load-bearing
 
-> “This is where FortyGuard becomes essential. CrewClock sends the selected polygon workfaces and exact schedule windows to FortyGuard’s heatmap API using the project’s modeled-temperature trigger and the exceedance analytic.”
+Open **Evidence & audit** or pause on the real evidence stage inside CrewClock. Keep the application visible.
 
-> “It also acquires the reachable destination windows. If we move a task later, we must have evidence for the place and time we move it to. Unknown evidence never becomes zero.”
+> “This is the core of the product. CrewClock sends the selected polygon workfaces and schedule windows to FortyGuard using the project’s modeled-temperature trigger and the exceedance analytic.”
 
-> “CrewClock binds FortyGuard’s modeled exceedance evidence to the actual outdoor task, its workface, its time, and its crew size. That gives us Scheduled High-Heat Crew-Hours — SHHCH.”
+> “It also acquires the reachable destination windows. If a task could move to 3 p.m., CrewClock needs evidence for 3 p.m. Unknown evidence never becomes zero.”
 
-## 1:30–1:55 — Watch the product act
+> “FortyGuard’s modeled exceedance evidence is then bound to the actual outdoor task, its workface, its timing, and its crew size. That produces Scheduled High-Heat Crew-Hours — SHHCH.”
 
-Return to the schedule as **I found a better sequence** appears. Let the task movement animation play.
+Return to the schedule before the recommendation appears.
 
-> “Now deterministic scheduling code searches the feasible alternatives. Fixed work stays anchored. Dependencies, qualifications, deadlines, crew availability, and employer controls still have to pass.”
+## 1:32–1:56 — Watch CrewClock act
+
+Let **I found a better sequence** appear and allow the real task movement animation to play.
+
+> “Now deterministic scheduling code tests the feasible alternatives. Fixed commitments stay anchored. Dependencies, qualifications, deadlines, crew availability, and employer controls still have to pass.”
 
 As the blocks move:
 
-> “Here, three flexible tasks move. The fixed commitments do not.”
+> “Three flexible tasks move. The fixed work does not.”
 
-## 1:55–2:15 — The money shot
+## 1:56–2:17 — The money shot
 
-Keep the before/after result visible for several seconds.
+Keep **13h → 4h** visible for several seconds.
 
-> “The result is **13 scheduled high-heat crew-hours down to 4**. That is nine fewer crew-hours scheduled inside modeled high-heat windows, while all six operational constraint families still pass.”
+> “The result: **13 scheduled high-heat crew-hours becomes 4**. That is nine fewer crew-hours scheduled inside modeled high-heat windows, while all six operational constraint families still pass.”
 
 > “SHHCH is deliberately narrow. It is a schedule-placement metric, not a medical exposure score or a safety certification.”
 
-## 2:15–2:33 — Prove it, then hand control back
+## 2:17–2:35 — Prove it inside the product
 
-Open **Why this plan?** briefly. Show the causal chain, then return to the decision screen.
+Open **Why this plan?** inside CrewClock. Do not switch to a slide.
 
-> “The proof chain is visible: FortyGuard evidence, workface and time overlap, SHHCH, the alternative schedule, and deterministic verification.”
+> “And CrewClock shows its work: FortyGuard evidence, workface and time coverage, SHHCH, the alternative schedule, and deterministic verification are all visible in the same decision chain.”
+
+Return to the decision screen.
+
+## 2:35–2:48 — Human authority
 
 Show **Approve plan** and **Keep current shift**.
 
-> “And the AI still does not get the final word. The superintendent does.”
+> “The AI still does not get the final word. The superintendent does.”
 
 Click **Approve plan**.
 
-Keep **APPROVED · VERIFIED** visible.
+Hold **APPROVED · VERIFIED** on screen.
 
 > “After approval, CrewClock verifies the exact recommendation again before the shift becomes final.”
 
-## 2:33–2:47 — Strongest real-time proof
+## 2:48–2:55 — Final proof and close
 
-Use the approved state or a prepared San Diego evidence screenshot. Do not switch into a long second walkthrough.
+Keep the approved CrewClock state visible. Do not cut to a screenshot or slide.
 
-> “We then proved the complete path on a genuinely future San Diego shift using **fresh live FortyGuard evidence**. CrewClock reduced SHHCH from **18 to 9**, moved three flexible tasks, moved zero fixed tasks, kept the schedule at **6 out of 6 constraints**, received superintendent approval, and passed final reverification.”
+> “We also proved this end to end on a genuinely future San Diego shift with fresh live FortyGuard evidence: **18 SHHCH to 9, three flexible tasks moved, zero fixed tasks moved, and 6 out of 6 constraints preserved.**”
 
-## 2:47–2:55 — Show judgment and close
+Final line:
 
-> “CrewClock also knows when not to force a change. If the measured shift has no lower-overlap time, it says so instead of calling the schedule optimal or inventing an improvement.”
+> “A weather dashboard tells a superintendent how hot tomorrow will be. **CrewClock uses FortyGuard to tell them what can move without breaking tomorrow’s job.**”
 
-Final line. Keep CrewClock or the approved schedule visible.
+## If there is 5–8 seconds spare
 
-> “A weather dashboard tells a superintendent how hot tomorrow will be. **CrewClock uses FortyGuard to answer the harder question: given tomorrow’s actual work, what should move, what must stay, and does the new plan still work?**”
+Only use this if the take is safely below 2:55. Keep the product visible.
 
-## Recording rules
+> “And when there is nowhere lower-overlap to move the work, CrewClock says so instead of inventing an improvement.”
 
-- **One user, one problem, one transformation.** Do not turn this into a feature tour.
-- Be inside the product by about **20 seconds**.
-- Keep the strongest visible number on screen long enough to register.
-- Do not explain architecture before the transformation happens.
-- Do not mention Groq, TokenRouter, polling bugs, test counts, schemas, or implementation history in the main video. Save those for Q&A.
-- Speak naturally. Do not rush to hit every word exactly.
-- Prioritize the visible product over reading the script verbatim.
-- Keep cursor movement deliberate. Avoid terminals and technical consoles.
-- Do not wait on a fresh FortyGuard call during recording.
+## Recording choreography
+
+- Start with the working CrewClock schedule already loaded.
+- No title card.
+- No slides.
+- No architecture diagram.
+- No terminal.
+- No external screenshot cutaway.
+- No editor or code window.
+- Every click must advance the same real user story.
+- Keep the cursor still while important numbers are on screen.
+- Let the task movement animation finish before speaking over the result.
+- Hold the **13 → 4** result for at least 3 seconds.
+- Hold **APPROVED · VERIFIED** for at least 2 seconds.
+- Do not wait on a fresh FortyGuard request during the recording.
 - Do not call SHHCH “exposure,” “risk,” “heat dose,” or “safety.”
-- If the take reaches **2:58**, cut the no-change sentence before cutting the final line.
+- If the take reaches **2:58**, cut the San Diego support sentence before cutting the final line.
+
+## Why this hook is stronger
+
+The opening does not explain heat or construction in the abstract. It creates a contradiction the judge can understand immediately:
+
+**the schedule is operationally valid, but still thermally poor.**
+
+That gives CrewClock a concrete job to perform on screen: improve the thermal placement without breaking the six operational constraint families.
 
 ## Judge questions
 
