@@ -66,6 +66,30 @@ FortyGuard is load-bearing environmental intelligence for the decision. CrewCloc
 
 CrewClock checks reachable destination windows before it credits a task move. A destination must have decision-grade evidence. Missing evidence is not a safe value and is never treated as zero.
 
+## Engineering research: FortyGuard availability
+
+During integration, we observed that equivalent valid heatmap requests did not always return the same kind of evidence at different U.S. coordinates. We ran a controlled availability study instead of treating every empty response as a CrewClock failure.
+
+The experiment made **84 FortyGuard requests across 13 U.S. coordinates**. It paired TCM and `exceedance` requests, historical and future windows, consistent workface-sized AOIs, the same polling policy, and limited repeat tests.
+
+| Result class | Requests |
+| --- | ---: |
+| Decision-grade, nonzero | **49** |
+| Decision-grade, explicit zero | **3** |
+| Completed with empty evidence | **32** |
+| Provider failures | **0** |
+| Timeouts | **0** |
+| Invalid requests | **0** |
+| Client errors | **0** |
+
+All activities completed in about **20.6–45.4 seconds**, and repeat results were deterministic. Under these controlled conditions, the observed difference tracked **request location**. We did not find evidence that the difference was caused by future versus historical data, TCM versus `exceedance`, asynchronous delay, or CrewClock's client.
+
+This is **not** a permanent city-support map or a claimed FortyGuard coverage boundary. It is an observed integration result from this test set. CrewClock therefore treats an explicit zero as valid evidence, but it never treats completed-empty or incomplete evidence as zero. If decision-grade evidence is unavailable, the current shift is preserved.
+
+For evaluator testing, the strongest validated positive locations are **San Diego, California**, and **Tucson, Arizona**. **Palm Springs, California**, also returned usable FortyGuard evidence during testing.
+
+Read the engineering report: [`docs/FORTYGUARD_AVAILABILITY_RESEARCH.md`](docs/FORTYGUARD_AVAILABILITY_RESEARCH.md).
+
 ## How it works
 
 ```mermaid
@@ -133,7 +157,8 @@ The latest local verification passed: 152 Python tests, 49 Vitest tests, typeche
 - `src/` — React interface, deterministic scheduling engine, SHHCH, agent boundary, and Python runtime.
 - `scripts/` — runtime generation, site packaging, and local API entry points.
 - `tests/` — Python integration and policy tests.
-- `docs/` — the five judge-facing technical and submission documents.
+- `docs/` — judge-facing technical, submission, and engineering-research documents.
+- `docs/FORTYGUARD_AVAILABILITY_RESEARCH.md` — controlled 84-request availability study across 13 U.S. coordinates.
 - `evidence/san-diego-final-positive/` — authoritative run summary and focused screenshots.
 - `evidence/fresh-live-positive-2026-08-29/` — fresh-live validation run summary and browser evidence screenshots.
 
