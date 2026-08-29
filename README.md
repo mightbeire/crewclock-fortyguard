@@ -13,7 +13,7 @@ CrewClock is a pre-shift operations agent for construction superintendents. It u
 | --- | --- |
 | Working demo / prototype | [Open CrewClock](https://crewclock.oluwatomireoluwa.chatgpt.site) |
 | Code repository | [GitHub — `mightbeire/crewclock-fortyguard`](https://github.com/mightbeire/crewclock-fortyguard) |
-| Short video presentation | **YouTube URL pending — added after final upload** |
+| Short video presentation | [Watch the 2:48 CrewClock demo](https://youtu.be/gbTTAxec-f4) |
 | Written project summary | [`docs/SUBMISSION.md`](docs/SUBMISSION.md) |
 | FortyGuard API usage documentation | [`docs/FORTYGUARD_INTEGRATION.md`](docs/FORTYGUARD_INTEGRATION.md) |
 | Demo and measured results | [`docs/DEMO_AND_RESULTS.md`](docs/DEMO_AND_RESULTS.md) |

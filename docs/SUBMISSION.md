@@ -1,8 +1,9 @@
 # CrewClock — FortyGuard Hackathon 2026
 
 **Team:** btn operations  
-**Primary track:** Agentic AI  
-**Secondary track:** Industrial & Enterprise
+**Primary track:** Industrial & Enterprise  
+**Secondary track:** Agentic AI  
+**Video:** [Watch the 2:48 CrewClock demo](https://youtu.be/gbTTAxec-f4)
 
 CrewClock targets a heat-exposed industry. U.S. construction spending ran at a $2.17 trillion annual rate in June 2026, while the industry employed 8.343 million people in July. NIOSH recommends changes to tasks and schedules as workplace heat controls. EPA projects that outdoor workers could lose up to 34 labor hours per person each year to high-temperature days, contributing to as much as $46 billion in lost wages across the U.S. economy by mid-century. Construction, however, cannot simply stop when heat rises; crews, dependencies, deadlines, and fixed commitments must still line up.
 
