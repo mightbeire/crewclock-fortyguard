@@ -38,6 +38,26 @@ The authoritative run used San Diego, California, on August 28, 2026, from 12:00
 
 The run used fresh live FortyGuard evidence. The evidence path is in [`evidence/san-diego-final-positive`](evidence/san-diego-final-positive).
 
+### Fresh live validation (August 29, 2026)
+
+A fresh live validation was conducted in Tucson, Arizona on August 29, 2026 (06:00–16:00 local time) across a locked 7-task, 3-crew, 4-workface construction fixture.
+
+| Measure | Result |
+| --- | ---: |
+| Location | **Tucson, Arizona** |
+| Baseline hard constraints | **6/6 passed** |
+| Fresh live FortyGuard calls | **YES (20 activities, 0 cache reuses)** |
+| Evidence classification | **LIVE_ACQUIRED_SEGMENTED** |
+| SHHCH | **60h → 24h** |
+| Reduction | **36h (60.0%)** |
+| Flexible tasks moved | **3** |
+| Fixed tasks moved | **0** |
+| Final hard constraints | **6/6 passed** |
+| Superintendent approval | **APPROVED** |
+| Final reverification | **PASS** |
+
+The fresh evidence artifacts and browser screenshots are in [`evidence/fresh-live-positive-2026-08-29`](evidence/fresh-live-positive-2026-08-29).
+
 SHHCH is a schedule-placement metric. It is not a medical exposure score, safety certification, heat-dose measure, or compliance statement.
 
 ## Why FortyGuard matters
@@ -115,6 +135,7 @@ The latest local verification passed: 152 Python tests, 49 Vitest tests, typeche
 - `tests/` — Python integration and policy tests.
 - `docs/` — the five judge-facing technical and submission documents.
 - `evidence/san-diego-final-positive/` — authoritative run summary and focused screenshots.
+- `evidence/fresh-live-positive-2026-08-29/` — fresh-live validation run summary and browser evidence screenshots.
 
 ## Team
 

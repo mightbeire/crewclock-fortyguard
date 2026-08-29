@@ -1,0 +1,33 @@
+{
+  "run_date": "2026-08-29",
+  "location": "Tucson, Arizona",
+  "coordinates": {
+    "latitude": 32.2226,
+    "longitude": -110.9747
+  },
+  "timezone": "America/Phoenix",
+  "shift": {
+    "start": "06:00",
+    "end": "16:00"
+  },
+  "fixture_type": "SYNTHETIC VALID CONSTRUCTION FIXTURE WITH FRESH LIVE FORTYGUARD ENVIRONMENTAL EVIDENCE",
+  "crew_count": 3,
+  "worker_count": 18,
+  "task_count": 7,
+  "workface_count": 4,
+  "fresh_live_fortyguard": true,
+  "cache_reuses": 0,
+  "fortyguard_activity_count": 20,
+  "evidence_class": "LIVE_ACQUIRED_SEGMENTED",
+  "destination_coverage": "PASS",
+  "baseline_constraints": "6/6",
+  "baseline_shhch": 60,
+  "proposed_shhch": 24,
+  "reduction_shhch": 36,
+  "reduction_percent": 60.0,
+  "flexible_tasks_moved": 3,
+  "fixed_tasks_moved": 0,
+  "final_constraints": "6/6",
+  "human_approval": "APPROVED",
+  "final_reverification": "PASS"
+}
