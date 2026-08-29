@@ -8,6 +8,7 @@
     "dev:api": "python scripts/run_crewclock_api.py",
     "build:runtime": "node scripts/build_decision_runtime.mjs",
     "build": "npm run build:runtime && tsc -b && vite build",
+    "build:site": "node scripts/build_site.mjs",
     "typecheck": "tsc -b --pretty false",
     "lint": "eslint .",
     "test:ui": "vitest run",
@@ -32,3 +33,4 @@
     "vitest": "latest"
   }
 }
+
