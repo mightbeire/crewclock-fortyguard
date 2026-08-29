@@ -2,7 +2,7 @@
 
 ## CrewClock — FortyGuard Hackathon 2026
 
-CrewClock is a pre-shift agent for construction superintendents. It uses workface-level heat evidence to find a lower-heat task sequence without breaking the existing plan.
+CrewClock is a pre-shift agent for construction superintendents. It uses workface-level heat evidence to find a lower-overlap task sequence without breaking the existing plan.
 
 **Live demo:** [crewclock.oluwatomireoluwa.chatgpt.site](https://crewclock.oluwatomireoluwa.chatgpt.site)
 
