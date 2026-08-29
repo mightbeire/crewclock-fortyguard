@@ -1,0 +1,63 @@
+{
+  "campaign_name": "Team Member 2 Independent Validation Campaign",
+  "campaign_date": "2026-08-29",
+  "total_scenarios_evaluated": 11,
+  "findings": {
+    "positive_reschedule_verified": true,
+    "no_improvement_fail_closed": true,
+    "invalid_baselines_rejected": true,
+    "fixed_commitments_anchored": true,
+    "dependency_chains_respected": true,
+    "evidence_unavailable_fail_closed": true,
+    "human_approval_gate_enforced": true,
+    "deterministic_reverification_pass": true
+  },
+  "sample_primary_positive_run": {
+    "scenario_id": "T2-011",
+    "location": "Phoenix, Arizona",
+    "date": "2025-07-15",
+    "baseline_shhch": 39,
+    "proposed_shhch": 20,
+    "reduction_shhch": 19,
+    "percent_reduction": 48.7,
+    "tasks_moved": 3,
+    "fixed_tasks_moved": 0,
+    "constraint_families_verified": "6/6",
+    "superintendent_approval": "RECORDED",
+    "final_deterministic_reverification": "PASS"
+  },
+  "curated_screenshots": [
+    {
+      "file": "01-baseline-schedule.png",
+      "caption": "Baseline Schedule & Watchpoint Context"
+    },
+    {
+      "file": "02-fortyguard-evidence-audit.png",
+      "caption": "Live FortyGuard Evidence & Audit Proof Drawer"
+    },
+    {
+      "file": "03-verified-transformation-decision.png",
+      "caption": "Deterministic Transformation & Constraint Verification"
+    },
+    {
+      "file": "04-superintendent-approval-verified.png",
+      "caption": "Human Approval Recorded & Final Reverification Pass"
+    },
+    {
+      "file": "05-invalid-baseline-rejection.png",
+      "caption": "Adversarial Control: Double-Booked Crew Baseline Rejection"
+    },
+    {
+      "file": "06-fail-closed-evidence-unavailable.png",
+      "caption": "Fail-Closed Safety: Evidence Unavailable Preserves Shift"
+    },
+    {
+      "file": "07-all-indoor-work-handling.png",
+      "caption": "Operational Handling: All-Indoor Work Leaves Schedule Intact"
+    },
+    {
+      "file": "08-fixed-work-anchored.png",
+      "caption": "Constraint Preservation: Fixed Outdoor Work Strictly Anchored"
+    }
+  ]
+}

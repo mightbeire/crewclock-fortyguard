@@ -38,3 +38,4 @@ evidence/temporary/
 Thumbs.db
 .idea/
 .vscode/
+vendor/
