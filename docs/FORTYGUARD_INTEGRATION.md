@@ -12,16 +12,28 @@ FortyGuard gives CrewClock the spatial and temporal evidence needed to answer th
 
 The result is an operational decision, not a weather display.
 
-## 2. API surfaces used
+## 2. API endpoints and heatmap analytics used
 
-| FortyGuard surface | CrewClock use |
+CrewClock used these FortyGuard API endpoints:
+
+| Endpoint | CrewClock use |
 | --- | --- |
-| `POST /v1/heatmap` | Request modeled evidence for one selected workface and one schedule window. |
+| `POST /v1/heatmap` | Request modeled heat evidence for one selected workface and one schedule window. |
 | `GET /v1/status/{activity_id}` | Poll an asynchronous heatmap activity until it reaches a terminal state. |
-| `exceedance` analytic | Measure modeled hours above the project's 32 °C trigger. |
-| TCM | Used in controlled engineering research to compare base temperature availability with analytic availability. It is not the SHHCH decision source. |
+| `POST /v1/env_params` | Get optional environmental context during integration and validation. It does not supply SHHCH evidence. |
+| `POST /v1/system/fetch-api-key-usage` | Check API-credit use during live testing. |
+| `POST /v1/satellite` | Explore land-cover data during engineering research. It is not part of the scheduling decision path. |
 
-The production decision path uses `exceedance`. Optional environmental context cannot replace the required exceedance evidence.
+CrewClock also tested several heatmap analytics:
+
+| Heatmap analytic | CrewClock use |
+| --- | --- |
+| `exceedance` | Production decision source. Measures modeled hours above the project's 32 °C trigger. |
+| TCM | Controlled engineering research on base temperature availability. It is not the SHHCH decision source. |
+| `time_of_measure` | Exploratory engineering research on peak-time results. It is not part of the scheduling decision path. |
+| `persistence` | Exploratory engineering research on continuous threshold exceedance. It is not part of the scheduling decision path. |
+
+The production decision path uses only `exceedance` heatmap evidence. Optional context and exploratory analytics cannot replace the required exceedance evidence.
 
 ## 3. Request contract
 
